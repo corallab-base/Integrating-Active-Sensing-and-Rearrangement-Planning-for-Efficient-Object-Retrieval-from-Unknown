@@ -163,8 +163,20 @@ class robot_arm_configuration:
                         right_copy += local_translation_2
                         gripper_points.add(tuple(left_copy.tolist()))
                         gripper_points.add(tuple(right_copy.tolist()))
+
+        gri_min_x, gri_min_y, gri_min_z = sys.maxsize, sys.maxsize, sys.maxsize
+        gri_max_x, gri_max_y, gri_max_z = -sys.maxsize, -sys.maxsize, -sys.maxsize
+
+        for x, y, z in gripper_points:
+            gri_min_x = min(gri_min_x, x)
+            gri_min_y = min(gri_min_y, y)
+            gri_min_z = min(gri_min_z, z)
+            gri_max_x = max(gri_max_x, x)
+            gri_max_y = max(gri_max_y, y)
+            gri_max_z = max(gri_max_z, z)
         
         self.link_points_ = {}
+        self.bounding_points_ = {}
 
         #dummy_stl = part_mesh
         #dummy_stl.vertices_ = gripper_vertices
@@ -248,8 +260,30 @@ class robot_arm_configuration:
 
             self.collision_models_[link] = [vertices, faces.astype(int)]
 
+            # add bounding box for each joint
+            bounding_points_no_rotation = np.array([[min_x, min_y, min_z], 
+                                                    [max_x, min_y, min_z],
+                                                    [max_x, max_y, min_z],
+                                                    [min_x, max_y, min_z],
+                                                    [min_x, min_y, max_z],
+                                                    [max_x, min_y, max_z],
+                                                    [max_x, max_y, max_z],
+                                                    [min_x, max_y, max_z]])
+            self.bounding_points_[link] = temp_rotation.apply(bounding_points_no_rotation) + temp_translation
+
 
         self.link_points_['gripper'] = gripper_points
+
+        # add bounding box for gripper
+        self.bounding_points_['gripper'] = np.array([[gri_min_x, gri_min_y, gri_min_z], 
+                                                     [gri_max_x, gri_min_y, gri_min_z],
+                                                     [gri_max_x, gri_max_y, gri_min_z],
+                                                     [gri_min_x, gri_max_y, gri_min_z],
+                                                     [gri_min_x, gri_min_y, gri_max_z],
+                                                     [gri_max_x, gri_min_y, gri_max_z],
+                                                     [gri_max_x, gri_max_y, gri_max_z],
+                                                     [gri_min_x, gri_max_y, gri_max_z]])
+
         self.link_names_.append('gripper')
 
         self.collision_models_['gripper'] = [gripper_vertices, gripper_faces.astype(int)]
@@ -516,6 +550,102 @@ class robot_arm_configuration:
         _ = plotter.add_axes(line_width = 5)
 
         return robot_mesh_list
+    
+    def get_bounding_box(self, angles, plotter= None, update_mesh= None):
+        transform_data = self.calculate_transform_from_angles(angles)
+        translation = [x[0] for x in transform_data]
+        rotation = [x[1] for x in transform_data]
+
+        bbox_list = []
+        mesh_list = []
+        for i in range(len(rotation)):
+            link_name = self.link_names_[i]
+
+            temp_translation = translation[i]
+            temp_rotation = R.from_quat(rotation[i])
+
+            verts_no_rotations = self.bounding_points_[link_name]
+            verts = temp_rotation.apply(verts_no_rotations) + temp_translation
+            tris = np.array([[0, 1, 2],
+                             [0, 2, 3],
+                             [4, 5, 6],
+                             [4, 6, 7],
+                             [0, 1, 5],
+                             [0, 5, 4],
+                             [3, 2, 6],
+                             [3, 6, 7],
+                             [1, 5, 6],
+                             [1, 6, 2],
+                             [0, 4, 7],
+                             [0, 7, 3]])
+            
+            # new box
+            m = fcl.BVHModel()
+            m.beginModel(len(verts), len(tris))
+            m.addSubModel(verts, tris)
+            m.endModel()
+            t = fcl.Transform()
+            bbox_list.append(fcl.CollisionObject(m, t))
+
+            if plotter is not None:
+                new_col = np.ones([tris.shape[0], 1], dtype = int) * 3
+                new_tris = np.concatenate((new_col, tris), 1)
+                temp_mesh = pv.PolyData(verts, new_tris)
+                mesh_list.append(temp_mesh)
+                plotter.add_mesh(temp_mesh, color = '#FF6961')
+
+            elif update_mesh is not None:
+                new_col = np.ones([tris.shape[0], 1], dtype = int) * 3
+                new_tris = np.concatenate((new_col, tris), 1)
+                temp_mesh = pv.PolyData(verts, new_tris)
+                update_mesh[i].points = temp_mesh.points
+
+        return bbox_list, mesh_list
+
+    def get_swept_volume(self, path_list, test_name, grasp_idx, frame_rate= 60, scene_info= None, visualize= False):
+        # get angles per frame
+        pos_list = []
+        for path_idx in range(1, len(path_list)):
+            start_pos = np.array(path_list[path_idx - 1])
+            end_pos = np.array(path_list[path_idx])
+            delta = (end_pos - start_pos) / frame_rate
+
+            for i in range(frame_rate + 1):
+                pos_list.append(start_pos + (delta * i))
+
+
+        # create fcl manager
+        swept_manager = fcl.DynamicAABBTreeCollisionManager()
+        swept_manager.setup()
+
+        if visualize:
+            plotter = pv.Plotter()
+            print("test_data/swept_animations/" + test_name + "_grasp" + str(grasp_idx) + ".gif")
+            plotter.open_gif("test_data/swept_animations/" + test_name + "_grasp" + str(grasp_idx) + ".gif")
+
+            _, mesh_list = self.get_bounding_box(pos_list[0], plotter= plotter)
+            pcd_mesh = pv.PolyData(self.point_cloud)
+            plotter.add_mesh(pcd_mesh, color= "blue")
+            if scene_info is not None:
+                self.construct_scene_meshs(scene_info, plotter)
+            plotter.camera_position = 'yz'
+            plotter.set_background('white')
+        else:
+            plotter = None
+
+        # add swept volume
+        for angles in pos_list:
+            bbox_list, _ = self.get_bounding_box(angles, update_mesh= mesh_list)
+            if visualize:
+                plotter.write_frame()
+
+
+        swept_manager.registerObjects(bbox_list)
+        swept_manager.setup()
+
+        if visualize:
+            plotter.camera_position = 'yz'
+            plotter.close()
 
     def update_robot_meshs(self, angles, robot_mesh_list):
         transform_data = self.calculate_transform_from_angles(angles)
@@ -1177,7 +1307,6 @@ def grasp_path_check(file_path, test_data_root, grasp_root, test_name, scene_inf
     grasp_score_idx = list(np.argsort(-grasp_datas["scores"].item()[1]))
 
     for i in grasp_score_idx:
-        i = 115
         grasp_mat = grasp_datas["pred_grasps_cam"].item()[1][i]
         dof_result = rac.grasp_verify(grasp_mat, cam_rot, cam_tran)
 
@@ -1191,7 +1320,8 @@ def grasp_path_check(file_path, test_data_root, grasp_root, test_name, scene_inf
         # path planning & animation
         path_list = get_plan_path(rac, dof_result, scene_info)
         if path_list is not None:
-            rac.path_animation(path_list, test_name, grasp_idx=i, scene_info= scene_info, frame_rate= 30)
+            # rac.path_animation(path_list, test_name, grasp_idx=i, scene_info= scene_info, frame_rate= 30)
+            rac.get_swept_volume(path_list, test_name, i, frame_rate=30, scene_info= scene_info, visualize=True)
             break
         # else:
             # rac.check_collision_models(dof_result)
@@ -1201,6 +1331,7 @@ def grasp_path_check(file_path, test_data_root, grasp_root, test_name, scene_inf
 if __name__ == '__main__':
     # file_path = '../assets/urdf/ur5e/meshes/collision/'
     # rac = robot_arm_configuration(file_path, np.array([0.0, 0, 0]))
+    # rac.get_bounding_box()
     # angles = [0, -math.pi/2, math.pi/2, -math.pi/2, 0, 0]
 
     # file paths
@@ -1211,6 +1342,7 @@ if __name__ == '__main__':
     scene_info = [0.56, 0.86000001, 0.1, 0.5]
     # scene_info = None
     grasp_path_check(file_path, test_data_root, grasp_root, test_name, scene_info= scene_info, grasp_check= False)
+
 
 
     # plane_normal = np.array([0,0,1.0])

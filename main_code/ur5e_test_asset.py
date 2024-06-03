@@ -645,9 +645,9 @@ for i in range(num_of_envs):
         while is_collision:
             tx = np.random.uniform(0.35, table_dims.x + 0.2)
             ty = np.random.uniform(-table_dims.y/2 + 0.1, table_dims.y/2 - 0.2)
+            tz = table_dims.z + 0.08
             # tx = 0.4
             # ty = -0.2
-            tz = table_dims.z + 0.08
 
             object_pose.p = gymapi.Vec3(tx, ty, tz)
 
