@@ -664,10 +664,10 @@ for i in range(num_of_envs):
             m.beginModel(len(verts), len(tris))
             m.addSubModel(verts, tris)
             m.endModel()
+            t = fcl.Transform(np.array([tx,ty,tz]))
             
 
             # check collision
-            t = fcl.Transform(np.array([tx,ty,tz]))
             req = fcl.CollisionRequest()
             rdata = fcl.CollisionData(request = req)
             objs_manager.collide(fcl.CollisionObject(m, t), rdata, fcl.defaultCollisionCallback)

@@ -22,7 +22,7 @@ import ompl.geometric as og
 from stl_reader import stl_reader
 from obj_reader import obj_reader
 import time
-
+import copy
 
 def global_coord_converter(coord1, coord2, coord3, offset1, offset2, offset3):
     return (coord1 - offset1, coord3 - offset3, - coord2 + offset2)
@@ -43,7 +43,7 @@ def rotation_concat(quaternion1, quaternion0):
 class robot_arm_configuration:
     
     #create voxel grid represetation for each link
-    def __init__(self, file_path, robot_offset, point_cloud):
+    def __init__(self, file_path, robot_offset, scene_info, point_cloud=None, target_mesh=None, obstacles_num=0):
         with open('../assets/urdf/ur5e/ur5e_mimic_real_gripper_linear_motion.urdf') as f:
             urdf_str = f.read()
         self.ik_solver_ = IK('base_link', 'wrist_3_link', urdf_string = urdf_str)
@@ -299,23 +299,66 @@ class robot_arm_configuration:
             self.fcl_models_.append(m)
 
         self.point_cloud = point_cloud
+        self.target_mesh = target_mesh
 
-        if point_cloud is None:
-            # adding banana
-            self.obj_mesh = []
-            collision_mesh = obj_reader('../assets/urdf/ycb/006_mustard_bottle/textured_vhacd.obj')
-            collision_mesh.add_offset([0.60,0,0.139])#/////////////////////////////////////////////////////////////////////////////
-            # collision_mesh.add_offset([0.4,0.3,0.139])
-            # collision_mesh.add_offset([0.3,-0.2,0.139])
-            # collision_mesh.add_offset([0.435,0.12,0.139])
+        self.obj_mesh = []
+        self.obstacles_num = obstacles_num
 
-            face = collision_mesh.get_faces()
-            verts = collision_mesh.get_vertices()
-            o = fcl.BVHModel()
-            o.beginModel(len(verts), len(face))
-            o.addSubModel(verts, face)
-            o.endModel()
-            self.obj_mesh.append([verts, face])
+        assert not (target_mesh is None and obstacles_num != 0), "Target mesh was not given to compare collision with other obstacles"
+
+        # add obstacles
+        collision_mesh_list = []
+        objs_manager = fcl.DynamicAABBTreeCollisionManager()
+        objs_manager.setup()
+
+
+        for i in range(obstacles_num):
+            obstacles_mesh = obj_reader('../assets/urdf/ycb/002_master_chef_can/textured_vhacd.obj')
+
+            if i == 0:
+                target_verts, target_tris = target_mesh
+                target_m = fcl.BVHModel()
+                target_m.beginModel(len(target_verts), len(target_tris))
+                target_m.addSubModel(target_verts, target_tris)
+                target_m.endModel()
+                target_t = fcl.Transform()
+                target_colision_mesh = fcl.CollisionObject(target_m, target_t)
+                collision_mesh_list.append(target_colision_mesh)
+                objs_manager.registerObjects(collision_mesh_list)
+                objs_manager.setup()
+
+            is_collision = True
+            while is_collision:
+                # random obj placing
+                tx = np.random.uniform(0.35, scene_info[0] + 0.2)
+                ty = np.random.uniform(-scene_info[1]/2 + 0.1, scene_info[1]/2 - 0.2)
+                tz = scene_info[2] + 0.001
+
+                temp_tris = obstacles_mesh.get_faces()
+                temp_verts = obstacles_mesh.get_vertices()
+
+                # new obj
+                temp_m = fcl.BVHModel()
+                temp_m.beginModel(len(temp_verts), len(temp_tris))
+                temp_m.addSubModel(temp_verts, temp_tris)
+                temp_m.endModel()
+                temp_t = fcl.Transform([tx, ty, tz])
+                temp_collision_mesh = fcl.CollisionObject(temp_m, temp_t)
+
+                # check collision
+                req = fcl.CollisionRequest()
+                rdata = fcl.CollisionData(request = req)
+                objs_manager.collide(temp_collision_mesh, rdata, fcl.defaultCollisionCallback)
+                is_collision = rdata.result.is_collision # update collision status
+                print("collision check: ", is_collision)
+
+            collision_mesh_list.append(temp_collision_mesh)
+            objs_manager.registerObjects(collision_mesh_list)
+            objs_manager.setup()
+            obstacles_mesh.add_offset([tx, ty, tz])
+            temp_tris = obstacles_mesh.get_faces()
+            temp_verts = obstacles_mesh.get_vertices()
+            self.obj_mesh.append([temp_verts, temp_tris])
 
 
     def constrained_linear_motion_planner(self, distance):
@@ -424,7 +467,7 @@ class robot_arm_configuration:
         rot9_final = rot7
         trans9, rot9 = trans7 + rot9_offset, rot9_final
 
-    #gripper
+        #gripper
         rot8_offset = R.from_quat(rot7_final).apply([0.086, 0, 0])
         rot8_initial = [0, math.sqrt(2)/2, math.sqrt(2)/2, 0]
         rot8_final = rotation_concat(accu, rot8_initial)
@@ -461,8 +504,30 @@ class robot_arm_configuration:
                 res_points.append((list(point), temp_weights))
         
         return res_points
+    
+    def add_all_obj_meshs(self, plotter):
+        if self.point_cloud is not None:
+            pcd_mesh = pv.PolyData(self.point_cloud)
+            plotter.add_mesh(pcd_mesh, color= "blue")
 
-    def check_collision_models(self, angles, obj_collision_model = None, scene_info = None, show_obj_axes = False):
+        if self.target_mesh is not None:
+            # add matched target object from file
+            target_verts, target_face = self.target_mesh
+            face_counts, _ = target_face.shape
+            target_faces = np.concatenate((np.array([3]*face_counts).reshape(face_counts, 1), target_face), axis = 1).astype(int)
+            target_mesh = pv.PolyData(np.array(target_verts), np.array(target_faces))
+            plotter.add_mesh(target_mesh, color= "red")
+        
+        if self.obstacles_num:
+            # add choosen obstacles from config
+            for obj_mesh in self.obj_mesh:
+                obstac_verts, obstac_face = obj_mesh
+                face_counts, _ = obstac_face.shape
+                obstac_faces = np.concatenate((np.array([3]*face_counts).reshape(face_counts, 1), obstac_face), axis = 1).astype(int)
+                obstac_mesh = pv.PolyData(np.array(obstac_verts), np.array(obstac_faces))
+                plotter.add_mesh(obstac_mesh, color= "#FFFF00")
+
+    def check_collision_models(self, angles, obj_collision_model=None, scene_info=None, show_obj_axes=False):
         plotter = pv.Plotter()
 
         #construct scene mesh
@@ -484,17 +549,8 @@ class robot_arm_configuration:
         #construct robot mesh
         _ = self.construct_robot_meshs(angles, plotter)
 
-        # point cloud add
-        if self.point_cloud is not None:
-            pcd_mesh = pv.PolyData(self.point_cloud)
-            plotter.add_mesh(pcd_mesh, color= "blue")
-        else:
-            # or add obj
-            obj_verts, obj_face = self.obj_mesh[0]
-            face_counts, _ = obj_face.shape
-            obj_faces = np.concatenate((np.array([3]*face_counts).reshape(face_counts, 1), obj_face), axis = 1).astype(int)
-            obj_mesh = pv.PolyData(np.array(obj_verts), np.array(obj_faces))
-            plotter.add_mesh(obj_mesh, color= "#FFFF00")
+        # add all the objects
+        self.add_all_obj_meshs(plotter)
 
         # Add the axes on object
         if show_obj_axes:
@@ -525,7 +581,7 @@ class robot_arm_configuration:
             plotter.add_mesh(right_cover)
             plotter.add_mesh(cover)
 
-    def construct_robot_meshs(self, angles, plotter):
+    def construct_robot_meshs(self, angles, plotter, w_target=None):
         transform_data = self.calculate_transform_from_angles(angles)
         translation = [x[0] for x in transform_data]
         rotation = [x[1] for x in transform_data]
@@ -539,19 +595,61 @@ class robot_arm_configuration:
             temp_rotation = R.from_quat(rotation[i])
 
             temp_vertices, temp_faces = self.collision_models_[link_name]
+
             face_counts, _ =  temp_faces.shape
-
-            new_vertices = temp_rotation.apply(temp_vertices) + temp_translation
             plot_faces = np.concatenate((np.array([3]*face_counts).reshape(face_counts, 1), temp_faces), axis = 1).astype(int)
+            
+            if link_name == "gripper" and w_target is not None:
+                temp_vertices = w_target[0]
+                plot_faces = w_target[1]
+            
+            new_vertices = temp_rotation.apply(temp_vertices) + temp_translation
             temp_mesh = pv.PolyData(np.array(new_vertices), np.array(plot_faces))
-
             robot_mesh_list.append(temp_mesh)
             plotter.add_mesh(temp_mesh, color = '#FF6961')
+            
         _ = plotter.add_axes(line_width = 5)
-
         return robot_mesh_list
     
-    def get_bounding_box(self, angles, plotter= None, update_mesh= None):
+    def update_robot_meshs_swept(self, angles, robot_mesh_list, plotter, w_target):
+        transform_data = self.calculate_transform_from_angles(angles)
+        translation = [x[0] for x in transform_data]
+        rotation = [x[1] for x in transform_data]
+
+        bbox_list = []
+        for i in range(len(rotation)):
+            link_name = self.link_names_[i]
+
+            temp_translation = translation[i]
+            temp_rotation = R.from_quat(rotation[i])
+
+            temp_vertices, temp_faces = self.collision_models_[link_name]
+            face_counts, _ =  temp_faces.shape
+            plot_faces = np.concatenate((np.array([3]*face_counts).reshape(face_counts, 1), temp_faces), axis = 1).astype(int)
+
+            if link_name == "gripper" and w_target is not None:
+                temp_vertices = w_target[0]
+                plot_faces = w_target[1]
+
+            new_vertices = temp_rotation.apply(temp_vertices) + temp_translation
+            temp_mesh = pv.PolyData(np.array(new_vertices), np.array(plot_faces))
+
+            # pdb.set_trace()
+
+            robot_mesh_list[i].points = temp_mesh.points
+            plotter.add_mesh(temp_mesh, color = '#FF6961')
+
+            # new box
+            m = fcl.BVHModel()
+            m.beginModel(len(new_vertices), len(plot_faces))
+            m.addSubModel(new_vertices, plot_faces)
+            m.endModel()
+            t = fcl.Transform()
+            bbox_list.append(fcl.CollisionObject(m, t))
+        
+        return bbox_list
+    
+    def update_bounding_box(self, angles, w_target, plotter= None, update_mesh= None):
         transform_data = self.calculate_transform_from_angles(angles)
         translation = [x[0] for x in transform_data]
         rotation = [x[1] for x in transform_data]
@@ -565,7 +663,7 @@ class robot_arm_configuration:
             temp_rotation = R.from_quat(rotation[i])
 
             verts_no_rotations = self.bounding_points_[link_name]
-            verts = temp_rotation.apply(verts_no_rotations) + temp_translation
+
             tris = np.array([[0, 1, 2],
                              [0, 2, 3],
                              [4, 5, 6],
@@ -578,6 +676,12 @@ class robot_arm_configuration:
                              [1, 6, 2],
                              [0, 4, 7],
                              [0, 7, 3]])
+            
+            if link_name == "gripper" and w_target is not None:
+                verts_no_rotations = w_target[0]
+                tris = w_target[1]
+            
+            verts = temp_rotation.apply(verts_no_rotations) + temp_translation
             
             # new box
             m = fcl.BVHModel()
@@ -594,15 +698,114 @@ class robot_arm_configuration:
                 mesh_list.append(temp_mesh)
                 plotter.add_mesh(temp_mesh, color = '#FF6961')
 
-            elif update_mesh is not None:
+            if update_mesh is not None:
                 new_col = np.ones([tris.shape[0], 1], dtype = int) * 3
                 new_tris = np.concatenate((new_col, tris), 1)
                 temp_mesh = pv.PolyData(verts, new_tris)
                 update_mesh[i].points = temp_mesh.points
 
         return bbox_list, mesh_list
+    
+    def modify_grasp_bbox(self, dof_result,target_mesh, visualize=False):
+        # calculate inverse transform
+        transform_data = self.calculate_transform_from_angles(dof_result)
+        griper_trans = transform_data[-1][0]
+        griper_rot = R.from_quat(transform_data[-1][1]).as_matrix()
 
-    def get_swept_volume(self, path_list, test_name, grasp_idx, frame_rate= 60, scene_info= None, visualize= False):
+        # apply inverse transform to target obj
+        inv_rot = griper_rot.T
+        inv_trans = -inv_rot @ griper_trans
+        inv_rot = R.from_quat(R.from_matrix(inv_rot).as_quat())
+
+        # get bounding of target object
+        verts, _ = target_mesh
+        min_x, min_y, min_z = sys.maxsize, sys.maxsize, sys.maxsize
+        max_x, max_y, max_z = -sys.maxsize, -sys.maxsize, -sys.maxsize
+        for tx, ty, tz in verts:
+            min_x = min(min_x, tx)
+            min_y = min(min_y, ty)
+            min_z = min(min_z, tz)
+            max_x = max(max_x, tx)
+            max_y = max(max_y, ty)
+            max_z = max(max_z, tz)
+
+        target_verts = np.array([[min_x, min_y, min_z], 
+                                 [max_x, min_y, min_z],
+                                 [max_x, max_y, min_z],
+                                 [min_x, max_y, min_z],
+                                 [min_x, min_y, max_z],
+                                 [max_x, min_y, max_z],
+                                 [max_x, max_y, max_z],
+                                 [min_x, max_y, max_z]])
+        target_verts = inv_rot.apply(target_verts) + inv_trans
+        
+        # merge target bbox and grasp bbox
+        grasp_verts = self.bounding_points_['gripper']
+        grasp_tris = np.array([[0, 1, 2],
+                               [0, 2, 3],
+                               [4, 5, 6],
+                               [4, 6, 7],
+                               [0, 1, 5],
+                               [0, 5, 4],
+                               [3, 2, 6],
+                               [3, 6, 7],
+                               [1, 5, 6],
+                               [1, 6, 2],
+                               [0, 4, 7],
+                               [0, 7, 3]])
+        target_tris = grasp_tris + len(grasp_verts)
+        merge_vert = np.concatenate((grasp_verts, target_verts))
+        merge_tris = np.concatenate((grasp_tris, target_tris))
+        
+        if visualize:
+            threes = np.ones((len(merge_tris), 1), dtype=int) * 3
+            vis_tris = np.concatenate((threes, merge_tris), axis=1)
+            plotter = pv.Plotter()
+            temp_mesh = pv.PolyData(merge_vert, vis_tris)
+            plotter.add_mesh(temp_mesh, color = '#FF6961')
+            plotter.camera_position = 'yz'
+            plotter.set_background('white')
+            plotter.show()
+
+        return [merge_vert, merge_tris]
+    
+    def modify_grasp_mesh(self, dof_result, target_mesh, visualize=False):
+        # calculate inverse transform
+        transform_data = self.calculate_transform_from_angles(dof_result)
+        griper_trans = transform_data[-1][0]
+        griper_rot = R.from_quat(transform_data[-1][1]).as_matrix()
+
+        # apply inverse transform to target obj
+        inv_rot = griper_rot.T
+        inv_trans = -inv_rot @ griper_trans
+        inv_rot = R.from_quat(R.from_matrix(inv_rot).as_quat())
+
+        # target mesh
+        target_verts, target_faces = target_mesh
+        face_counts, _ = target_faces.shape
+        target_verts = inv_rot.apply(target_verts) + inv_trans
+        target_tris = np.concatenate((np.array([3]*face_counts).reshape(face_counts, 1), target_faces), axis = 1).astype(int)
+
+        # grasp mesh
+        grasp_verts, grasp_faces = self.collision_models_["gripper"]
+        face_counts, _ = grasp_faces.shape
+        grasp_tris = np.concatenate((np.array([3]*face_counts).reshape(face_counts, 1), grasp_faces), axis = 1).astype(int)
+        target_tris[:, 1:4] += len(grasp_verts)
+
+        merge_vert = np.concatenate((grasp_verts, target_verts))
+        merge_tris = np.concatenate((grasp_tris, target_tris))
+        
+        if visualize:
+            plotter = pv.Plotter()
+            temp_mesh = pv.PolyData(np.array(merge_vert), np.array(merge_tris))
+            plotter.add_mesh(temp_mesh, color = '#FF6961')
+            plotter.camera_position = 'yz'
+            plotter.set_background('white')
+            plotter.show()
+
+        return [merge_vert, merge_tris]
+
+    def get_swept_volume(self, path_list, test_name, grasp_idx, w_target=None, frame_rate=60, scene_info=None, visualize=False):
         # get angles per frame
         pos_list = []
         for path_idx in range(1, len(path_list)):
@@ -620,38 +823,116 @@ class robot_arm_configuration:
 
         if visualize:
             plotter = pv.Plotter()
-            print("test_data/swept_animations/" + test_name + "_grasp" + str(grasp_idx) + ".gif")
-            plotter.open_gif("test_data/swept_animations/" + test_name + "_grasp" + str(grasp_idx) + ".gif")
+            plotter2 = pv.Plotter()
+            print("SAVING: test_data/swept_animations/" + test_name + "_grasp_w_obj" + str(grasp_idx) + ".gif")
+            plotter.open_gif("test_data/swept_animations/" + test_name + "_grasp_w_obj" + str(grasp_idx) + ".gif")
 
-            _, mesh_list = self.get_bounding_box(pos_list[0], plotter= plotter)
-            pcd_mesh = pv.PolyData(self.point_cloud)
-            plotter.add_mesh(pcd_mesh, color= "blue")
+            # add init mesh
+            _, mesh_list = self.update_bounding_box(pos_list[0], w_target, plotter= plotter)
+            self.add_all_obj_meshs(plotter)
+            self.add_all_obj_meshs(plotter2)
+
             if scene_info is not None:
                 self.construct_scene_meshs(scene_info, plotter)
             plotter.camera_position = 'yz'
             plotter.set_background('white')
+            plotter2.set_background('white')
         else:
             plotter = None
 
         # add swept volume
         for angles in pos_list:
-            bbox_list, _ = self.get_bounding_box(angles, update_mesh= mesh_list)
+            bbox_list, _ = self.update_bounding_box(angles, w_target, update_mesh= mesh_list, plotter=plotter2)
             if visualize:
                 plotter.write_frame()
+            swept_manager.registerObjects(bbox_list)
+            swept_manager.setup()
+
+        if visualize:
+            plotter2.camera_position = 'yz'
+            plotter2.show()
+            plotter.close()
+
+        return swept_manager
+    
+    def check_collision_w_swept(self, swept_manager):
+        # creat obsiticles
+        if not self.obstacles_num:
+            print("!!no obstacles added!!")
+            return
+        
+        for obj_mesh in self.obj_mesh:
+            # read collision mesh
+            temp_verts, temp_tris = obj_mesh
+            temp_m = fcl.BVHModel()
+            temp_m.beginModel(len(temp_verts), len(temp_tris))
+            temp_m.addSubModel(temp_verts, temp_tris)
+            temp_m.endModel()
+            temp_t = fcl.Transform()
+
+            # check collision
+            req = fcl.CollisionRequest()
+            rdata = fcl.CollisionData(request = req)
+            swept_manager.collide(fcl.CollisionObject(temp_m, temp_t), rdata, fcl.defaultCollisionCallback)
+            is_collision = rdata.result.is_collision
+            print("Swept volume collision: ", is_collision)
+
+    def get_swept_volume_wo_bbox(self, path_list, test_name, grasp_idx, w_target=None, frame_rate= 60, scene_info= None, visualize= False):
+        # get angles per frame
+        pos_list = []
+        for path_idx in range(1, len(path_list)):
+            start_pos = np.array(path_list[path_idx - 1])
+            end_pos = np.array(path_list[path_idx])
+            delta = (end_pos - start_pos) / frame_rate
+
+            for i in range(frame_rate + 1):
+                pos_list.append(start_pos + (delta * i))
 
 
-        swept_manager.registerObjects(bbox_list)
+        # create fcl manager
+        swept_manager = fcl.DynamicAABBTreeCollisionManager()
         swept_manager.setup()
 
         if visualize:
+            plotter = pv.Plotter()
+            plotter2 = pv.Plotter()
+            print("SAVING: test_data/swept_animations/" + test_name + "_grasp_w_obj_bbox" + str(grasp_idx) + ".gif")
+            plotter.open_gif("test_data/swept_animations/" + test_name + "_grasp_w_obj_bbox" + str(grasp_idx) + ".gif")
+
+            # add init mesh
+            mesh_list = self.construct_robot_meshs(pos_list[0], plotter, w_target=w_target)
+            self.add_all_obj_meshs(plotter)
+            self.add_all_obj_meshs(plotter2)
+
+            if scene_info is not None:
+                self.construct_scene_meshs(scene_info, plotter)
             plotter.camera_position = 'yz'
+            plotter.set_background('white')
+            plotter2.set_background('white')
+        else:
+            plotter = None
+
+        # add swept volume
+        for angles in pos_list:
+            bbox_list = self.update_robot_meshs_swept(angles, mesh_list, plotter2, w_target)
+            if visualize:
+                plotter.write_frame()
+            swept_manager.registerObjects(bbox_list)
+            swept_manager.setup()
+
+        if visualize:
+            plotter2.camera_position = 'yz'
+            plotter2.show()
             plotter.close()
+
+        return swept_manager
 
     def update_robot_meshs(self, angles, robot_mesh_list):
         transform_data = self.calculate_transform_from_angles(angles)
         translation = [x[0] for x in transform_data]
         rotation = [x[1] for x in transform_data]
 
+        bbox_list = []
         for i in range(len(rotation)):
             link_name = self.link_names_[i]
 
@@ -666,7 +947,7 @@ class robot_arm_configuration:
             temp_mesh = pv.PolyData(np.array(new_vertices), np.array(plot_faces))
             robot_mesh_list[i].points = temp_mesh.points
 
-    def path_animation(self, path_list, test_name, grasp_idx, scene_info= None, frame_rate= 50):
+    def path_animation(self, path_list, test_name, grasp_idx, scene_info=None, frame_rate=50):
         # get angles per frame
         pos_list = []
         for path_idx in range(1, len(path_list)):
@@ -680,8 +961,11 @@ class robot_arm_configuration:
         # init mesh
         plotter = pv.Plotter()
         robot_mesh_list = self.construct_robot_meshs(path_list[0], plotter)
-        pcd_mesh = pv.PolyData(self.point_cloud)
-        plotter.add_mesh(pcd_mesh, color= "blue")
+
+        # add all the objects
+        self.add_all_obj_meshs(plotter)
+
+
         if scene_info is not None:
             self.construct_scene_meshs(scene_info, plotter)
             plotter.camera_position = 'yz'
@@ -696,7 +980,7 @@ class robot_arm_configuration:
 
         for frame_idx in range(num_frames):
             self.update_robot_meshs(pos_list[frame_idx], robot_mesh_list)
-            plotter.add_mesh(pcd_mesh, color= "blue")
+            # plotter.add_mesh(pcd_mesh, color= "blue")
             plotter.write_frame()
 
         plotter.close() # problem with VTK-v9. It won't close the window.
@@ -754,7 +1038,7 @@ class robot_arm_configuration:
         pose_array = self.calculate_transform_from_angles(dof_result)
         ur5e_self_col = []
         #real_offset = np.array(state_tensor[0][:3])
-        for t in range(8):
+        for t in range(9):
             rotation = np.array(pose_array[t][1])
             translation = np.array(pose_array[t][0])
             r1 = R.from_quat(rotation)
@@ -804,8 +1088,6 @@ class robot_arm_configuration:
         rdata2 = fcl.CollisionData(request = req)
         manager1.collide(manager3, rdata2, fcl.defaultCollisionCallback)
 
-
-
         #for i in range(len(flex_collision_models)):
         #    temp_data = fcl.CollisionData(request = req)
         #    manager1.collide(flex_collision_models[i][0], temp_data, fcl.defaultCollisionCallback)
@@ -817,9 +1099,6 @@ class robot_arm_configuration:
         #print (self_collision_flag, env_collision_flag)
 
         return self_collision_flag == False and env_collision_flag == False
-
-
-
     
     def visualization(self, res_points):
 
@@ -1042,8 +1321,6 @@ class ur5e_valid_all(ob.StateValidityChecker):
         return res
 
 
-
-
 class path_planner():
     def __init__(self, rac, plane_model, static_env_models):
         self.space_ = ob.RealVectorStateSpace(0)
@@ -1097,7 +1374,7 @@ class path_planner():
         optimizingPlanner.setup()
 
         
-        temp_res = optimizingPlanner.solve(1)
+        temp_res = optimizingPlanner.solve(30)
 
         #print(temp_res.asString())
         if temp_res.asString() == 'Exact solution':
@@ -1188,8 +1465,82 @@ class path_planner():
             return path
         else:
             return None
-
         
+def get_mathcing_mesh(target_pcd, visualize=False):
+    # collision_mesh = obj_reader('../assets/urdf/ycb/006_mustard_bottle/textured_vhacd.obj')
+
+    asset_root = '../assets/'
+    object_common_prefix = "urdf/ycb/"
+    object_asset_files = []
+    with open(asset_root + "urdf/ycb/object_urdf_grasp.txt") as f:
+        for line in f:
+            i = line.find('/')
+            object_asset_files.append(asset_root + object_common_prefix + line[:i] + '/textured_vhacd.obj')
+
+    min_dist = sys.maxsize
+    obj_mesh = None
+    obj_trans = None
+    obj_name = None
+    for asset_file in object_asset_files:
+        mesh = o3d.io.read_triangle_mesh(asset_file)
+        mesh.compute_vertex_normals()
+        source_pcd = mesh.sample_points_uniformly(number_of_points=20000)
+        dist, trans = pcd_matching(target_pcd, source_pcd, visualize)
+        # print(asset_file)
+        # print(dist)
+        if dist < min_dist:
+            min_dist = dist
+            obj_mesh = mesh
+            obj_trans = trans
+            obj_name = asset_file
+
+    print("mached object: ", obj_name)
+    
+    # calc inverse transform 
+    inv_rot = obj_trans[:3,:3].T
+    inv_trans = -inv_rot @ obj_trans[:3, 3]
+    inv_rot = R.from_matrix(inv_rot.copy())
+
+    # make object model
+    verts_no_rotations = np.asarray(obj_mesh.vertices)
+    face = np.asarray(obj_mesh.triangles)
+    verts = inv_rot.apply(verts_no_rotations) + inv_trans
+
+    return [verts, face]
+
+
+
+
+def pcd_matching(target_pcd, source_pcd, visualize):
+    threshold = 0.6
+    reg_p2p = o3d.pipelines.registration.registration_icp(
+        target_pcd, source_pcd, threshold, np.identity(4),
+        o3d.pipelines.registration.TransformationEstimationPointToPoint(),
+        o3d.pipelines.registration.ICPConvergenceCriteria(max_iteration=9999))
+
+    # if visualize:
+    #     draw_registration_result(target_pcd, source_pcd, reg_p2p.transformation)
+
+    # pdb.set_trace()
+    target_pcd_trans = copy.deepcopy(target_pcd)
+    target_pcd_trans = target_pcd_trans.transform(reg_p2p.transformation)
+
+    if visualize:
+        draw_registration_result(target_pcd_trans, source_pcd, np.identity(4))
+    
+    dist = target_pcd_trans.compute_point_cloud_distance(source_pcd)
+    dist_sum = np.asarray(dist).sum()
+    return dist_sum, reg_p2p.transformation
+
+def draw_registration_result(target, source, transformation):
+    target_temp = copy.deepcopy(target)
+    source_temp = copy.deepcopy(source)
+    source_temp.paint_uniform_color([1, 0.706, 0])
+    target_temp.paint_uniform_color([0, 0.651, 0.929])
+    target_temp.transform(transformation)
+    o3d.visualization.draw_geometries([source_temp, target_temp])
+
+
 def quaternion_multiply(quaternion1, quaternion0):
     w0, x0, y0, z0 = quaternion0[3], quaternion0[0], quaternion0[1], quaternion0[2]
     w1, x1, y1, z1 = quaternion1[3], quaternion1[0], quaternion1[1], quaternion1[2]
@@ -1199,7 +1550,6 @@ def quaternion_multiply(quaternion1, quaternion0):
                        -x1 * x0 - y1 * y0 - z1 * z0 + w1 * w0]
 
 def write_to_pointcloud(color_image, depth_image, seg_image, cam_rotation, cam_translation):
-        
         color_raw = o3d.geometry.Image(color_image)
         depth_raw = o3d.geometry.Image(depth_image)
         seg_raw = o3d.geometry.Image(seg_image)
@@ -1223,6 +1573,7 @@ def write_to_pointcloud(color_image, depth_image, seg_image, cam_rotation, cam_t
                         rgbd_image,
                         o3d.camera.PinholeCameraIntrinsic(
                         param))
+
         pcd_data = np.array(pcd.points, dtype = np.float32)
         
         pcd_data[:, [0,1,2]] = pcd_data[:, [2, 0, 1]]
@@ -1230,9 +1581,13 @@ def write_to_pointcloud(color_image, depth_image, seg_image, cam_rotation, cam_t
         pcd_data[:, 2] *= -1
         pcd_data = rot.apply(pcd_data)
         pcd_data += offset
-        return pcd_data
 
-def create_static_collision_model(scene_info):
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(pcd_data)
+
+        return pcd_data, pcd
+
+def create_static_collision_model(scene_info, pcd_mesh, obj_mesh):
     tx, ty, tz, th = scene_info
     print ("scene info: ", tx, ty, tz)
 
@@ -1256,15 +1611,41 @@ def create_static_collision_model(scene_info):
     trans_upper_cover = fcl.Transform(np.array([tx*0.5 + 0.3, 0.0, tz + th + 0.015]))
     upper_cover_obj = fcl.CollisionObject(col_upper_cover, trans_upper_cover)
 
-    return [table_obj, left_cover_obj, right_cover_obj, upper_cover_obj]
+    return_list = [table_obj, left_cover_obj, right_cover_obj, upper_cover_obj]
 
-def get_plan_path(rac, dof_result, scene_info):
+    # target object from pcd
+    if pcd_mesh is not None:
+        verts = np.asarray(pcd_mesh.vertices)
+        tris = np.asarray(pcd_mesh.triangles)
+
+        pcd_m = fcl.BVHModel()
+        pcd_m.beginModel(len(verts), len(tris))
+        pcd_m.addSubModel(verts, tris)
+        pcd_m.endModel()
+        pcd_t = fcl.Transform()
+        pcd_obj = fcl.CollisionObject(pcd_m, pcd_t)
+        return_list.append(pcd_obj)
+
+    if obj_mesh is not None:
+        # new obj
+        verts, tris = obj_mesh
+        obj_m = fcl.BVHModel()
+        obj_m.beginModel(len(verts), len(tris))
+        obj_m.addSubModel(verts, tris)
+        obj_m.endModel()
+        obj_t = fcl.Transform()
+        source_obj = fcl.CollisionObject(obj_m, obj_t)
+        return_list.append(source_obj)
+
+    return return_list
+
+def get_path(rac, dof_result, scene_info, pcd_mesh=None, target_mesh=None):
     plane_normal = np.array([0,0,1.0])
     col_plane = fcl.Plane(plane_normal, 0)
     plane_obj = fcl.CollisionObject(col_plane, fcl.Transform())
 
     if scene_info is not None:
-        static_env_models = create_static_collision_model(scene_info)
+        static_env_models = create_static_collision_model(scene_info, pcd_mesh, target_mesh)
     else:
         static_env_models = []
 
@@ -1296,17 +1677,30 @@ def grasp_path_check(file_path, test_data_root, grasp_root, test_name, scene_inf
     cam_rot = cam_datas.item()["cam_rot"]
     cam_tran = cam_datas.item()["cam_tran"]
 
-    # get point cloud
-    point_cloud = write_to_pointcloud(color_img, depth_img, seg_img, cam_rot, cam_tran)
+    # get point cloud and mesh
+    point_cloud, pcd = write_to_pointcloud(color_img, depth_img, seg_img, cam_rot, cam_tran)
 
+    # pcd to mesh
+    pcd.estimate_normals()
+    radii = [0.002]
+    pcd_mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_ball_pivoting(
+        pcd, o3d.utility.DoubleVector(radii))
+    # o3d.visualization.draw_geometries([pcd_mesh])
+
+    # find matching object mesh file
+    downpcd = pcd.voxel_down_sample(voxel_size=0.005) # downsampe pcd
+    target_mesh = get_mathcing_mesh(downpcd, visualize=False)
+    
     # configure env
-    rac = robot_arm_configuration(file_path, np.array([0.0, 0, 0]), point_cloud)
+    rac = robot_arm_configuration(file_path, np.array([0.0, 0, 0]), scene_info, target_mesh=target_mesh, obstacles_num=0) # point_cloud=point_cloud
+
 
     # reading grasp results
     grasp_datas = np.load(grasp_file_path, allow_pickle=True)
     grasp_score_idx = list(np.argsort(-grasp_datas["scores"].item()[1]))
 
     for i in grasp_score_idx:
+        # i = 64
         grasp_mat = grasp_datas["pred_grasps_cam"].item()[1][i]
         dof_result = rac.grasp_verify(grasp_mat, cam_rot, cam_tran)
 
@@ -1314,25 +1708,33 @@ def grasp_path_check(file_path, test_data_root, grasp_root, test_name, scene_inf
             print("skip imposible grasp")
             continue # skip imposible grasp
 
+        # mod_bbox = rac.modify_grasp_bbox(dof_result, target_mesh, visualize=False)
+        mod_mesh = rac.modify_grasp_mesh(dof_result, target_mesh, visualize=False)
+
         if grasp_check:
-            rac.check_collision_models(dof_result)
+            rac.check_collision_models(dof_result, scene_info=scene_info)
+            continue
 
         # path planning & animation
-        path_list = get_plan_path(rac, dof_result, scene_info)
-        if path_list is not None:
-            # rac.path_animation(path_list, test_name, grasp_idx=i, scene_info= scene_info, frame_rate= 30)
-            rac.get_swept_volume(path_list, test_name, i, frame_rate=30, scene_info= scene_info, visualize=True)
-            break
-        # else:
-            # rac.check_collision_models(dof_result)
-            # input("No path generated. Grasp idx: ", i, ". Press enter to continue")
+        path_list = get_path(rac, dof_result, scene_info, target_mesh=target_mesh) # pcd_mesh=pcd_mesh
+        if path_list is None:
+            print("No path generated")
+            continue
+
+        # rac.path_animation(path_list, test_name, grasp_idx=i, scene_info=scene_info, frame_rate=30)
+        # swept_volume = rac.get_swept_volume(path_list, test_name, i, w_target=mod_bbox, frame_rate=100, scene_info= scene_info, visualize=True)
+        swept_volume = rac.get_swept_volume_wo_bbox(path_list, test_name, i, w_target=mod_mesh, frame_rate=100, scene_info=scene_info, visualize=True)
+        rac.check_collision_w_swept(swept_volume)
+        break
 
 
 if __name__ == '__main__':
     # file_path = '../assets/urdf/ur5e/meshes/collision/'
     # rac = robot_arm_configuration(file_path, np.array([0.0, 0, 0]))
-    # rac.get_bounding_box()
+    # rac.update_bounding_box()
     # angles = [0, -math.pi/2, math.pi/2, -math.pi/2, 0, 0]
+    # object_matching(None)
+    # sys.exit(1)
 
     # file paths
     file_path = '../assets/urdf/ur5e/meshes/collision/'
@@ -1341,7 +1743,7 @@ if __name__ == '__main__':
     test_name = 'pcd2'
     scene_info = [0.56, 0.86000001, 0.1, 0.5]
     # scene_info = None
-    grasp_path_check(file_path, test_data_root, grasp_root, test_name, scene_info= scene_info, grasp_check= False)
+    grasp_path_check(file_path, test_data_root, grasp_root, test_name, scene_info=scene_info, grasp_check=False)
 
 
 
