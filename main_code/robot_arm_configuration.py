@@ -611,7 +611,7 @@ class robot_arm_configuration:
         _ = plotter.add_axes(line_width = 5)
         return robot_mesh_list
     
-    def update_robot_meshs_swept(self, angles, robot_mesh_list, plotter, w_target):
+    def update_robot_meshs_swept(self, angles, robot_mesh_list=None, plotter=None, w_target=None):
         transform_data = self.calculate_transform_from_angles(angles)
         translation = [x[0] for x in transform_data]
         rotation = [x[1] for x in transform_data]
@@ -635,9 +635,9 @@ class robot_arm_configuration:
             temp_mesh = pv.PolyData(np.array(new_vertices), np.array(plot_faces))
 
             # pdb.set_trace()
-
-            robot_mesh_list[i].points = temp_mesh.points
-            plotter.add_mesh(temp_mesh, color = '#FF6961')
+            if robot_mesh_list is not None:
+                robot_mesh_list[i].points = temp_mesh.points
+                plotter.add_mesh(temp_mesh, color = '#FF6961')
 
             # new box
             m = fcl.BVHModel()
@@ -697,12 +697,11 @@ class robot_arm_configuration:
                 temp_mesh = pv.PolyData(verts, new_tris)
                 mesh_list.append(temp_mesh)
                 plotter.add_mesh(temp_mesh, color = '#FF6961')
-
-            if update_mesh is not None:
-                new_col = np.ones([tris.shape[0], 1], dtype = int) * 3
-                new_tris = np.concatenate((new_col, tris), 1)
-                temp_mesh = pv.PolyData(verts, new_tris)
-                update_mesh[i].points = temp_mesh.points
+                if update_mesh is not None:
+                    new_col = np.ones([tris.shape[0], 1], dtype = int) * 3
+                    new_tris = np.concatenate((new_col, tris), 1)
+                    temp_mesh = pv.PolyData(verts, new_tris)
+                    update_mesh[i].points = temp_mesh.points
 
         return bbox_list, mesh_list
     
@@ -839,6 +838,8 @@ class robot_arm_configuration:
             plotter2.set_background('white')
         else:
             plotter = None
+            plotter2 = None
+            mesh_list = None
 
         # add swept volume
         for angles in pos_list:
@@ -911,6 +912,8 @@ class robot_arm_configuration:
             plotter2.set_background('white')
         else:
             plotter = None
+            plotter2 = None
+            mesh_list = None
 
         # add swept volume
         for angles in pos_list:
@@ -1154,7 +1157,7 @@ class robot_arm_configuration:
         #plt.show()
         return new_map
     
-    def grasp_verify(self, grasp_mat, cam_rot, cam_tran):
+    def grasp_verify(self, grasp_mat, cam_rot, cam_tran, offset=[0,0,0]):
         # calc grasp_rot
         grasp_rot = grasp_mat[:3, :3]
         grasp_rot = R.from_quat(R.from_matrix(grasp_mat[:3,:3]).as_quat()) #convert 3x3 into rot
@@ -1180,7 +1183,7 @@ class robot_arm_configuration:
 
         # grasp in global coord
         target_quat = (cam_rot_quat * grasp_rot).as_quat()
-        target_pos = cam_tran + cam_rot_quat.apply(grasp_tran)
+        target_pos = cam_tran + cam_rot_quat.apply(grasp_tran) + offset
 
         # calc ik
         r_rot = R.from_quat([target_quat[0], target_quat[1], target_quat[2], target_quat[3]])
@@ -1510,7 +1513,6 @@ def get_mathcing_mesh(target_pcd, visualize=False):
 
 
 
-
 def pcd_matching(target_pcd, source_pcd, visualize):
     threshold = 0.6
     reg_p2p = o3d.pipelines.registration.registration_icp(
@@ -1639,7 +1641,7 @@ def create_static_collision_model(scene_info, pcd_mesh, obj_mesh):
 
     return return_list
 
-def get_path(rac, dof_result, scene_info, pcd_mesh=None, target_mesh=None):
+def get_path2grasp(rac, dof_result, scene_info, pcd_mesh=None, target_mesh=None):
     plane_normal = np.array([0,0,1.0])
     col_plane = fcl.Plane(plane_normal, 0)
     plane_obj = fcl.CollisionObject(col_plane, fcl.Transform())
@@ -1653,6 +1655,34 @@ def get_path(rac, dof_result, scene_info, pcd_mesh=None, target_mesh=None):
 
     ur5e_start_dof = [0, -math.pi/2, 0, -math.pi/2, 0, 0]
     path = pp.plan_all(ur5e_start_dof, dof_result, static_env_models)
+
+    return path
+
+def get_path2start(rac, dof_result, mod_grip, scene_info):
+    # add modified grasp to fcl
+    vertices, faces = mod_grip
+    mod_fcl_gripper = fcl.BVHModel()
+    mod_fcl_gripper.beginModel(len(vertices), len(faces))
+    mod_fcl_gripper.addSubModel(vertices, faces)
+    mod_fcl_gripper.endModel()
+    temp_fcl = rac.fcl_models_[8]
+    rac.fcl_models_[8] = mod_fcl_gripper
+
+    plane_normal = np.array([0,0,1.0])
+    col_plane = fcl.Plane(plane_normal, 0)
+    plane_obj = fcl.CollisionObject(col_plane, fcl.Transform())
+
+    if scene_info is not None:
+        static_env_models = create_static_collision_model(scene_info, None, None)
+    else:
+        static_env_models = []
+
+    pp = path_planner(rac, plane_obj, static_env_models)
+
+    ur5e_start_dof = [0, -math.pi/2, 0, -math.pi/2, 0, 0]
+    path = pp.plan_all(dof_result, ur5e_start_dof, static_env_models)
+
+    rac.fcl_models_[8] = temp_fcl
 
     return path
 
@@ -1699,34 +1729,55 @@ def grasp_path_check(file_path, test_data_root, grasp_root, test_name, scene_inf
     grasp_datas = np.load(grasp_file_path, allow_pickle=True)
     grasp_score_idx = list(np.argsort(-grasp_datas["scores"].item()[1]))
 
+    mesh_time_list = []
+    bbox_time_list = []
     for i in grasp_score_idx:
         # i = 64
         grasp_mat = grasp_datas["pred_grasps_cam"].item()[1][i]
-        dof_result = rac.grasp_verify(grasp_mat, cam_rot, cam_tran)
+        init2grasp_angles = rac.grasp_verify(grasp_mat, cam_rot, cam_tran)
+        grasp2init_angles = rac.grasp_verify(grasp_mat, cam_rot, cam_tran, offset=[0, 0, 0.05])
 
-        if dof_result is None: 
+        if init2grasp_angles is None or grasp2init_angles is None:
             print("skip imposible grasp")
             continue # skip imposible grasp
 
-        # mod_bbox = rac.modify_grasp_bbox(dof_result, target_mesh, visualize=False)
-        mod_mesh = rac.modify_grasp_mesh(dof_result, target_mesh, visualize=False)
+        # get object in hand mesh
+        mod_bbox = rac.modify_grasp_bbox(init2grasp_angles, target_mesh, visualize=False)
+        mod_mesh = rac.modify_grasp_mesh(init2grasp_angles, target_mesh, visualize=False)
 
         if grasp_check:
-            rac.check_collision_models(dof_result, scene_info=scene_info)
+            rac.check_collision_models(init2grasp_angles, scene_info=scene_info)
             continue
 
         # path planning & animation
-        path_list = get_path(rac, dof_result, scene_info, target_mesh=target_mesh) # pcd_mesh=pcd_mesh
-        if path_list is None:
+        init2grasp_path = get_path2grasp(rac, init2grasp_angles, scene_info, target_mesh=target_mesh) # pcd_mesh=pcd_mesh
+        grasp2init_path = get_path2start(rac, grasp2init_angles, mod_mesh, scene_info)
+
+        if init2grasp_path is None or grasp2init_path is None:
             print("No path generated")
             continue
 
-        # rac.path_animation(path_list, test_name, grasp_idx=i, scene_info=scene_info, frame_rate=30)
-        # swept_volume = rac.get_swept_volume(path_list, test_name, i, w_target=mod_bbox, frame_rate=100, scene_info= scene_info, visualize=True)
-        swept_volume = rac.get_swept_volume_wo_bbox(path_list, test_name, i, w_target=mod_mesh, frame_rate=100, scene_info=scene_info, visualize=True)
-        rac.check_collision_w_swept(swept_volume)
-        break
+        # rac.path_animation(init2grasp_path, test_name, grasp_idx=i, scene_info=scene_info, frame_rate=30)
 
+        # calculate swept volume
+        bbox_start = time.time()
+        swept_volume1 = rac.get_swept_volume(init2grasp_path, test_name, i, w_target=mod_bbox, frame_rate=60, scene_info=scene_info, visualize=False)
+        swept_volume2 = rac.get_swept_volume(grasp2init_path, test_name, i, w_target=mod_bbox, frame_rate=60, scene_info=scene_info, visualize=False)
+        bbox_end = time.time()
+        print("Bbox time:", bbox_end - bbox_start)
+        bbox_time_list.append(bbox_end - bbox_start)
+
+        mesh_start = time.time()
+        swept_volume1 = rac.get_swept_volume_wo_bbox(init2grasp_path, test_name, i, w_target=mod_mesh, frame_rate=60, scene_info=scene_info, visualize=False)
+        swept_volume2 = rac.get_swept_volume_wo_bbox(grasp2init_path, test_name, i, w_target=mod_mesh, frame_rate=60, scene_info=scene_info, visualize=False)
+        mesh_end = time.time()
+        print("Mesh time:", mesh_end - mesh_start)
+        mesh_time_list.append(mesh_end - mesh_start)
+        # rac.check_collision_w_swept(swept_volume)
+
+        if len(mesh_time_list) >= 15:
+            break
+    return mesh_time_list, bbox_time_list
 
 if __name__ == '__main__':
     # file_path = '../assets/urdf/ur5e/meshes/collision/'
@@ -1740,10 +1791,17 @@ if __name__ == '__main__':
     file_path = '../assets/urdf/ur5e/meshes/collision/'
     test_data_root = 'test_data/'
     grasp_root = '../contact_graspnet/results/'
-    test_name = 'pcd2'
+    test_name = 'pcd1'
     scene_info = [0.56, 0.86000001, 0.1, 0.5]
     # scene_info = None
-    grasp_path_check(file_path, test_data_root, grasp_root, test_name, scene_info=scene_info, grasp_check=False)
+    mesh, bbox = grasp_path_check(file_path, test_data_root, grasp_root, test_name, scene_info=scene_info, grasp_check=False)
+    mesh_mean = np.array(mesh).mean()
+    bbox_mean = np.array(bbox).mean()
+    save_info = {"mesh":mesh, "bbox":bbox, "mesh_mean":mesh_mean, "bbox_mean": bbox_mean}
+
+    comp = np.array([save_info])
+    np.save("test_data/mesh&bbox_comparison.npy", comp)
+    # pdb.set_trace()
 
 
 
