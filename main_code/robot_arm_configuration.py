@@ -13,7 +13,9 @@ import pdb
 
 file_dir = os.path.dirname(__file__)
 util_dir = os.path.join(file_dir, '../util')
+mcts_dir = os.path.join(file_dir, '../MCTS')
 sys.path.append(util_dir)
+sys.path.append(mcts_dir)
 sys.path.append('/home/j0k/coral/ompl-1.5.2/py-bindings')
 import ompl.base as ob
 import ompl.util as ou
@@ -21,6 +23,7 @@ import ompl.geometric as og
 
 from stl_reader import stl_reader
 from obj_reader import obj_reader
+import MCTS_algo_ICRA as mct
 import time
 import copy
 
@@ -302,7 +305,9 @@ class robot_arm_configuration:
         self.target_mesh = target_mesh
 
         self.obj_mesh = []
+        self.obj_pos_list = []
         self.obstacles_num = obstacles_num
+        self.obj_color = ['#00fffb', '#ff00dd', '#bf00ff', '#ffae00', '#59ff00', '#FFFF00']
 
         assert not (target_mesh is None and obstacles_num != 0), "Target mesh was not given to compare collision with other obstacles"
 
@@ -350,7 +355,15 @@ class robot_arm_configuration:
                 rdata = fcl.CollisionData(request = req)
                 objs_manager.collide(temp_collision_mesh, rdata, fcl.defaultCollisionCallback)
                 is_collision = rdata.result.is_collision # update collision status
-                print("collision check: ", is_collision)
+
+                if not is_collision:
+                    for obj in self.obj_pos_list:
+                        dist = np.sqrt((tx - obj[0])**2 + (ty - obj[1])**2)
+                        # print("idx:", i, "dist:", dist)
+                        if dist <= 0.13:
+                            is_collision = True
+                            # print("recalc")
+                            break
 
             collision_mesh_list.append(temp_collision_mesh)
             objs_manager.registerObjects(collision_mesh_list)
@@ -358,6 +371,7 @@ class robot_arm_configuration:
             obstacles_mesh.add_offset([tx, ty, tz])
             temp_tris = obstacles_mesh.get_faces()
             temp_verts = obstacles_mesh.get_vertices()
+            self.obj_pos_list.append([tx, ty])
             self.obj_mesh.append([temp_verts, temp_tris])
 
 
@@ -520,12 +534,12 @@ class robot_arm_configuration:
         
         if self.obstacles_num:
             # add choosen obstacles from config
-            for obj_mesh in self.obj_mesh:
-                obstac_verts, obstac_face = obj_mesh
+            for i in range(len(self.obj_mesh)):
+                obstac_verts, obstac_face = self.obj_mesh[i]
                 face_counts, _ = obstac_face.shape
                 obstac_faces = np.concatenate((np.array([3]*face_counts).reshape(face_counts, 1), obstac_face), axis = 1).astype(int)
                 obstac_mesh = pv.PolyData(np.array(obstac_verts), np.array(obstac_faces))
-                plotter.add_mesh(obstac_mesh, color= "#FFFF00")
+                plotter.add_mesh(obstac_mesh, color= self.obj_color[i])
 
     def check_collision_models(self, angles, obj_collision_model=None, scene_info=None, show_obj_axes=False):
         plotter = pv.Plotter()
@@ -804,7 +818,7 @@ class robot_arm_configuration:
 
         return [merge_vert, merge_tris]
 
-    def get_swept_volume(self, path_list, test_name, grasp_idx, w_target=None, frame_rate=60, scene_info=None, visualize=False):
+    def get_swept_volume(self, path_list, test_name, grasp_idx, w_target=None, frame_rate=60, scene_info=None, animation=False, static_vi=False, with_scene=False):
         # get angles per frame
         pos_list = []
         for path_idx in range(1, len(path_list)):
@@ -820,51 +834,57 @@ class robot_arm_configuration:
         swept_manager = fcl.DynamicAABBTreeCollisionManager()
         swept_manager.setup()
 
-        if visualize:
+        if animation:
             plotter = pv.Plotter()
-            plotter2 = pv.Plotter()
             print("SAVING: test_data/swept_animations/" + test_name + "_grasp_w_obj" + str(grasp_idx) + ".gif")
             plotter.open_gif("test_data/swept_animations/" + test_name + "_grasp_w_obj" + str(grasp_idx) + ".gif")
 
             # add init mesh
             _, mesh_list = self.update_bounding_box(pos_list[0], w_target, plotter= plotter)
             self.add_all_obj_meshs(plotter)
-            self.add_all_obj_meshs(plotter2)
 
-            if scene_info is not None:
+            if scene_info is not None and with_scene:
                 self.construct_scene_meshs(scene_info, plotter)
             plotter.camera_position = 'yz'
             plotter.set_background('white')
-            plotter2.set_background('white')
         else:
             plotter = None
-            plotter2 = None
             mesh_list = None
+
+        if static_vi:
+            plotter2 = pv.Plotter()
+            self.construct_scene_meshs(scene_info, plotter2)
+            self.add_all_obj_meshs(plotter2)
+            plotter2.set_background('white')
+        else:
+            plotter2 = None
 
         # add swept volume
         for angles in pos_list:
             bbox_list, _ = self.update_bounding_box(angles, w_target, update_mesh= mesh_list, plotter=plotter2)
-            if visualize:
+            if animation:
                 plotter.write_frame()
             swept_manager.registerObjects(bbox_list)
             swept_manager.setup()
 
-        if visualize:
+        if static_vi:
             plotter2.camera_position = 'yz'
             plotter2.show()
+        if animation:
             plotter.close()
 
         return swept_manager
     
-    def check_collision_w_swept(self, swept_manager):
+    def check_collision_w_swept(self, swept_manager1, swept_manager2):
         # creat obsiticles
         if not self.obstacles_num:
             print("!!no obstacles added!!")
             return
         
-        for obj_mesh in self.obj_mesh:
+        collision_obj_list = []
+        for obj_idx in range(len(self.obj_mesh)):
             # read collision mesh
-            temp_verts, temp_tris = obj_mesh
+            temp_verts, temp_tris = self.obj_mesh[obj_idx]
             temp_m = fcl.BVHModel()
             temp_m.beginModel(len(temp_verts), len(temp_tris))
             temp_m.addSubModel(temp_verts, temp_tris)
@@ -874,9 +894,16 @@ class robot_arm_configuration:
             # check collision
             req = fcl.CollisionRequest()
             rdata = fcl.CollisionData(request = req)
-            swept_manager.collide(fcl.CollisionObject(temp_m, temp_t), rdata, fcl.defaultCollisionCallback)
-            is_collision = rdata.result.is_collision
-            print("Swept volume collision: ", is_collision)
+            swept_manager1.collide(fcl.CollisionObject(temp_m, temp_t), rdata, fcl.defaultCollisionCallback)
+            is_collision1 = rdata.result.is_collision
+            swept_manager2.collide(fcl.CollisionObject(temp_m, temp_t), rdata, fcl.defaultCollisionCallback)
+            is_collision2 = rdata.result.is_collision
+
+            if is_collision1 or is_collision2:
+                collision_obj_list.append(obj_idx)
+
+        return collision_obj_list
+            
 
     def get_swept_volume_wo_bbox(self, path_list, test_name, grasp_idx, w_target=None, frame_rate= 60, scene_info= None, visualize= False):
         # get angles per frame
@@ -1102,6 +1129,17 @@ class robot_arm_configuration:
         #print (self_collision_flag, env_collision_flag)
 
         return self_collision_flag == False and env_collision_flag == False
+    
+    def get_MCT_config(self, obj_pos_list, obj_mesh, target_pos, target_mesh):
+        config= []
+        radius_list = get_radius(obj_mesh)
+        for i in range(len(obj_pos_list)):
+            color = self.obj_color[i]
+            config.append(obj_pos_list[i] + [radius_list[i]] + [color])
+
+        target_radius = get_radius([target_mesh])
+        target_pos_MCT = [target_pos[0], target_pos[1], target_radius[0], 'red']
+        return config, target_pos_MCT
     
     def visualization(self, res_points):
 
@@ -1377,7 +1415,7 @@ class path_planner():
         optimizingPlanner.setup()
 
         
-        temp_res = optimizingPlanner.solve(30)
+        temp_res = optimizingPlanner.solve(3)
 
         #print(temp_res.asString())
         if temp_res.asString() == 'Exact solution':
@@ -1509,7 +1547,7 @@ def get_mathcing_mesh(target_pcd, visualize=False):
     face = np.asarray(obj_mesh.triangles)
     verts = inv_rot.apply(verts_no_rotations) + inv_trans
 
-    return [verts, face]
+    return [verts, face], inv_trans
 
 
 
@@ -1686,7 +1724,42 @@ def get_path2start(rac, dof_result, mod_grip, scene_info):
 
     return path
 
-def grasp_path_check(file_path, test_data_root, grasp_root, test_name, scene_info= None, grasp_check= False):
+def get_radius(mesh_list):
+    radius_list = []
+    for mesh in mesh_list:
+        verts, _ = mesh
+        min_x, min_y, min_z = sys.maxsize, sys.maxsize, sys.maxsize
+        max_x, max_y, max_z = -sys.maxsize, -sys.maxsize, -sys.maxsize
+        for tx, ty, tz in verts:
+            min_x = min(min_x, tx)
+            min_y = min(min_y, ty)
+            min_z = min(min_z, tz)
+            max_x = max(max_x, tx)
+            max_y = max(max_y, ty)
+            max_z = max(max_z, tz)
+        
+        radius = max(max_x - min_x, max_y - min_y)
+        radius_list.append(radius/2)
+
+    return radius_list
+
+def get_rearrange_result(ML_MCTS_ins):
+    goal_config = ML_MCTS_ins.track_level_steps_[-1][-1].goal_config_
+    scale = ML_MCTS_ins.scale
+    new_pos = []
+    for i in range(len(goal_config)):
+        new_pos.append([goal_config[i][1] * scale, -goal_config[i][0] * scale])
+
+    new_obj_mesh = ML_MCTS_ins.track_level_steps_[-1][-1].final_obj_mesh
+
+    return new_pos, new_obj_mesh
+
+    
+
+
+
+
+def grasp_path_check(file_path, test_data_root, grasp_root, test_name, scene_info= None, grasp_check= False, obstacles_num=None):
     # get file name
     color_img_file_path = test_data_root + 'test_image/' + test_name + '.png'
     seg_img_file_path = test_data_root + 'test_seg_image/' + test_name + '.png'
@@ -1719,35 +1792,32 @@ def grasp_path_check(file_path, test_data_root, grasp_root, test_name, scene_inf
 
     # find matching object mesh file
     downpcd = pcd.voxel_down_sample(voxel_size=0.005) # downsampe pcd
-    target_mesh = get_mathcing_mesh(downpcd, visualize=False)
+    target_mesh, target_pos = get_mathcing_mesh(downpcd, visualize=False)
     
     # configure env
-    rac = robot_arm_configuration(file_path, np.array([0.0, 0, 0]), scene_info, target_mesh=target_mesh, obstacles_num=0) # point_cloud=point_cloud
+    rac = robot_arm_configuration(file_path, np.array([0.0, 0, 0]), scene_info, target_mesh=target_mesh, obstacles_num=obstacles_num) # point_cloud=point_cloud
 
 
     # reading grasp results
     grasp_datas = np.load(grasp_file_path, allow_pickle=True)
     grasp_score_idx = list(np.argsort(-grasp_datas["scores"].item()[1]))
 
-    mesh_time_list = []
-    bbox_time_list = []
     for i in grasp_score_idx:
-        # i = 64
         grasp_mat = grasp_datas["pred_grasps_cam"].item()[1][i]
         init2grasp_angles = rac.grasp_verify(grasp_mat, cam_rot, cam_tran)
-        grasp2init_angles = rac.grasp_verify(grasp_mat, cam_rot, cam_tran, offset=[0, 0, 0.05])
+        grasp2init_angles = rac.grasp_verify(grasp_mat, cam_rot, cam_tran, offset=[0, 0, 0.01])
 
         if init2grasp_angles is None or grasp2init_angles is None:
             print("skip imposible grasp")
             continue # skip imposible grasp
 
+        # if grasp_check:
+        #     rac.check_collision_models(init2grasp_angles, scene_info=scene_info)
+        #     continue
+
         # get object in hand mesh
         mod_bbox = rac.modify_grasp_bbox(init2grasp_angles, target_mesh, visualize=False)
         mod_mesh = rac.modify_grasp_mesh(init2grasp_angles, target_mesh, visualize=False)
-
-        if grasp_check:
-            rac.check_collision_models(init2grasp_angles, scene_info=scene_info)
-            continue
 
         # path planning & animation
         init2grasp_path = get_path2grasp(rac, init2grasp_angles, scene_info, target_mesh=target_mesh) # pcd_mesh=pcd_mesh
@@ -1759,25 +1829,104 @@ def grasp_path_check(file_path, test_data_root, grasp_root, test_name, scene_inf
 
         # rac.path_animation(init2grasp_path, test_name, grasp_idx=i, scene_info=scene_info, frame_rate=30)
 
-        # calculate swept volume
-        bbox_start = time.time()
-        swept_volume1 = rac.get_swept_volume(init2grasp_path, test_name, i, w_target=mod_bbox, frame_rate=60, scene_info=scene_info, visualize=False)
-        swept_volume2 = rac.get_swept_volume(grasp2init_path, test_name, i, w_target=mod_bbox, frame_rate=60, scene_info=scene_info, visualize=False)
-        bbox_end = time.time()
-        print("Bbox time:", bbox_end - bbox_start)
-        bbox_time_list.append(bbox_end - bbox_start)
+        # calculate swept volume with bounding box
+        swept_volume1 = rac.get_swept_volume(init2grasp_path, test_name, i, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
+        swept_volume2 = rac.get_swept_volume(grasp2init_path, test_name, i, w_target=mod_bbox, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
 
-        mesh_start = time.time()
-        swept_volume1 = rac.get_swept_volume_wo_bbox(init2grasp_path, test_name, i, w_target=mod_mesh, frame_rate=60, scene_info=scene_info, visualize=False)
-        swept_volume2 = rac.get_swept_volume_wo_bbox(grasp2init_path, test_name, i, w_target=mod_mesh, frame_rate=60, scene_info=scene_info, visualize=False)
-        mesh_end = time.time()
-        print("Mesh time:", mesh_end - mesh_start)
-        mesh_time_list.append(mesh_end - mesh_start)
-        # rac.check_collision_w_swept(swept_volume)
+        # calculate swept volume with mesh
+        # swept_volume1 = rac.get_swept_volume_wo_bbox(init2grasp_path, test_name, i, w_target=mod_mesh, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
+        # swept_volume2 = rac.get_swept_volume_wo_bbox(grasp2init_path, test_name, i, w_target=mod_mesh, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
 
-        if len(mesh_time_list) >= 15:
-            break
-    return mesh_time_list, bbox_time_list
+        # check collision
+        # collision_obj_list = rac.check_collision_w_swept(swept_volume1, swept_volume2)
+
+        # if grasp_check:
+        #     rac.check_collision_models(init2grasp_angles, scene_info=scene_info)
+            # continue
+
+        # # get rearrange planning
+        # curr_config, target_pos_MCT = rac.get_MCT_config(rac.obj_pos_list, rac.obj_mesh, target_pos, target_mesh)
+        # print(curr_config)
+        # ML_MCTS_ins = mct.multi_level_MCTS_algo(copy.deepcopy(curr_config), copy.deepcopy(curr_config), scene_info=scene_info, swept_volume1=swept_volume1, swept_volume2=swept_volume2, obj_mesh=rac.obj_mesh, target_pos=target_pos_MCT)
+        # ML_MCTS_ins.animate_whole_sequence()
+
+        # # update values
+        # rac.obj_pos_list, rac.obj_mesh = get_rearrange_result(ML_MCTS_ins)
+
+        # # check collision
+        # collision_obj_list = rac.check_collision_w_swept(swept_volume1, swept_volume2)        
+
+        save_info = {"idx" : i,
+                     "init2grasp_path" : init2grasp_path,
+                     "grasp2init_path" : grasp2init_path,
+                     "obj_pos_list" : rac.obj_pos_list,
+                     "obj_mesh" : rac.obj_mesh,
+                     "scene_info" : scene_info,
+                     "w_target" : mod_bbox,
+                     "test_name" : test_name,
+                     "target_mesh" : target_mesh,
+                     "obstacles_num" : rac.obstacles_num,
+                     "target_pos" : target_pos}
+        
+        comp = np.array([save_info])
+        name = "test_data/MCTS_input/" + test_name + "_grasp_" + str(i) + "_obj_num" + str(rac.obstacles_num)
+        np.save(name, comp)
+
+        break
+
+    # return mesh_time_list, bbox_time_list
+
+def check_MCTS(MCTS_path, file_path):
+    data = np.load(MCTS_path, allow_pickle=True)
+    init2grasp_path = data[0]["init2grasp_path"]
+    grasp2init_path = data[0]["grasp2init_path"]
+    obj_pos_list = data[0]["obj_pos_list"]
+    scene_info = data[0]["scene_info"]
+    test_name = data[0]["test_name"]
+    obj_mesh = data[0]["obj_mesh"]
+    w_target = data[0]["w_target"]
+    idx = data[0]["idx"]
+    obj_pos_list = data[0]["obj_pos_list"]
+    target_mesh = data[0]["target_mesh"]
+    obstacles_num = data[0]["obstacles_num"]
+
+    rac = robot_arm_configuration(file_path, np.array([0.0, 0, 0]), scene_info, target_mesh=target_mesh, obstacles_num=obstacles_num) # point_cloud=point_cloud
+    rac.obstacles_num = obstacles_num
+    rac.obj_mesh = obj_mesh
+    rac.obj_pos_list = obj_pos_list
+
+    # calculate swept volume with bounding box
+    swept_volume1 = rac.get_swept_volume(init2grasp_path, test_name, idx, frame_rate=60, scene_info=scene_info, animation=False, static_vi=True, with_scene=True)
+    swept_volume2 = rac.get_swept_volume(grasp2init_path, test_name, idx, w_target=w_target, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False, with_scene=True)
+
+    # check collision
+    collision_obj_list = rac.check_collision_w_swept(swept_volume1, swept_volume2)
+    print("objects in collision: ", collision_obj_list)
+    # pdb.set_trace()
+
+    # get rearrange planning
+    target_pos = [ 0.63471748, -0.14326244,  0.135]
+    curr_config, target_pos_MCT = rac.get_MCT_config(rac.obj_pos_list, rac.obj_mesh, target_pos, target_mesh)
+    print(curr_config)
+    ML_MCTS_ins = mct.multi_level_MCTS_algo(copy.deepcopy(curr_config), copy.deepcopy(curr_config), scene_info=scene_info, swept_volume1=swept_volume1, swept_volume2=swept_volume2, obj_mesh=rac.obj_mesh, target_pos=target_pos_MCT)
+    ML_MCTS_ins.animate_whole_sequence()
+
+    # ['#00fffb', '#ff00dd', '#bf00ff', '#ffae00', '#59ff00', '#FFFF00']
+    #    cyan      pink       purple     oragne    green       yellow
+    #     0         1           2          3         4            5
+
+    # update values
+    rac.obj_pos_list, rac.obj_mesh = get_rearrange_result(ML_MCTS_ins)
+    # check collision
+    collision_obj_list = rac.check_collision_w_swept(swept_volume1, swept_volume2)
+    print("objects in collision: ", collision_obj_list)
+
+    # start_angle = [0, -math.pi/2, 0, -math.pi/2, 0, 0]
+    # rac.check_collision_models(start_angle, scene_info=scene_info)
+
+    swept_volume1 = rac.get_swept_volume(init2grasp_path, test_name, idx, frame_rate=60, scene_info=scene_info, animation=False, static_vi=True)
+    swept_volume2 = rac.get_swept_volume(grasp2init_path, test_name, idx, w_target=w_target, frame_rate=60, scene_info=scene_info, animation=False, static_vi=True)
+    
 
 if __name__ == '__main__':
     # file_path = '../assets/urdf/ur5e/meshes/collision/'
@@ -1791,16 +1940,45 @@ if __name__ == '__main__':
     file_path = '../assets/urdf/ur5e/meshes/collision/'
     test_data_root = 'test_data/'
     grasp_root = '../contact_graspnet/results/'
-    test_name = 'pcd1'
+    # test_name = 'pcd1' # banana
+    test_name = 'pcd2' # mustard
+    # test_name = 'pcd3' # master chef can
     scene_info = [0.56, 0.86000001, 0.1, 0.5]
-    # scene_info = None
-    mesh, bbox = grasp_path_check(file_path, test_data_root, grasp_root, test_name, scene_info=scene_info, grasp_check=False)
-    mesh_mean = np.array(mesh).mean()
-    bbox_mean = np.array(bbox).mean()
-    save_info = {"mesh":mesh, "bbox":bbox, "mesh_mean":mesh_mean, "bbox_mean": bbox_mean}
 
-    comp = np.array([save_info])
-    np.save("test_data/mesh&bbox_comparison.npy", comp)
+    # for i in range(5):
+    #     grasp_path_check(file_path, test_data_root, grasp_root, test_name, scene_info=scene_info, obstacles_num=5, grasp_check=False)
+
+    # mcts_path = "test_data/MCTS_input/pcd2_grasp_49.npy"
+    # mcts_path = "test_data/MCTS_input/pcd2_grasp_50.npy"
+    # mcts_path = "test_data/MCTS_input/pcd2_grasp_159.npy"
+    # mcts_path = "test_data/MCTS_input/pcd2_grasp_80obj_num4.npy"
+    # mcts_path = "test_data/MCTS_input/pcd2_grasp_65_obj_num4.npy"
+    # mcts_path = "test_data/MCTS_input/pcd2_grasp_101_obj_num4.npy" # collision with target_obj
+    # mcts_path = "test_data/MCTS_input/pcd2_grasp_160_obj_num4.npy"
+    # mcts_path = "test_data/MCTS_input/pcd2_grasp_169_obj_num4.npy"
+
+    # mcts_path = "test_data/MCTS_input/pcd2_grasp_54_obj_num5.npy" # perfect 3 move
+    mcts_path = "test_data/MCTS_input/pcd2_grasp_101_obj_num5.npy" # perfect 4 move
+    # mcts_path = "test_data/MCTS_input/pcd2_grasp_115_obj_num5.npy" # inf loop
+    # mcts_path = "test_data/MCTS_input/pcd2_grasp_113_obj_num5.npy" # not solvalble
+    check_MCTS(mcts_path, file_path)
+    
+    # mesh_mean = np.array(mesh).mean()
+    # bbox_mean = np.array(bbox).mean()
+    # save_info = {"mesh":mesh, "bbox":bbox, "mesh_mean":mesh_mean, "bbox_mean": bbox_mean}
+    # save_info = {"idx" : i,
+                #  "init2grasp_path" : init2grasp_path,
+                #  "grasp2init_path" : grasp2init_path,
+                #  "obj_pos_list" : rac.obj_pos_list,
+                #  "obj_mesh" : rac.obj_mesh,
+                #  "scene_info" : scene_info,
+                #  "w_target" : mod_bbox,
+                #  "test_name" : test_name}
+    # comp = np.array([save_info])
+    # name = "test_data/MCTS_input/" + test_name + "_grasp_" + str(i)
+    # np.save(name, comp)
+
+
     # pdb.set_trace()
 
 

@@ -600,7 +600,7 @@ for i in range(num_of_envs):
 
     # object_index = np.random.randint(len(object_asset_files), size=num_of_objects-1)
     # object_index = np.insert(object_index, 0, len(object_asset_files)-1, axis = 0)
-    object_index = np.array([5])
+    object_index = np.array([0])
 
     #object_index = np.array([8, 21, 21, 21, 21])
     chosen_object.append(object_index)
