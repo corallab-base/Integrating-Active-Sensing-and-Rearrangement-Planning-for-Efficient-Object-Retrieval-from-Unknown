@@ -1,0 +1,20 @@
+curr config
+1 8 1 sienna
+16 5 1 yellow
+4 14 1 orchid
+8 6 1 beige
+3 2 1 dodgerblue
+11 18 1 red
+13 10 1 turquoise
+9 0 1 gold
+17 0 1 crimson
+goal config
+3 5 1 sienna
+11 13 1 yellow
+6 18 1 orchid
+11 1 1 beige
+9 7 1 dodgerblue
+18 16 1 red
+0 10 1 turquoise
+17 3 1 gold
+15 9 1 crimson

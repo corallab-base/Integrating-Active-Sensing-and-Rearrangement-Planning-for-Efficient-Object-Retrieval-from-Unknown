@@ -1,0 +1,16 @@
+curr config
+16 7 1 gold
+0 18 1 dimgray
+12 3 1 violet
+1 7 1 lawngreen
+1 0 1 cyan
+16 14 1 lightcoral
+17 0 1 beige
+goal config
+0 2 1 gold
+9 15 1 dimgray
+16 7 1 violet
+3 15 1 lawngreen
+16 14 1 cyan
+15 1 1 lightcoral
+2 7 1 beige

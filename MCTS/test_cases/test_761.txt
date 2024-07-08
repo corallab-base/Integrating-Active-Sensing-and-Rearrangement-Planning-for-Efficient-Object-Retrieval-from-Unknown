@@ -1,0 +1,20 @@
+curr config
+13 4 1 yellow
+18 15 1 turquoise
+0 12 1 beige
+10 17 1 red
+8 2 1 dimgray
+3 3 1 pink
+14 9 1 orchid
+6 8 1 fuchsia
+5 16 1 sienna
+goal config
+8 1 1 yellow
+13 9 1 turquoise
+4 5 1 beige
+18 0 1 red
+13 17 1 dimgray
+6 17 1 pink
+1 12 1 orchid
+0 18 1 fuchsia
+6 10 1 sienna

@@ -1,0 +1,14 @@
+curr config
+13 3 1 navy
+12 17 1 yellowgreen
+16 8 1 palegreen
+3 9 1 yellow
+0 2 1 gold
+4 15 1 lawngreen
+goal config
+18 4 1 navy
+8 1 1 yellowgreen
+12 10 1 palegreen
+9 16 1 yellow
+1 1 1 gold
+4 17 1 lawngreen

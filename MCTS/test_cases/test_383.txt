@@ -1,0 +1,18 @@
+curr config
+3 12 1 yellowgreen
+12 2 1 sienna
+11 14 1 red
+5 17 1 lawngreen
+17 0 1 gold
+9 8 1 darkorange
+6 3 1 turquoise
+18 8 1 saddlebrown
+goal config
+8 14 1 yellowgreen
+15 17 1 sienna
+17 8 1 red
+7 7 1 lawngreen
+3 0 1 gold
+4 18 1 darkorange
+8 2 1 turquoise
+12 6 1 saddlebrown

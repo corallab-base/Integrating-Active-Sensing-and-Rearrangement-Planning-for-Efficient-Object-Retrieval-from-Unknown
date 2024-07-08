@@ -1,0 +1,10 @@
+curr config
+9 6 1 dimgray
+14 18 1 navy
+15 4 1 turquoise
+1 2 1 firebrick
+goal config
+2 5 1 dimgray
+17 2 1 navy
+1 11 1 turquoise
+9 1 1 firebrick

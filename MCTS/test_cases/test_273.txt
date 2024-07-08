@@ -1,0 +1,16 @@
+curr config
+0 11 1 yellowgreen
+16 4 1 tan
+10 1 1 crimson
+6 9 1 red
+12 14 1 darkorange
+18 14 1 orchid
+11 7 1 palegreen
+goal config
+16 6 1 yellowgreen
+10 7 1 tan
+2 13 1 crimson
+7 18 1 red
+4 5 1 darkorange
+18 12 1 orchid
+8 0 1 palegreen

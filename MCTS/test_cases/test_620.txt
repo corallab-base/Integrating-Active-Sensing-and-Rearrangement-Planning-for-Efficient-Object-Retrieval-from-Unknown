@@ -1,0 +1,16 @@
+curr config
+6 10 1 beige
+14 10 1 firebrick
+5 5 1 crimson
+17 16 1 red
+18 6 1 cyan
+5 16 1 lawngreen
+13 4 1 dimgray
+goal config
+13 12 1 beige
+5 0 1 firebrick
+5 12 1 crimson
+4 5 1 red
+0 16 1 cyan
+12 3 1 lawngreen
+8 18 1 dimgray

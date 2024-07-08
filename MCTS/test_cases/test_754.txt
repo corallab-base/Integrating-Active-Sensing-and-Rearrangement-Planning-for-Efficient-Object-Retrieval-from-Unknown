@@ -1,0 +1,20 @@
+curr config
+18 16 1 firebrick
+16 5 1 dimgray
+4 6 1 turquoise
+14 10 1 violet
+15 0 1 gold
+8 12 1 pink
+2 11 1 sienna
+0 0 1 cyan
+10 3 1 teal
+goal config
+1 12 1 firebrick
+0 5 1 dimgray
+13 16 1 turquoise
+17 6 1 violet
+12 3 1 gold
+8 18 1 pink
+5 6 1 sienna
+18 13 1 cyan
+10 11 1 teal

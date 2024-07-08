@@ -1,0 +1,12 @@
+curr config
+11 13 1 darkorange
+6 16 1 orchid
+11 6 1 blue
+2 12 1 beige
+0 2 1 teal
+goal config
+11 16 1 darkorange
+11 2 1 orchid
+4 12 1 blue
+5 1 1 beige
+17 14 1 teal

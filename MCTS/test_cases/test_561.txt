@@ -1,0 +1,16 @@
+curr config
+8 11 1 orchid
+18 11 1 palegreen
+8 18 1 darkorange
+11 4 1 crimson
+16 2 1 dodgerblue
+2 4 1 yellowgreen
+1 16 1 blue
+goal config
+14 7 1 orchid
+6 9 1 palegreen
+12 17 1 darkorange
+1 14 1 crimson
+3 4 1 dodgerblue
+6 15 1 yellowgreen
+18 18 1 blue

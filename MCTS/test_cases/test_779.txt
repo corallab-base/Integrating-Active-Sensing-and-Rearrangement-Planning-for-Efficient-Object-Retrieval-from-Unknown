@@ -1,0 +1,20 @@
+curr config
+15 5 1 tan
+17 0 1 red
+3 5 1 orchid
+14 17 1 teal
+16 12 1 navy
+5 10 1 pink
+1 16 1 cyan
+9 1 1 saddlebrown
+10 9 1 dodgerblue
+goal config
+15 15 1 tan
+13 7 1 red
+5 6 1 orchid
+5 0 1 teal
+1 10 1 navy
+17 0 1 pink
+9 16 1 cyan
+0 15 1 saddlebrown
+7 11 1 dodgerblue

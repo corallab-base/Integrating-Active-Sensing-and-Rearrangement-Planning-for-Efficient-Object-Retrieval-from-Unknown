@@ -1,0 +1,14 @@
+curr config
+15 8 1 orchid
+5 2 1 sienna
+12 14 1 tan
+1 10 1 firebrick
+7 11 1 red
+11 0 1 dodgerblue
+goal config
+12 4 1 orchid
+3 3 1 sienna
+4 15 1 tan
+4 8 1 firebrick
+17 9 1 red
+14 17 1 dodgerblue

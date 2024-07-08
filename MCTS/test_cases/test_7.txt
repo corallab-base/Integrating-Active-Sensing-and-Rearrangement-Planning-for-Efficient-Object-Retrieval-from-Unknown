@@ -1,0 +1,10 @@
+curr config
+12 6 1 sienna
+18 12 1 dodgerblue
+9 17 1 violet
+3 2 1 fuchsia
+goal config
+7 0 1 sienna
+16 13 1 dodgerblue
+1 11 1 violet
+8 9 1 fuchsia

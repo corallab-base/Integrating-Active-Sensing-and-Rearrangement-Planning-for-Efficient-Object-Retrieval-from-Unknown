@@ -1,0 +1,18 @@
+curr config
+7 6 1 dodgerblue
+4 0 1 palegreen
+18 18 1 blue
+15 4 1 yellow
+13 13 1 turquoise
+3 15 1 tan
+10 1 1 lightcoral
+1 10 1 cyan
+goal config
+13 1 1 dodgerblue
+18 15 1 palegreen
+3 10 1 blue
+10 12 1 yellow
+16 8 1 turquoise
+7 4 1 tan
+4 15 1 lightcoral
+0 0 1 cyan

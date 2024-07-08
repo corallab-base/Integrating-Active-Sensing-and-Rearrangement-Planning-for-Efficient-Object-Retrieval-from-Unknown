@@ -1,0 +1,16 @@
+curr config
+6 1 1 sienna
+17 16 1 dodgerblue
+12 1 1 teal
+4 10 1 dimgray
+0 14 1 orchid
+14 10 1 fuchsia
+1 4 1 palegreen
+goal config
+17 7 1 sienna
+7 9 1 dodgerblue
+11 18 1 teal
+18 12 1 dimgray
+2 2 1 orchid
+11 4 1 fuchsia
+16 17 1 palegreen

@@ -1,0 +1,12 @@
+curr config
+14 4 1 dimgray
+9 5 1 teal
+8 11 1 red
+0 1 1 fuchsia
+4 6 1 gold
+goal config
+5 5 1 dimgray
+18 6 1 teal
+12 1 1 red
+6 16 1 fuchsia
+0 7 1 gold

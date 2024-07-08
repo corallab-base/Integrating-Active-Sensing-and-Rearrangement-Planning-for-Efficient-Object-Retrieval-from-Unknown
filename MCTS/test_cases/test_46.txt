@@ -1,0 +1,10 @@
+curr config
+1 5 1 sienna
+16 11 1 lightcoral
+3 0 1 darkorange
+9 10 1 dodgerblue
+goal config
+16 13 1 sienna
+7 6 1 lightcoral
+1 8 1 darkorange
+10 13 1 dodgerblue

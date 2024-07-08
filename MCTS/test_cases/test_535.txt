@@ -1,0 +1,14 @@
+curr config
+18 16 1 pink
+9 12 1 cyan
+3 15 1 dodgerblue
+10 17 1 dimgray
+8 2 1 violet
+17 1 1 firebrick
+goal config
+0 18 1 pink
+17 3 1 cyan
+5 2 1 dodgerblue
+3 7 1 dimgray
+11 4 1 violet
+1 12 1 firebrick

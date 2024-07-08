@@ -1,0 +1,14 @@
+curr config
+0 4 1 fuchsia
+12 13 1 darkorange
+16 4 1 teal
+8 9 1 firebrick
+2 15 1 crimson
+3 10 1 orchid
+goal config
+7 2 1 fuchsia
+1 14 1 darkorange
+2 9 1 teal
+17 12 1 firebrick
+11 10 1 crimson
+9 15 1 orchid

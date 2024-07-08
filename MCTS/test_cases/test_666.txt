@@ -1,0 +1,18 @@
+curr config
+14 2 1 blue
+1 16 1 gold
+9 16 1 darkorange
+10 6 1 dimgray
+2 10 1 violet
+18 16 1 teal
+0 2 1 firebrick
+13 12 1 tan
+goal config
+15 17 1 blue
+18 10 1 gold
+8 16 1 darkorange
+6 7 1 dimgray
+18 2 1 violet
+8 1 1 teal
+2 14 1 firebrick
+1 5 1 tan

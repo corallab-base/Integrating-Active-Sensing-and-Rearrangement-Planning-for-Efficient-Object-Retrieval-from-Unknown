@@ -1,0 +1,18 @@
+curr config
+10 14 1 cyan
+17 0 1 palegreen
+4 18 1 navy
+17 12 1 sienna
+3 13 1 fuchsia
+0 0 1 blue
+1 7 1 tan
+13 6 1 crimson
+goal config
+15 16 1 cyan
+0 10 1 palegreen
+8 17 1 navy
+1 5 1 sienna
+18 0 1 fuchsia
+12 7 1 blue
+10 0 1 tan
+2 16 1 crimson

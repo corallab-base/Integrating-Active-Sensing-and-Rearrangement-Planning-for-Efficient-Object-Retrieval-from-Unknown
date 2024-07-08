@@ -1,0 +1,18 @@
+curr config
+11 13 1 saddlebrown
+18 1 1 pink
+14 6 1 navy
+3 14 1 lightcoral
+14 18 1 sienna
+0 3 1 gold
+5 5 1 lawngreen
+7 0 1 violet
+goal config
+16 10 1 saddlebrown
+5 5 1 pink
+11 16 1 navy
+10 8 1 lightcoral
+6 12 1 sienna
+0 17 1 gold
+6 0 1 lawngreen
+0 3 1 violet

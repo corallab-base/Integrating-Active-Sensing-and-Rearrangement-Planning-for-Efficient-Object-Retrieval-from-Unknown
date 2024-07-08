@@ -1,0 +1,10 @@
+curr config
+11 0 1 tan
+8 9 1 crimson
+4 4 1 turquoise
+17 9 1 dodgerblue
+goal config
+8 4 1 tan
+12 0 1 crimson
+2 16 1 turquoise
+17 10 1 dodgerblue

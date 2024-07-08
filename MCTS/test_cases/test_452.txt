@@ -1,0 +1,12 @@
+curr config
+10 18 1 lawngreen
+12 13 1 pink
+2 11 1 tan
+9 0 1 firebrick
+18 0 1 fuchsia
+goal config
+5 4 1 lawngreen
+14 4 1 pink
+10 11 1 tan
+14 16 1 firebrick
+17 9 1 fuchsia

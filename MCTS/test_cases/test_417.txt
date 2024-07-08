@@ -1,0 +1,12 @@
+curr config
+5 16 1 saddlebrown
+15 13 1 pink
+14 6 1 teal
+9 0 1 turquoise
+1 5 1 dodgerblue
+goal config
+1 5 1 saddlebrown
+16 11 1 pink
+13 3 1 teal
+0 11 1 turquoise
+4 18 1 dodgerblue

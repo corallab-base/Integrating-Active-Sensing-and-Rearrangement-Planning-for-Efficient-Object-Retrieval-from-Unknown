@@ -1,0 +1,20 @@
+curr config
+3 9 1 orchid
+10 7 1 cyan
+9 12 1 gold
+17 2 1 turquoise
+13 17 1 dimgray
+5 16 1 lightcoral
+16 7 1 fuchsia
+10 0 1 saddlebrown
+4 1 1 blue
+goal config
+15 7 1 orchid
+4 8 1 cyan
+10 13 1 gold
+17 2 1 turquoise
+6 0 1 dimgray
+8 18 1 lightcoral
+2 18 1 fuchsia
+14 17 1 saddlebrown
+18 12 1 blue

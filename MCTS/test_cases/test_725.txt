@@ -1,0 +1,20 @@
+curr config
+14 0 1 cyan
+4 8 1 gold
+1 1 1 lightcoral
+11 5 1 darkorange
+17 9 1 dimgray
+1 15 1 firebrick
+10 15 1 turquoise
+6 3 1 blue
+15 14 1 beige
+goal config
+5 14 1 cyan
+1 18 1 gold
+18 13 1 lightcoral
+0 2 1 darkorange
+4 6 1 dimgray
+16 2 1 firebrick
+12 10 1 turquoise
+10 5 1 blue
+7 0 1 beige

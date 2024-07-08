@@ -1,0 +1,12 @@
+curr config
+2 2 1 gold
+18 16 1 navy
+6 10 1 fuchsia
+8 2 1 red
+1 9 1 blue
+goal config
+15 7 1 gold
+5 6 1 navy
+9 11 1 fuchsia
+4 18 1 red
+10 17 1 blue

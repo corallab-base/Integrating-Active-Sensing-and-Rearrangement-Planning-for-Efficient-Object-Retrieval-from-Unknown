@@ -1,0 +1,12 @@
+curr config
+6 14 1 blue
+16 2 1 sienna
+13 12 1 pink
+17 17 1 lawngreen
+2 10 1 lightcoral
+goal config
+17 11 1 blue
+8 1 1 sienna
+12 18 1 pink
+8 7 1 lawngreen
+6 17 1 lightcoral

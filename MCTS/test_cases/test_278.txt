@@ -1,0 +1,16 @@
+curr config
+1 6 1 crimson
+16 3 1 lightcoral
+7 6 1 sienna
+2 12 1 tan
+12 7 1 dodgerblue
+13 17 1 red
+4 0 1 orchid
+goal config
+5 11 1 crimson
+2 1 1 lightcoral
+10 13 1 sienna
+17 15 1 tan
+14 7 1 dodgerblue
+3 16 1 red
+9 3 1 orchid

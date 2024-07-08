@@ -1,0 +1,20 @@
+curr config
+13 0 1 orchid
+4 12 1 blue
+4 6 1 lightcoral
+17 14 1 violet
+10 5 1 gold
+11 11 1 fuchsia
+7 17 1 tan
+15 6 1 yellowgreen
+6 1 1 crimson
+goal config
+2 6 1 orchid
+14 8 1 blue
+9 0 1 lightcoral
+0 13 1 violet
+18 13 1 gold
+7 13 1 fuchsia
+0 1 1 tan
+18 2 1 yellowgreen
+8 6 1 crimson

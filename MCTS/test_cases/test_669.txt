@@ -1,0 +1,18 @@
+curr config
+2 0 1 firebrick
+11 1 1 beige
+4 5 1 violet
+10 16 1 tan
+10 10 1 yellowgreen
+16 16 1 sienna
+1 15 1 dimgray
+17 10 1 fuchsia
+goal config
+10 15 1 firebrick
+16 5 1 beige
+3 4 1 violet
+2 11 1 tan
+8 6 1 yellowgreen
+14 11 1 sienna
+17 16 1 dimgray
+11 0 1 fuchsia

@@ -1,0 +1,14 @@
+curr config
+6 18 1 orchid
+1 8 1 fuchsia
+6 3 1 gold
+7 9 1 darkorange
+13 4 1 sienna
+18 15 1 beige
+goal config
+9 15 1 orchid
+3 2 1 fuchsia
+13 10 1 gold
+18 17 1 darkorange
+16 1 1 sienna
+7 9 1 beige

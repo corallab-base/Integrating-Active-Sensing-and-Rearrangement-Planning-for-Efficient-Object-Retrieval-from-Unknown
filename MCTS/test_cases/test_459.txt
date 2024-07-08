@@ -1,0 +1,12 @@
+curr config
+18 7 1 crimson
+9 12 1 beige
+7 5 1 lawngreen
+0 18 1 yellow
+16 14 1 pink
+goal config
+14 1 1 crimson
+8 5 1 beige
+14 15 1 lawngreen
+1 15 1 yellow
+3 9 1 pink

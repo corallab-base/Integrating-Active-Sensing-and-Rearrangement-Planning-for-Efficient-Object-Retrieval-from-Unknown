@@ -1,0 +1,20 @@
+curr config
+3 17 1 pink
+15 3 1 navy
+16 14 1 violet
+10 0 1 teal
+0 12 1 tan
+11 7 1 fuchsia
+10 18 1 lightcoral
+5 3 1 blue
+0 5 1 gold
+goal config
+13 8 1 pink
+13 1 1 navy
+7 17 1 violet
+8 12 1 teal
+4 1 1 tan
+15 16 1 fuchsia
+18 7 1 lightcoral
+0 17 1 blue
+1 11 1 gold

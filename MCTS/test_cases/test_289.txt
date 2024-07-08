@@ -1,0 +1,16 @@
+curr config
+14 3 1 sienna
+4 8 1 lightcoral
+13 11 1 violet
+4 2 1 tan
+4 18 1 teal
+16 17 1 pink
+7 13 1 saddlebrown
+goal config
+11 17 1 sienna
+8 9 1 lightcoral
+7 4 1 violet
+3 17 1 tan
+16 16 1 teal
+13 1 1 pink
+2 10 1 saddlebrown

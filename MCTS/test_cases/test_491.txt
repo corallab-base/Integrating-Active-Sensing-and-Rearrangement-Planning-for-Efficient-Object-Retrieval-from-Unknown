@@ -1,0 +1,14 @@
+curr config
+2 3 1 orchid
+2 11 1 navy
+17 17 1 red
+8 12 1 dodgerblue
+15 8 1 blue
+7 17 1 sienna
+goal config
+14 15 1 orchid
+6 18 1 navy
+11 3 1 red
+2 0 1 dodgerblue
+10 9 1 blue
+1 6 1 sienna

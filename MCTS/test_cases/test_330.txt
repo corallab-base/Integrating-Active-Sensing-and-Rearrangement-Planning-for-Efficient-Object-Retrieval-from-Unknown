@@ -1,0 +1,18 @@
+curr config
+18 4 1 cyan
+1 7 1 yellowgreen
+6 12 1 gold
+15 15 1 tan
+11 5 1 violet
+10 16 1 sienna
+1 13 1 orchid
+14 10 1 dimgray
+goal config
+15 9 1 cyan
+18 3 1 yellowgreen
+8 6 1 gold
+9 12 1 tan
+2 10 1 violet
+13 4 1 sienna
+5 18 1 orchid
+14 18 1 dimgray

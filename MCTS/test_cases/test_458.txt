@@ -1,0 +1,12 @@
+curr config
+16 10 1 sienna
+11 7 1 lightcoral
+17 4 1 beige
+0 7 1 gold
+3 13 1 blue
+goal config
+6 17 1 sienna
+0 1 1 lightcoral
+5 11 1 beige
+0 17 1 gold
+18 10 1 blue

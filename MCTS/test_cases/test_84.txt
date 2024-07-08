@@ -1,0 +1,12 @@
+curr config
+8 10 1 blue
+18 6 1 dimgray
+16 0 1 pink
+8 3 1 violet
+10 15 1 orchid
+goal config
+9 8 1 blue
+17 0 1 dimgray
+17 16 1 pink
+15 8 1 violet
+7 18 1 orchid

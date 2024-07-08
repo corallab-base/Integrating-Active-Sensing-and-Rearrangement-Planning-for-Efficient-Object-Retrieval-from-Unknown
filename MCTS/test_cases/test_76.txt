@@ -1,0 +1,10 @@
+curr config
+5 6 1 turquoise
+6 17 1 gold
+14 4 1 navy
+18 11 1 crimson
+goal config
+4 11 1 turquoise
+16 11 1 gold
+15 2 1 navy
+18 17 1 crimson

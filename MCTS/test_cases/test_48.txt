@@ -1,0 +1,10 @@
+curr config
+13 13 1 violet
+6 5 1 blue
+3 14 1 turquoise
+17 17 1 cyan
+goal config
+6 0 1 violet
+8 6 1 blue
+16 0 1 turquoise
+3 17 1 cyan

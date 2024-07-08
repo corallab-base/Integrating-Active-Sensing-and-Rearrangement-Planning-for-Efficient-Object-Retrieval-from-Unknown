@@ -1,0 +1,16 @@
+curr config
+10 12 1 teal
+16 10 1 blue
+2 1 1 lightcoral
+15 17 1 turquoise
+14 4 1 palegreen
+9 6 1 lawngreen
+8 17 1 fuchsia
+goal config
+10 11 1 teal
+1 6 1 blue
+3 11 1 lightcoral
+18 0 1 turquoise
+9 1 1 palegreen
+15 7 1 lawngreen
+9 17 1 fuchsia

@@ -1,0 +1,14 @@
+curr config
+13 11 1 orchid
+8 13 1 palegreen
+3 10 1 fuchsia
+1 3 1 teal
+13 5 1 pink
+18 15 1 tan
+goal config
+1 17 1 orchid
+3 12 1 palegreen
+13 1 1 fuchsia
+13 13 1 teal
+17 7 1 pink
+3 0 1 tan

@@ -1,0 +1,20 @@
+curr config
+18 10 1 firebrick
+0 1 1 lightcoral
+0 16 1 orchid
+8 16 1 palegreen
+2 9 1 saddlebrown
+12 2 1 gold
+9 7 1 blue
+14 16 1 beige
+17 5 1 sienna
+goal config
+10 18 1 firebrick
+7 0 1 lightcoral
+2 12 1 orchid
+13 3 1 palegreen
+9 9 1 saddlebrown
+15 9 1 gold
+3 6 1 blue
+18 16 1 beige
+5 17 1 sienna

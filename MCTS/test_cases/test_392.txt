@@ -1,0 +1,18 @@
+curr config
+10 4 1 crimson
+9 12 1 beige
+17 10 1 tan
+2 3 1 gold
+5 8 1 orchid
+6 18 1 firebrick
+13 17 1 fuchsia
+18 0 1 pink
+goal config
+17 17 1 crimson
+12 1 1 beige
+4 8 1 tan
+14 7 1 gold
+7 17 1 orchid
+7 0 1 firebrick
+9 10 1 fuchsia
+0 16 1 pink

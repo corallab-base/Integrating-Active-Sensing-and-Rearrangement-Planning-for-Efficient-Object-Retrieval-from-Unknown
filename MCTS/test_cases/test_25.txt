@@ -1,0 +1,10 @@
+curr config
+3 17 1 sienna
+16 16 1 gold
+9 4 1 pink
+6 9 1 saddlebrown
+goal config
+16 14 1 sienna
+5 6 1 gold
+13 2 1 pink
+7 12 1 saddlebrown

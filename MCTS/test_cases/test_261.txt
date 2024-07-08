@@ -1,0 +1,16 @@
+curr config
+11 0 1 firebrick
+6 14 1 yellowgreen
+18 16 1 saddlebrown
+18 1 1 beige
+10 7 1 dodgerblue
+1 3 1 gold
+6 1 1 darkorange
+goal config
+0 4 1 firebrick
+13 14 1 yellowgreen
+11 3 1 saddlebrown
+17 1 1 beige
+17 8 1 dodgerblue
+6 15 1 gold
+5 9 1 darkorange

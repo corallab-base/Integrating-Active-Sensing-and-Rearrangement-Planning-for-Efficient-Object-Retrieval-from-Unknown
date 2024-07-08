@@ -1,0 +1,14 @@
+curr config
+5 9 1 pink
+13 10 1 turquoise
+15 17 1 cyan
+3 4 1 dodgerblue
+9 0 1 orchid
+8 18 1 tan
+goal config
+6 9 1 pink
+14 13 1 turquoise
+7 0 1 cyan
+13 2 1 dodgerblue
+2 1 1 orchid
+8 16 1 tan

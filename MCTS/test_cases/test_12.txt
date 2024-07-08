@@ -1,0 +1,10 @@
+curr config
+0 15 1 navy
+7 1 1 red
+11 5 1 crimson
+10 15 1 gold
+goal config
+0 17 1 navy
+9 7 1 red
+3 5 1 crimson
+17 13 1 gold

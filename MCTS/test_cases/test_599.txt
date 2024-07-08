@@ -1,0 +1,16 @@
+curr config
+0 2 1 fuchsia
+0 17 1 orchid
+17 10 1 firebrick
+10 0 1 crimson
+5 10 1 lightcoral
+12 7 1 blue
+6 4 1 tan
+goal config
+8 0 1 fuchsia
+4 18 1 orchid
+6 7 1 firebrick
+14 9 1 crimson
+0 9 1 lightcoral
+13 1 1 blue
+0 0 1 tan

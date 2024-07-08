@@ -1,0 +1,14 @@
+curr config
+6 2 1 pink
+13 12 1 tan
+0 16 1 dimgray
+18 15 1 lawngreen
+6 18 1 yellowgreen
+9 8 1 orchid
+goal config
+4 17 1 pink
+17 9 1 tan
+13 15 1 dimgray
+10 0 1 lawngreen
+3 11 1 yellowgreen
+2 2 1 orchid

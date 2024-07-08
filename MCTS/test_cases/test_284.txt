@@ -1,0 +1,16 @@
+curr config
+3 17 1 tan
+14 5 1 beige
+2 11 1 firebrick
+12 15 1 darkorange
+1 3 1 teal
+18 18 1 sienna
+13 0 1 gold
+goal config
+15 2 1 tan
+4 9 1 beige
+15 14 1 firebrick
+6 18 1 darkorange
+10 6 1 teal
+2 4 1 sienna
+15 8 1 gold

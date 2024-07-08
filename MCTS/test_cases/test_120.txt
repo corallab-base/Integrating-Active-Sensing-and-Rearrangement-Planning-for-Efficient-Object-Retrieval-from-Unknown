@@ -1,0 +1,12 @@
+curr config
+1 0 1 turquoise
+11 2 1 dimgray
+17 6 1 violet
+6 1 1 tan
+13 14 1 crimson
+goal config
+3 9 1 turquoise
+12 15 1 dimgray
+7 2 1 violet
+14 5 1 tan
+4 15 1 crimson

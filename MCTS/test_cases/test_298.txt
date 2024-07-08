@@ -1,0 +1,16 @@
+curr config
+8 7 1 saddlebrown
+10 18 1 sienna
+15 14 1 crimson
+16 8 1 orchid
+10 0 1 teal
+3 17 1 gold
+5 1 1 palegreen
+goal config
+7 5 1 saddlebrown
+18 4 1 sienna
+12 14 1 crimson
+17 15 1 orchid
+0 13 1 teal
+14 8 1 gold
+9 0 1 palegreen

@@ -1,0 +1,14 @@
+curr config
+0 3 1 turquoise
+18 12 1 red
+8 5 1 yellowgreen
+3 9 1 orchid
+13 13 1 navy
+14 7 1 dimgray
+goal config
+11 4 1 turquoise
+14 14 1 red
+4 1 1 yellowgreen
+16 2 1 orchid
+7 10 1 navy
+1 12 1 dimgray

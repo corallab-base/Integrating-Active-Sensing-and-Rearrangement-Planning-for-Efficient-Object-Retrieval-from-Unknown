@@ -1,0 +1,12 @@
+curr config
+15 18 1 saddlebrown
+7 8 1 teal
+16 6 1 firebrick
+2 14 1 gold
+15 0 1 beige
+goal config
+15 15 1 saddlebrown
+9 3 1 teal
+9 12 1 firebrick
+1 4 1 gold
+2 12 1 beige

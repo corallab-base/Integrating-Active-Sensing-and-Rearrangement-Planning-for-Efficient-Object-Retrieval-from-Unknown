@@ -1,0 +1,20 @@
+curr config
+6 13 1 lawngreen
+14 4 1 blue
+7 7 1 navy
+18 13 1 gold
+1 3 1 dodgerblue
+12 9 1 turquoise
+1 9 1 violet
+9 2 1 dimgray
+0 14 1 crimson
+goal config
+2 7 1 lawngreen
+13 13 1 blue
+18 3 1 navy
+6 12 1 gold
+11 4 1 dodgerblue
+5 1 1 turquoise
+6 18 1 violet
+18 16 1 dimgray
+1 17 1 crimson

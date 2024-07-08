@@ -1,0 +1,12 @@
+curr config
+18 10 1 firebrick
+14 17 1 gold
+8 0 1 tan
+13 3 1 dimgray
+10 10 1 fuchsia
+goal config
+8 13 1 firebrick
+8 0 1 gold
+0 17 1 tan
+7 7 1 dimgray
+7 18 1 fuchsia

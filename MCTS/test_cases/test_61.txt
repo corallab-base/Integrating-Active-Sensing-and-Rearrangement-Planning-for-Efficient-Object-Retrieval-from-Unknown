@@ -1,0 +1,10 @@
+curr config
+11 0 1 lightcoral
+14 6 1 lawngreen
+0 4 1 sienna
+5 18 1 teal
+goal config
+14 14 1 lightcoral
+1 14 1 lawngreen
+17 9 1 sienna
+6 6 1 teal

@@ -1,0 +1,20 @@
+curr config
+8 1 1 blue
+9 7 1 lightcoral
+14 6 1 sienna
+0 1 1 lawngreen
+12 14 1 navy
+18 18 1 firebrick
+3 15 1 dodgerblue
+18 10 1 tan
+0 8 1 cyan
+goal config
+0 8 1 blue
+5 12 1 lightcoral
+15 17 1 sienna
+13 0 1 lawngreen
+18 11 1 navy
+8 5 1 firebrick
+6 0 1 dodgerblue
+1 2 1 tan
+12 10 1 cyan

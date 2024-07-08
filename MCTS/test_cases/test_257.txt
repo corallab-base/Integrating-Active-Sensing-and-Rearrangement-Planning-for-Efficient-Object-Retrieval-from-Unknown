@@ -1,0 +1,16 @@
+curr config
+11 16 1 gold
+4 13 1 tan
+17 12 1 fuchsia
+10 4 1 violet
+0 8 1 orchid
+9 10 1 firebrick
+16 1 1 lawngreen
+goal config
+15 2 1 gold
+1 6 1 tan
+0 15 1 fuchsia
+14 10 1 violet
+18 16 1 orchid
+10 3 1 firebrick
+5 1 1 lawngreen

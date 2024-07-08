@@ -1,0 +1,14 @@
+curr config
+7 7 1 lawngreen
+15 14 1 gold
+0 2 1 firebrick
+3 15 1 saddlebrown
+10 16 1 lightcoral
+16 0 1 tan
+goal config
+7 3 1 lawngreen
+13 0 1 gold
+11 10 1 firebrick
+12 18 1 saddlebrown
+2 15 1 lightcoral
+1 2 1 tan

@@ -1,0 +1,18 @@
+curr config
+9 0 1 dodgerblue
+12 5 1 fuchsia
+0 7 1 tan
+3 18 1 saddlebrown
+14 12 1 teal
+17 6 1 crimson
+15 0 1 orchid
+9 10 1 blue
+goal config
+7 9 1 dodgerblue
+9 17 1 fuchsia
+0 3 1 tan
+18 2 1 saddlebrown
+14 14 1 teal
+9 0 1 crimson
+12 6 1 orchid
+1 11 1 blue

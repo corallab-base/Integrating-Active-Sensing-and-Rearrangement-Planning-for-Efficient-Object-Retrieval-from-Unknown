@@ -1,0 +1,16 @@
+curr config
+8 11 1 teal
+1 7 1 crimson
+8 3 1 gold
+2 2 1 sienna
+18 4 1 palegreen
+13 5 1 lawngreen
+18 12 1 cyan
+goal config
+1 3 1 teal
+6 4 1 crimson
+10 14 1 gold
+9 9 1 sienna
+3 17 1 palegreen
+2 10 1 lawngreen
+15 0 1 cyan

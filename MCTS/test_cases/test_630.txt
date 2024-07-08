@@ -1,0 +1,16 @@
+curr config
+11 18 1 red
+16 17 1 darkorange
+3 11 1 dimgray
+4 1 1 firebrick
+13 9 1 yellowgreen
+5 17 1 gold
+12 3 1 lightcoral
+goal config
+5 13 1 red
+16 13 1 darkorange
+1 17 1 dimgray
+3 3 1 firebrick
+10 5 1 yellowgreen
+17 4 1 gold
+10 18 1 lightcoral

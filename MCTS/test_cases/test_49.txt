@@ -1,0 +1,10 @@
+curr config
+8 16 1 turquoise
+16 17 1 cyan
+0 5 1 saddlebrown
+7 6 1 blue
+goal config
+11 17 1 turquoise
+14 2 1 cyan
+5 3 1 saddlebrown
+6 18 1 blue

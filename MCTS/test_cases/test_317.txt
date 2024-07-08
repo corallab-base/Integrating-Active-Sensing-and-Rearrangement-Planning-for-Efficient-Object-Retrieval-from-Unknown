@@ -1,0 +1,16 @@
+curr config
+16 14 1 teal
+5 2 1 yellow
+8 9 1 dimgray
+5 14 1 cyan
+18 8 1 lightcoral
+13 6 1 darkorange
+10 16 1 fuchsia
+goal config
+3 2 1 teal
+10 18 1 yellow
+1 13 1 dimgray
+18 11 1 cyan
+9 10 1 lightcoral
+15 1 1 darkorange
+0 7 1 fuchsia

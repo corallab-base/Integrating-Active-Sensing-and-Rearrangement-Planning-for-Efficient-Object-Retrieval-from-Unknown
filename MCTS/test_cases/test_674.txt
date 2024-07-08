@@ -1,0 +1,18 @@
+curr config
+9 14 1 dodgerblue
+0 18 1 lawngreen
+4 13 1 darkorange
+16 13 1 cyan
+3 6 1 palegreen
+8 9 1 blue
+16 3 1 sienna
+13 8 1 turquoise
+goal config
+18 1 1 dodgerblue
+14 18 1 lawngreen
+14 8 1 darkorange
+13 13 1 cyan
+2 4 1 palegreen
+9 0 1 blue
+4 18 1 sienna
+7 8 1 turquoise

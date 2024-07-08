@@ -1,0 +1,20 @@
+curr config
+2 13 1 crimson
+10 16 1 firebrick
+17 2 1 dodgerblue
+14 12 1 violet
+6 4 1 red
+13 7 1 orchid
+1 1 1 yellowgreen
+7 10 1 saddlebrown
+0 8 1 beige
+goal config
+2 15 1 crimson
+14 16 1 firebrick
+0 2 1 dodgerblue
+10 12 1 violet
+6 5 1 red
+9 17 1 orchid
+5 10 1 yellowgreen
+18 5 1 saddlebrown
+17 0 1 beige

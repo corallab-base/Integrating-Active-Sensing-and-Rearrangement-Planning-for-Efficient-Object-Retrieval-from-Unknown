@@ -1,0 +1,18 @@
+curr config
+1 2 1 cyan
+9 16 1 beige
+14 6 1 red
+6 9 1 blue
+1 15 1 navy
+17 16 1 orchid
+13 0 1 gold
+6 0 1 crimson
+goal config
+17 8 1 cyan
+15 15 1 beige
+6 17 1 red
+5 1 1 blue
+5 9 1 navy
+1 5 1 orchid
+14 3 1 gold
+1 18 1 crimson

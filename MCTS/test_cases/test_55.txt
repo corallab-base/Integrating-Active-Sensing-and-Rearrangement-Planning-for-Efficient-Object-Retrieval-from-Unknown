@@ -1,0 +1,10 @@
+curr config
+9 5 1 palegreen
+14 0 1 tan
+3 7 1 yellowgreen
+3 18 1 saddlebrown
+goal config
+10 4 1 palegreen
+14 13 1 tan
+2 3 1 yellowgreen
+0 13 1 saddlebrown

@@ -1,0 +1,14 @@
+curr config
+18 4 1 lawngreen
+5 5 1 fuchsia
+3 17 1 turquoise
+7 13 1 yellow
+11 1 1 sienna
+10 6 1 palegreen
+goal config
+10 9 1 lawngreen
+4 11 1 fuchsia
+11 4 1 turquoise
+8 16 1 yellow
+13 18 1 sienna
+6 3 1 palegreen

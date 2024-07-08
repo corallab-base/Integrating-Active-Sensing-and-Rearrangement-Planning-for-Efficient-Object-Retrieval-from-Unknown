@@ -1,0 +1,10 @@
+curr config
+15 4 1 saddlebrown
+8 12 1 crimson
+2 16 1 pink
+3 2 1 blue
+goal config
+15 7 1 saddlebrown
+12 13 1 crimson
+1 3 1 pink
+9 3 1 blue

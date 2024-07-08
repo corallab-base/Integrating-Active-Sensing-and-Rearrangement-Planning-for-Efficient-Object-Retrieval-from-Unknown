@@ -1,0 +1,14 @@
+curr config
+6 8 1 turquoise
+18 6 1 tan
+4 16 1 crimson
+13 18 1 saddlebrown
+12 12 1 violet
+0 9 1 lightcoral
+goal config
+14 11 1 turquoise
+14 18 1 tan
+5 11 1 crimson
+8 18 1 saddlebrown
+2 6 1 violet
+7 2 1 lightcoral

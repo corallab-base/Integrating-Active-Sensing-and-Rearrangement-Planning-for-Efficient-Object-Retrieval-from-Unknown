@@ -1,0 +1,12 @@
+curr config
+0 15 1 darkorange
+14 13 1 beige
+0 2 1 gold
+5 1 1 pink
+8 13 1 blue
+goal config
+17 14 1 darkorange
+8 16 1 beige
+15 1 1 gold
+6 9 1 pink
+1 12 1 blue

@@ -1,0 +1,12 @@
+curr config
+14 18 1 saddlebrown
+17 0 1 lightcoral
+2 4 1 firebrick
+1 14 1 orchid
+7 3 1 palegreen
+goal config
+12 14 1 saddlebrown
+4 12 1 lightcoral
+12 8 1 firebrick
+1 2 1 orchid
+17 15 1 palegreen

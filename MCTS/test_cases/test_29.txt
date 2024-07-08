@@ -1,0 +1,10 @@
+curr config
+10 9 1 lawngreen
+1 8 1 blue
+2 3 1 sienna
+12 0 1 orchid
+goal config
+7 11 1 lawngreen
+1 11 1 blue
+5 1 1 sienna
+13 6 1 orchid

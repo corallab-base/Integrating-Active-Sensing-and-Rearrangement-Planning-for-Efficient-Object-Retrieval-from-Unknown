@@ -1,0 +1,16 @@
+curr config
+13 12 1 yellow
+8 7 1 fuchsia
+18 4 1 violet
+2 8 1 beige
+10 0 1 pink
+7 17 1 red
+6 12 1 navy
+goal config
+12 3 1 yellow
+4 11 1 fuchsia
+14 18 1 violet
+4 3 1 beige
+16 12 1 pink
+2 16 1 red
+17 7 1 navy

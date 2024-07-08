@@ -1,0 +1,16 @@
+curr config
+13 11 1 crimson
+16 0 1 lightcoral
+6 7 1 red
+8 13 1 yellow
+2 1 1 navy
+1 17 1 gold
+10 1 1 dimgray
+goal config
+13 5 1 crimson
+6 1 1 lightcoral
+16 10 1 red
+16 18 1 yellow
+8 8 1 navy
+1 8 1 gold
+8 18 1 dimgray

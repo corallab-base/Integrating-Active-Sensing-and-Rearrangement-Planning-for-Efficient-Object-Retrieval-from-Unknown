@@ -1,0 +1,16 @@
+curr config
+17 11 1 sienna
+2 15 1 lightcoral
+11 2 1 dodgerblue
+17 2 1 yellow
+10 10 1 dimgray
+11 17 1 gold
+3 8 1 turquoise
+goal config
+9 10 1 sienna
+15 12 1 lightcoral
+1 10 1 dodgerblue
+10 15 1 yellow
+15 6 1 dimgray
+1 18 1 gold
+11 0 1 turquoise

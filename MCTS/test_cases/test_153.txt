@@ -1,0 +1,12 @@
+curr config
+12 6 1 teal
+4 7 1 yellow
+11 16 1 violet
+6 1 1 darkorange
+0 3 1 crimson
+goal config
+0 0 1 teal
+7 13 1 yellow
+10 5 1 violet
+13 18 1 darkorange
+17 10 1 crimson

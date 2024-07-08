@@ -1,0 +1,12 @@
+curr config
+14 13 1 crimson
+12 18 1 blue
+3 1 1 palegreen
+7 14 1 gold
+12 0 1 cyan
+goal config
+11 10 1 crimson
+11 2 1 blue
+4 1 1 palegreen
+7 17 1 gold
+17 16 1 cyan

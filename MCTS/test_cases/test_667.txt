@@ -1,0 +1,18 @@
+curr config
+14 7 1 dimgray
+12 17 1 tan
+4 8 1 fuchsia
+18 12 1 teal
+2 0 1 orchid
+9 3 1 sienna
+14 1 1 pink
+1 17 1 yellowgreen
+goal config
+12 8 1 dimgray
+16 15 1 tan
+18 0 1 fuchsia
+18 8 1 teal
+2 0 1 orchid
+1 5 1 sienna
+3 18 1 pink
+7 1 1 yellowgreen

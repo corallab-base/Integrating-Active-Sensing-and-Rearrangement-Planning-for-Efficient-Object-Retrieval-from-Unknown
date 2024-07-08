@@ -1,0 +1,12 @@
+curr config
+1 1 1 saddlebrown
+12 3 1 violet
+9 8 1 fuchsia
+10 13 1 darkorange
+17 12 1 yellow
+goal config
+0 15 1 saddlebrown
+4 10 1 violet
+15 15 1 fuchsia
+8 5 1 darkorange
+0 0 1 yellow

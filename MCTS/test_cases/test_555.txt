@@ -1,0 +1,14 @@
+curr config
+12 14 1 gold
+6 0 1 teal
+0 17 1 firebrick
+4 12 1 palegreen
+6 18 1 yellowgreen
+16 9 1 orchid
+goal config
+11 0 1 gold
+11 16 1 teal
+18 17 1 firebrick
+6 14 1 palegreen
+15 12 1 yellowgreen
+11 6 1 orchid

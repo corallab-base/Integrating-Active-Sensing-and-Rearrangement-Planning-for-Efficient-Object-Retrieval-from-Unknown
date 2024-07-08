@@ -1,0 +1,14 @@
+curr config
+5 12 1 violet
+13 11 1 crimson
+6 2 1 navy
+18 9 1 fuchsia
+3 7 1 lawngreen
+10 6 1 dimgray
+goal config
+7 6 1 violet
+17 12 1 crimson
+14 0 1 navy
+15 18 1 fuchsia
+1 0 1 lawngreen
+8 1 1 dimgray

@@ -1,0 +1,20 @@
+curr config
+18 14 1 gold
+15 0 1 teal
+3 3 1 yellowgreen
+1 13 1 dimgray
+11 7 1 cyan
+11 15 1 beige
+6 12 1 lightcoral
+6 18 1 sienna
+16 5 1 turquoise
+goal config
+6 14 1 gold
+10 9 1 teal
+16 8 1 yellowgreen
+6 5 1 dimgray
+11 1 1 cyan
+1 12 1 beige
+0 0 1 lightcoral
+16 0 1 sienna
+16 17 1 turquoise

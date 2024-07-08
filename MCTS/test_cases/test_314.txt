@@ -1,0 +1,16 @@
+curr config
+1 9 1 yellowgreen
+0 18 1 turquoise
+16 3 1 blue
+6 1 1 darkorange
+8 7 1 lightcoral
+5 14 1 fuchsia
+14 16 1 red
+goal config
+5 14 1 yellowgreen
+11 8 1 turquoise
+18 9 1 blue
+9 18 1 darkorange
+15 0 1 lightcoral
+4 5 1 fuchsia
+1 10 1 red

@@ -1,0 +1,14 @@
+curr config
+15 4 1 lawngreen
+17 9 1 dimgray
+0 18 1 tan
+9 7 1 sienna
+6 17 1 yellowgreen
+4 3 1 yellow
+goal config
+13 8 1 lawngreen
+7 16 1 dimgray
+7 3 1 tan
+2 9 1 sienna
+13 18 1 yellowgreen
+0 1 1 yellow

@@ -1,0 +1,10 @@
+curr config
+8 9 1 teal
+14 1 1 pink
+2 15 1 saddlebrown
+3 10 1 red
+goal config
+16 9 1 teal
+9 18 1 pink
+5 9 1 saddlebrown
+18 3 1 red

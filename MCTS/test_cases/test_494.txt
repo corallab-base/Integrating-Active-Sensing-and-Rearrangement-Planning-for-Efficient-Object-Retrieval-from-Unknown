@@ -1,0 +1,14 @@
+curr config
+1 9 1 yellow
+14 3 1 orchid
+7 2 1 blue
+18 8 1 dodgerblue
+1 18 1 gold
+14 18 1 red
+goal config
+14 15 1 yellow
+12 8 1 orchid
+0 11 1 blue
+2 4 1 dodgerblue
+6 13 1 gold
+13 1 1 red

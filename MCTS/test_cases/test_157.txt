@@ -1,0 +1,12 @@
+curr config
+11 0 1 lightcoral
+7 18 1 yellow
+0 15 1 firebrick
+11 13 1 tan
+17 18 1 navy
+goal config
+16 7 1 lightcoral
+17 12 1 yellow
+0 10 1 firebrick
+9 15 1 tan
+8 6 1 navy

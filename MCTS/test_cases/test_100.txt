@@ -1,0 +1,12 @@
+curr config
+14 7 1 orchid
+12 15 1 tan
+3 11 1 dimgray
+7 0 1 sienna
+18 16 1 navy
+goal config
+10 17 1 orchid
+0 1 1 tan
+4 15 1 dimgray
+10 8 1 sienna
+10 1 1 navy

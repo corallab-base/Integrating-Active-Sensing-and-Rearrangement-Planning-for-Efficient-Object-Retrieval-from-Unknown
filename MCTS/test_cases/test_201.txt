@@ -1,0 +1,14 @@
+curr config
+9 3 1 saddlebrown
+5 16 1 red
+3 0 1 tan
+14 9 1 crimson
+14 16 1 dimgray
+3 11 1 lightcoral
+goal config
+12 1 1 saddlebrown
+5 5 1 red
+11 14 1 tan
+13 9 1 crimson
+18 17 1 dimgray
+18 5 1 lightcoral

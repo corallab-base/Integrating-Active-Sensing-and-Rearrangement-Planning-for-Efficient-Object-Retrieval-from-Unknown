@@ -1,0 +1,14 @@
+curr config
+4 18 1 violet
+16 8 1 gold
+8 13 1 red
+1 0 1 dimgray
+12 3 1 fuchsia
+17 2 1 saddlebrown
+goal config
+5 18 1 violet
+13 10 1 gold
+15 5 1 red
+0 2 1 dimgray
+6 10 1 fuchsia
+10 4 1 saddlebrown

@@ -1,0 +1,12 @@
+curr config
+13 2 1 sienna
+13 16 1 yellow
+18 4 1 crimson
+6 6 1 dimgray
+12 9 1 saddlebrown
+goal config
+6 9 1 sienna
+13 3 1 yellow
+3 18 1 crimson
+9 17 1 dimgray
+15 16 1 saddlebrown

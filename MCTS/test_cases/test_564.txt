@@ -1,0 +1,16 @@
+curr config
+6 0 1 palegreen
+16 1 1 turquoise
+7 6 1 blue
+0 0 1 beige
+5 18 1 navy
+14 7 1 teal
+3 11 1 gold
+goal config
+14 8 1 palegreen
+0 18 1 turquoise
+10 1 1 blue
+15 2 1 beige
+16 13 1 navy
+0 9 1 teal
+1 1 1 gold

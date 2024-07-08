@@ -1,0 +1,18 @@
+curr config
+2 0 1 lawngreen
+8 8 1 yellowgreen
+13 7 1 orchid
+2 10 1 cyan
+8 17 1 navy
+1 17 1 blue
+15 16 1 gold
+16 1 1 dodgerblue
+goal config
+8 8 1 lawngreen
+0 14 1 yellowgreen
+17 16 1 orchid
+12 13 1 cyan
+3 9 1 navy
+0 2 1 blue
+6 16 1 gold
+10 2 1 dodgerblue

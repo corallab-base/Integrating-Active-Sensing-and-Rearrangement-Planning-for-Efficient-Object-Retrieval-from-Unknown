@@ -1,0 +1,20 @@
+curr config
+16 3 1 firebrick
+0 11 1 sienna
+10 15 1 yellow
+2 4 1 crimson
+7 6 1 orchid
+15 12 1 dodgerblue
+1 17 1 navy
+6 0 1 yellowgreen
+17 18 1 gold
+goal config
+13 14 1 firebrick
+8 18 1 sienna
+3 15 1 yellow
+16 6 1 crimson
+15 0 1 orchid
+6 2 1 dodgerblue
+2 8 1 navy
+18 18 1 yellowgreen
+11 8 1 gold

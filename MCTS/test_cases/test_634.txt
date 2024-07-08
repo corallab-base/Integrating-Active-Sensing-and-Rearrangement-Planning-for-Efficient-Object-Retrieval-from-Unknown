@@ -1,0 +1,16 @@
+curr config
+13 0 1 crimson
+7 7 1 yellow
+1 15 1 fuchsia
+12 18 1 cyan
+1 5 1 teal
+13 13 1 gold
+6 13 1 firebrick
+goal config
+5 11 1 crimson
+1 16 1 yellow
+17 12 1 fuchsia
+0 1 1 cyan
+12 9 1 teal
+17 5 1 gold
+7 5 1 firebrick

@@ -1,0 +1,12 @@
+curr config
+15 13 1 tan
+6 18 1 crimson
+11 3 1 dimgray
+4 5 1 violet
+12 18 1 darkorange
+goal config
+5 15 1 tan
+9 9 1 crimson
+7 3 1 dimgray
+10 14 1 violet
+17 6 1 darkorange

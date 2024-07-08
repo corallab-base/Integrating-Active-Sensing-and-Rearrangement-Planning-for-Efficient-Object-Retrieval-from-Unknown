@@ -1,0 +1,18 @@
+curr config
+7 14 1 yellow
+17 7 1 violet
+0 5 1 lightcoral
+14 12 1 fuchsia
+18 0 1 tan
+6 2 1 turquoise
+15 18 1 firebrick
+13 1 1 sienna
+goal config
+2 14 1 yellow
+12 17 1 violet
+13 9 1 lightcoral
+5 2 1 fuchsia
+11 4 1 tan
+18 11 1 turquoise
+5 8 1 firebrick
+18 4 1 sienna

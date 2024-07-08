@@ -1,0 +1,12 @@
+curr config
+1 10 1 lightcoral
+3 3 1 crimson
+6 11 1 gold
+10 17 1 blue
+15 18 1 turquoise
+goal config
+0 0 1 lightcoral
+17 13 1 crimson
+17 4 1 gold
+7 7 1 blue
+0 8 1 turquoise

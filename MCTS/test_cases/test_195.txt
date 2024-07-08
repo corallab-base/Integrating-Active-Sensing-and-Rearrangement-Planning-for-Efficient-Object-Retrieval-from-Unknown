@@ -1,0 +1,14 @@
+curr config
+10 9 1 darkorange
+2 5 1 saddlebrown
+14 15 1 firebrick
+7 4 1 yellowgreen
+17 3 1 crimson
+2 11 1 gold
+goal config
+15 9 1 darkorange
+3 3 1 saddlebrown
+9 7 1 firebrick
+7 15 1 yellowgreen
+2 16 1 crimson
+18 4 1 gold

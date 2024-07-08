@@ -1,0 +1,18 @@
+curr config
+3 14 1 violet
+11 14 1 lightcoral
+13 6 1 navy
+5 6 1 darkorange
+17 16 1 beige
+7 0 1 orchid
+18 3 1 tan
+12 1 1 firebrick
+goal config
+8 9 1 violet
+16 11 1 lightcoral
+11 18 1 navy
+4 16 1 darkorange
+11 1 1 beige
+17 0 1 orchid
+4 5 1 tan
+14 6 1 firebrick

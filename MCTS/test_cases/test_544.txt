@@ -1,0 +1,14 @@
+curr config
+1 12 1 beige
+12 18 1 yellowgreen
+17 1 1 crimson
+0 2 1 dimgray
+4 17 1 violet
+6 10 1 gold
+goal config
+12 15 1 beige
+8 11 1 yellowgreen
+11 4 1 crimson
+1 16 1 dimgray
+7 18 1 violet
+13 9 1 gold

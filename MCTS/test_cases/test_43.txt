@@ -1,0 +1,10 @@
+curr config
+6 4 1 lawngreen
+11 14 1 sienna
+17 13 1 firebrick
+17 0 1 beige
+goal config
+2 12 1 lawngreen
+15 0 1 sienna
+4 0 1 firebrick
+10 16 1 beige

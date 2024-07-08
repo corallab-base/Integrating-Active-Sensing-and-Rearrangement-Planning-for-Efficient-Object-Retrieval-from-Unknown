@@ -1,0 +1,10 @@
+curr config
+5 5 1 cyan
+10 7 1 orchid
+0 18 1 fuchsia
+0 12 1 pink
+goal config
+6 14 1 cyan
+0 3 1 orchid
+6 1 1 fuchsia
+17 0 1 pink

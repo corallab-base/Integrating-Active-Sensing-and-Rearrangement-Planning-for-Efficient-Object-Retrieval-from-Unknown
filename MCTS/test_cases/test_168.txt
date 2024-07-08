@@ -1,0 +1,14 @@
+curr config
+11 8 1 pink
+10 16 1 dimgray
+16 6 1 lightcoral
+15 17 1 firebrick
+6 3 1 beige
+3 15 1 tan
+goal config
+0 0 1 pink
+11 15 1 dimgray
+18 3 1 lightcoral
+9 1 1 firebrick
+9 10 1 beige
+4 6 1 tan

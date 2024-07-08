@@ -1,0 +1,12 @@
+curr config
+12 7 1 navy
+0 17 1 orchid
+7 9 1 tan
+18 1 1 darkorange
+8 1 1 fuchsia
+goal config
+1 16 1 navy
+13 9 1 orchid
+4 11 1 tan
+1 1 1 darkorange
+15 16 1 fuchsia

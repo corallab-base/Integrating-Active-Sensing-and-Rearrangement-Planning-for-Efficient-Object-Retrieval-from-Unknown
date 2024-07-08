@@ -1,0 +1,10 @@
+curr config
+4 3 1 lawngreen
+6 11 1 gold
+11 10 1 turquoise
+18 8 1 yellow
+goal config
+17 14 1 lawngreen
+4 18 1 gold
+4 11 1 turquoise
+16 5 1 yellow

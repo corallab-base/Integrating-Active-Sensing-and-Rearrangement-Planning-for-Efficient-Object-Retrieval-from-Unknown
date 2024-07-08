@@ -1,0 +1,10 @@
+curr config
+7 0 1 fuchsia
+0 15 1 sienna
+8 9 1 lawngreen
+16 3 1 blue
+goal config
+1 15 1 fuchsia
+6 11 1 sienna
+14 14 1 lawngreen
+5 4 1 blue

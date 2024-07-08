@@ -1,0 +1,16 @@
+curr config
+6 3 1 firebrick
+13 10 1 yellow
+0 13 1 orchid
+11 0 1 violet
+0 1 1 tan
+3 8 1 cyan
+16 17 1 navy
+goal config
+8 15 1 firebrick
+14 3 1 yellow
+9 9 1 orchid
+2 0 1 violet
+6 4 1 tan
+17 13 1 cyan
+2 13 1 navy

@@ -1,0 +1,12 @@
+curr config
+2 14 1 lightcoral
+11 9 1 lawngreen
+7 4 1 gold
+14 2 1 red
+18 11 1 dodgerblue
+goal config
+16 10 1 lightcoral
+4 7 1 lawngreen
+9 17 1 gold
+14 16 1 red
+1 15 1 dodgerblue

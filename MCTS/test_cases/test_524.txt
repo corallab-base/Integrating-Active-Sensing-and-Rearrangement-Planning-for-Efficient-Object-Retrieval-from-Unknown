@@ -1,0 +1,14 @@
+curr config
+7 4 1 fuchsia
+16 5 1 yellowgreen
+5 13 1 firebrick
+15 12 1 red
+11 0 1 dimgray
+1 3 1 cyan
+goal config
+11 11 1 fuchsia
+5 13 1 yellowgreen
+14 16 1 firebrick
+10 3 1 red
+5 1 1 dimgray
+2 7 1 cyan

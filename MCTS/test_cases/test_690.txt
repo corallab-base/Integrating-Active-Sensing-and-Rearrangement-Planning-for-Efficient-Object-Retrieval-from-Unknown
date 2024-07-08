@@ -1,0 +1,18 @@
+curr config
+16 15 1 dimgray
+12 4 1 navy
+5 4 1 pink
+8 12 1 sienna
+17 7 1 yellow
+11 17 1 saddlebrown
+18 0 1 red
+2 14 1 turquoise
+goal config
+14 13 1 dimgray
+6 14 1 navy
+1 15 1 pink
+16 1 1 sienna
+6 4 1 yellow
+15 6 1 saddlebrown
+2 10 1 red
+13 18 1 turquoise

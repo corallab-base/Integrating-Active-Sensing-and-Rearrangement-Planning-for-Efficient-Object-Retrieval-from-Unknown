@@ -1,0 +1,12 @@
+curr config
+5 1 1 orchid
+10 3 1 yellow
+10 9 1 fuchsia
+1 7 1 dodgerblue
+18 12 1 gold
+goal config
+6 11 1 orchid
+12 9 1 yellow
+5 16 1 fuchsia
+15 4 1 dodgerblue
+3 5 1 gold

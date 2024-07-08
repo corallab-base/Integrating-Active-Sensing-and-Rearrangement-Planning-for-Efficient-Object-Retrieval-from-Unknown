@@ -1,0 +1,20 @@
+curr config
+12 7 1 pink
+14 2 1 blue
+4 17 1 dimgray
+7 10 1 violet
+0 7 1 beige
+18 18 1 dodgerblue
+15 13 1 yellow
+3 2 1 navy
+10 16 1 sienna
+goal config
+2 8 1 pink
+7 10 1 blue
+3 17 1 dimgray
+9 16 1 violet
+14 9 1 beige
+15 4 1 dodgerblue
+15 15 1 yellow
+8 0 1 navy
+1 2 1 sienna

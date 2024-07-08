@@ -1,0 +1,10 @@
+curr config
+12 13 1 beige
+5 10 1 crimson
+4 17 1 lightcoral
+4 0 1 navy
+goal config
+5 4 1 beige
+16 11 1 crimson
+3 17 1 lightcoral
+0 8 1 navy

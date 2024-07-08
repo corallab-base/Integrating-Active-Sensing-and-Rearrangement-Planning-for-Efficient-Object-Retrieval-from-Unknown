@@ -1,0 +1,14 @@
+curr config
+12 1 1 pink
+8 8 1 fuchsia
+4 2 1 blue
+14 18 1 lawngreen
+3 7 1 red
+1 16 1 yellow
+goal config
+0 6 1 pink
+15 14 1 fuchsia
+9 17 1 blue
+11 10 1 lawngreen
+5 7 1 red
+0 17 1 yellow

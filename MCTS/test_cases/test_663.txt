@@ -1,0 +1,18 @@
+curr config
+8 3 1 orchid
+4 10 1 teal
+15 18 1 violet
+14 5 1 yellowgreen
+0 1 1 cyan
+5 16 1 blue
+9 11 1 dimgray
+0 17 1 lightcoral
+goal config
+4 15 1 orchid
+8 10 1 teal
+17 16 1 violet
+18 2 1 yellowgreen
+18 11 1 cyan
+5 4 1 blue
+0 2 1 dimgray
+2 10 1 lightcoral

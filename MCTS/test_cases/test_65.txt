@@ -1,0 +1,10 @@
+curr config
+3 13 1 beige
+12 6 1 palegreen
+10 11 1 dodgerblue
+4 5 1 blue
+goal config
+3 7 1 beige
+16 10 1 palegreen
+2 18 1 dodgerblue
+18 16 1 blue

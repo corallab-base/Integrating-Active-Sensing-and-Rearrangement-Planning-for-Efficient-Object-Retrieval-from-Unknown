@@ -1,0 +1,12 @@
+curr config
+15 0 1 pink
+6 3 1 crimson
+0 18 1 saddlebrown
+17 10 1 lightcoral
+1 0 1 fuchsia
+goal config
+4 4 1 pink
+11 5 1 crimson
+18 14 1 saddlebrown
+10 16 1 lightcoral
+16 0 1 fuchsia

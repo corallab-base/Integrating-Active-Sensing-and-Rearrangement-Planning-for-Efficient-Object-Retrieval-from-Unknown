@@ -1,0 +1,18 @@
+curr config
+5 10 1 saddlebrown
+15 14 1 palegreen
+9 4 1 sienna
+15 4 1 dimgray
+1 15 1 orchid
+0 9 1 dodgerblue
+1 4 1 blue
+11 18 1 teal
+goal config
+8 5 1 saddlebrown
+15 7 1 palegreen
+4 16 1 sienna
+9 15 1 dimgray
+10 10 1 orchid
+1 8 1 dodgerblue
+18 2 1 blue
+16 17 1 teal

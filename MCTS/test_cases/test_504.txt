@@ -1,0 +1,14 @@
+curr config
+2 15 1 dimgray
+17 4 1 navy
+11 4 1 darkorange
+11 17 1 violet
+9 10 1 dodgerblue
+3 5 1 tan
+goal config
+1 18 1 dimgray
+6 17 1 navy
+6 10 1 darkorange
+13 5 1 violet
+4 1 1 dodgerblue
+1 8 1 tan

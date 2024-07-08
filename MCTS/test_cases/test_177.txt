@@ -1,0 +1,14 @@
+curr config
+18 3 1 crimson
+10 14 1 saddlebrown
+1 16 1 fuchsia
+5 3 1 firebrick
+10 5 1 blue
+5 10 1 dimgray
+goal config
+4 14 1 crimson
+13 4 1 saddlebrown
+12 9 1 fuchsia
+17 0 1 firebrick
+2 4 1 blue
+14 17 1 dimgray

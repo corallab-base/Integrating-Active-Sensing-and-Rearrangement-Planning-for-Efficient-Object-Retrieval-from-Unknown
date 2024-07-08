@@ -1,0 +1,10 @@
+curr config
+17 18 1 blue
+14 2 1 firebrick
+11 12 1 lawngreen
+8 3 1 gold
+goal config
+10 3 1 blue
+18 4 1 firebrick
+14 13 1 lawngreen
+4 16 1 gold

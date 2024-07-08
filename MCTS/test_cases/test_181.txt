@@ -1,0 +1,14 @@
+curr config
+11 1 1 beige
+13 17 1 crimson
+1 11 1 gold
+9 12 1 violet
+1 17 1 firebrick
+18 9 1 cyan
+goal config
+5 12 1 beige
+0 9 1 crimson
+13 14 1 gold
+18 10 1 violet
+2 1 1 firebrick
+16 0 1 cyan

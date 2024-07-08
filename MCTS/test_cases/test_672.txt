@@ -1,0 +1,18 @@
+curr config
+10 3 1 dimgray
+1 0 1 palegreen
+14 17 1 darkorange
+4 6 1 orchid
+17 3 1 tan
+8 16 1 violet
+0 18 1 crimson
+0 12 1 sienna
+goal config
+5 3 1 dimgray
+12 10 1 palegreen
+14 18 1 darkorange
+13 2 1 orchid
+5 12 1 tan
+8 18 1 violet
+18 12 1 crimson
+0 16 1 sienna

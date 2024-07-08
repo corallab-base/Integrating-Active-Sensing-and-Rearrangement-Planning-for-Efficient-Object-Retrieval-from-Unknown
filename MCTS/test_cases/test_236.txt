@@ -1,0 +1,14 @@
+curr config
+18 17 1 yellowgreen
+9 8 1 sienna
+0 8 1 cyan
+2 1 1 yellow
+6 14 1 gold
+15 5 1 blue
+goal config
+0 18 1 yellowgreen
+13 10 1 sienna
+8 11 1 cyan
+1 7 1 yellow
+18 12 1 gold
+5 0 1 blue

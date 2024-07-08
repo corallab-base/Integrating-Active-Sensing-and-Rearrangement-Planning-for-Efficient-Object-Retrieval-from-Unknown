@@ -1,0 +1,18 @@
+curr config
+4 18 1 gold
+14 7 1 darkorange
+11 15 1 palegreen
+18 14 1 lightcoral
+4 4 1 sienna
+9 1 1 crimson
+2 12 1 orchid
+8 10 1 dodgerblue
+goal config
+4 0 1 gold
+0 18 1 darkorange
+12 18 1 palegreen
+0 6 1 lightcoral
+5 14 1 sienna
+13 11 1 crimson
+16 2 1 orchid
+18 15 1 dodgerblue

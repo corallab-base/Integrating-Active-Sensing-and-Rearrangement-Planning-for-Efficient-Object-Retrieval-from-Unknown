@@ -1,0 +1,10 @@
+curr config
+6 13 1 lightcoral
+15 11 1 saddlebrown
+14 4 1 orchid
+4 7 1 navy
+goal config
+13 5 1 lightcoral
+7 8 1 saddlebrown
+18 8 1 orchid
+2 13 1 navy

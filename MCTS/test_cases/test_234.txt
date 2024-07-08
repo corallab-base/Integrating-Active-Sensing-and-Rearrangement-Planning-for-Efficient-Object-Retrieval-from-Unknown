@@ -1,0 +1,14 @@
+curr config
+18 11 1 beige
+11 16 1 cyan
+13 9 1 yellowgreen
+14 4 1 pink
+3 9 1 palegreen
+10 0 1 fuchsia
+goal config
+5 13 1 beige
+16 1 1 cyan
+12 16 1 yellowgreen
+5 3 1 pink
+0 17 1 palegreen
+18 15 1 fuchsia

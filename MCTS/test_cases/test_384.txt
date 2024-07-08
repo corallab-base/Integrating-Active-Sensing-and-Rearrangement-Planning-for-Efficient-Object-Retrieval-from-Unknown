@@ -1,0 +1,18 @@
+curr config
+10 15 1 lightcoral
+17 13 1 gold
+10 0 1 yellowgreen
+10 6 1 violet
+3 5 1 orchid
+5 18 1 saddlebrown
+17 5 1 firebrick
+5 10 1 dimgray
+goal config
+1 6 1 lightcoral
+9 13 1 gold
+12 6 1 yellowgreen
+6 5 1 violet
+11 18 1 orchid
+4 0 1 saddlebrown
+2 14 1 firebrick
+17 4 1 dimgray

@@ -1,0 +1,20 @@
+curr config
+12 4 1 firebrick
+11 11 1 pink
+15 16 1 blue
+4 16 1 yellow
+18 9 1 lawngreen
+5 11 1 crimson
+5 1 1 yellowgreen
+0 12 1 darkorange
+9 17 1 tan
+goal config
+11 11 1 firebrick
+18 3 1 pink
+18 13 1 blue
+3 10 1 yellow
+13 1 1 lawngreen
+7 0 1 crimson
+8 16 1 yellowgreen
+2 4 1 darkorange
+10 6 1 tan

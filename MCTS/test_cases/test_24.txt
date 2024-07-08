@@ -1,0 +1,10 @@
+curr config
+10 5 1 yellow
+1 18 1 tan
+4 0 1 red
+18 11 1 navy
+goal config
+5 3 1 yellow
+14 8 1 tan
+9 7 1 red
+3 16 1 navy

@@ -1,0 +1,14 @@
+curr config
+14 0 1 turquoise
+8 1 1 gold
+11 13 1 tan
+17 15 1 fuchsia
+0 12 1 lightcoral
+1 4 1 pink
+goal config
+3 17 1 turquoise
+15 0 1 gold
+7 9 1 tan
+5 4 1 fuchsia
+13 11 1 lightcoral
+17 18 1 pink

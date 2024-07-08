@@ -1,0 +1,10 @@
+curr config
+13 13 1 sienna
+6 1 1 tan
+14 18 1 cyan
+2 17 1 firebrick
+goal config
+1 15 1 sienna
+4 8 1 tan
+17 11 1 cyan
+9 11 1 firebrick

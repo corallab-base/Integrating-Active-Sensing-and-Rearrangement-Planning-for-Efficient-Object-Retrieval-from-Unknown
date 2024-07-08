@@ -1,0 +1,20 @@
+curr config
+15 14 1 red
+6 1 1 orchid
+0 4 1 firebrick
+6 8 1 yellow
+17 2 1 blue
+0 16 1 lawngreen
+5 15 1 dimgray
+17 9 1 gold
+11 6 1 navy
+goal config
+3 3 1 red
+10 4 1 orchid
+6 13 1 firebrick
+12 11 1 yellow
+5 8 1 blue
+12 17 1 lawngreen
+18 16 1 dimgray
+17 2 1 gold
+17 8 1 navy

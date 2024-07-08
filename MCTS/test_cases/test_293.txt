@@ -1,0 +1,16 @@
+curr config
+9 9 1 firebrick
+14 10 1 gold
+15 5 1 yellowgreen
+2 12 1 lawngreen
+11 17 1 sienna
+0 2 1 yellow
+0 18 1 saddlebrown
+goal config
+14 7 1 firebrick
+6 14 1 gold
+0 17 1 yellowgreen
+13 0 1 lawngreen
+9 4 1 sienna
+0 0 1 yellow
+5 9 1 saddlebrown

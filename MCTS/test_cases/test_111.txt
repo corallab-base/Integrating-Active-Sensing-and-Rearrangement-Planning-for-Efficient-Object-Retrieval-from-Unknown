@@ -1,0 +1,12 @@
+curr config
+3 10 1 firebrick
+15 9 1 navy
+8 11 1 fuchsia
+13 18 1 cyan
+17 1 1 yellowgreen
+goal config
+18 12 1 firebrick
+10 7 1 navy
+7 1 1 fuchsia
+5 17 1 cyan
+15 0 1 yellowgreen

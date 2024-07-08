@@ -1,0 +1,12 @@
+curr config
+4 13 1 beige
+10 11 1 yellowgreen
+12 3 1 dimgray
+17 2 1 yellow
+17 12 1 navy
+goal config
+6 2 1 beige
+13 6 1 yellowgreen
+6 16 1 dimgray
+16 13 1 yellow
+6 8 1 navy

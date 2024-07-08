@@ -1,0 +1,18 @@
+curr config
+5 9 1 yellow
+6 14 1 sienna
+0 6 1 turquoise
+18 18 1 firebrick
+13 14 1 dimgray
+17 8 1 fuchsia
+1 15 1 orchid
+11 5 1 lawngreen
+goal config
+11 7 1 yellow
+4 11 1 sienna
+0 5 1 turquoise
+2 16 1 firebrick
+13 12 1 dimgray
+11 0 1 fuchsia
+18 17 1 orchid
+12 17 1 lawngreen

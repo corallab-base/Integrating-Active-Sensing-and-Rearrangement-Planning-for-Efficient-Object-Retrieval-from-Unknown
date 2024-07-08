@@ -1,0 +1,10 @@
+curr config
+2 10 1 cyan
+9 2 1 dimgray
+18 1 1 navy
+8 9 1 orchid
+goal config
+3 18 1 cyan
+8 10 1 dimgray
+8 1 1 navy
+2 13 1 orchid

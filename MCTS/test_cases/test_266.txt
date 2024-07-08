@@ -1,0 +1,16 @@
+curr config
+2 11 1 fuchsia
+2 5 1 cyan
+12 4 1 teal
+9 17 1 lightcoral
+8 11 1 sienna
+14 15 1 navy
+15 9 1 turquoise
+goal config
+3 6 1 fuchsia
+16 17 1 cyan
+16 11 1 teal
+11 5 1 lightcoral
+18 5 1 sienna
+10 15 1 navy
+15 0 1 turquoise

@@ -1,0 +1,12 @@
+curr config
+11 16 1 crimson
+8 7 1 tan
+17 0 1 navy
+2 11 1 firebrick
+16 10 1 yellowgreen
+goal config
+9 0 1 crimson
+0 2 1 tan
+11 18 1 navy
+1 16 1 firebrick
+7 8 1 yellowgreen

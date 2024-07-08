@@ -1,0 +1,12 @@
+curr config
+4 10 1 pink
+18 14 1 fuchsia
+10 16 1 beige
+13 9 1 dimgray
+5 5 1 gold
+goal config
+6 10 1 pink
+17 4 1 fuchsia
+2 18 1 beige
+13 12 1 dimgray
+0 5 1 gold

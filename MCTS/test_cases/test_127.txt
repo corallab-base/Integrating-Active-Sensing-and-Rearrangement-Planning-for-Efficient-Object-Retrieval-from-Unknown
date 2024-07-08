@@ -1,0 +1,12 @@
+curr config
+7 13 1 gold
+16 10 1 teal
+3 4 1 darkorange
+15 2 1 fuchsia
+0 15 1 crimson
+goal config
+1 3 1 gold
+13 17 1 teal
+7 3 1 darkorange
+4 18 1 fuchsia
+13 2 1 crimson

@@ -1,0 +1,14 @@
+curr config
+13 14 1 sienna
+1 2 1 fuchsia
+14 6 1 violet
+5 16 1 crimson
+18 1 1 saddlebrown
+11 0 1 turquoise
+goal config
+0 10 1 sienna
+7 3 1 fuchsia
+2 0 1 violet
+16 14 1 crimson
+9 16 1 saddlebrown
+18 0 1 turquoise

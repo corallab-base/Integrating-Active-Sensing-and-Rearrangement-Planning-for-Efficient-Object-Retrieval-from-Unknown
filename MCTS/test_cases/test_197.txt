@@ -1,0 +1,14 @@
+curr config
+0 1 1 turquoise
+17 2 1 violet
+16 14 1 orchid
+4 7 1 yellow
+4 17 1 saddlebrown
+6 12 1 firebrick
+goal config
+13 5 1 turquoise
+13 14 1 violet
+6 11 1 orchid
+7 18 1 yellow
+18 18 1 saddlebrown
+7 1 1 firebrick

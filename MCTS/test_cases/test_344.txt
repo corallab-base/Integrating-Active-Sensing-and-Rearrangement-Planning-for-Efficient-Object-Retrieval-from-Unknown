@@ -1,0 +1,18 @@
+curr config
+8 18 1 pink
+15 3 1 dimgray
+14 18 1 firebrick
+6 11 1 cyan
+10 6 1 yellow
+1 12 1 tan
+5 1 1 sienna
+15 9 1 darkorange
+goal config
+1 10 1 pink
+9 6 1 dimgray
+5 16 1 firebrick
+10 13 1 cyan
+16 15 1 yellow
+18 8 1 tan
+3 2 1 sienna
+17 2 1 darkorange

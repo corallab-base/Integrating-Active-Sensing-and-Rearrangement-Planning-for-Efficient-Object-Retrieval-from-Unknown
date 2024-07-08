@@ -1,0 +1,20 @@
+curr config
+10 7 1 lawngreen
+17 17 1 saddlebrown
+12 18 1 dimgray
+8 13 1 dodgerblue
+4 18 1 pink
+16 3 1 red
+2 2 1 sienna
+5 8 1 fuchsia
+0 9 1 blue
+goal config
+5 15 1 lawngreen
+14 2 1 saddlebrown
+14 18 1 dimgray
+6 0 1 dodgerblue
+5 8 1 pink
+12 10 1 red
+18 8 1 sienna
+0 7 1 fuchsia
+0 16 1 blue

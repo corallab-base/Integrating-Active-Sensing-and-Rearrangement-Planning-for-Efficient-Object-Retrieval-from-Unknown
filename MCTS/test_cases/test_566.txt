@@ -1,0 +1,16 @@
+curr config
+4 1 1 violet
+12 15 1 palegreen
+14 5 1 cyan
+5 18 1 firebrick
+5 7 1 yellowgreen
+0 5 1 gold
+18 10 1 crimson
+goal config
+8 8 1 violet
+13 10 1 palegreen
+12 17 1 cyan
+18 12 1 firebrick
+4 2 1 yellowgreen
+9 1 1 gold
+16 1 1 crimson

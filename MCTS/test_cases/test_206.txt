@@ -1,0 +1,14 @@
+curr config
+5 17 1 violet
+14 7 1 yellow
+1 6 1 pink
+5 2 1 teal
+6 7 1 lightcoral
+17 0 1 beige
+goal config
+16 1 1 violet
+7 11 1 yellow
+15 18 1 pink
+1 2 1 teal
+11 5 1 lightcoral
+2 8 1 beige

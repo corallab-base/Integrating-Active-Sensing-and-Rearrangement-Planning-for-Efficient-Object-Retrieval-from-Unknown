@@ -1,0 +1,12 @@
+curr config
+13 18 1 navy
+6 2 1 sienna
+7 18 1 crimson
+4 8 1 lawngreen
+0 12 1 teal
+goal config
+14 16 1 navy
+13 2 1 sienna
+9 17 1 crimson
+4 10 1 lawngreen
+17 9 1 teal

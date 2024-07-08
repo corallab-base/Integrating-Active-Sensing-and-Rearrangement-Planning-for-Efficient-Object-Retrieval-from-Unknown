@@ -1,0 +1,16 @@
+curr config
+14 18 1 turquoise
+16 9 1 cyan
+3 11 1 pink
+12 4 1 lawngreen
+7 7 1 violet
+9 16 1 sienna
+3 1 1 gold
+goal config
+5 7 1 turquoise
+16 8 1 cyan
+4 12 1 pink
+14 17 1 lawngreen
+9 1 1 violet
+0 5 1 sienna
+10 13 1 gold

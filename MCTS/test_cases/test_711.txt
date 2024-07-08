@@ -1,0 +1,18 @@
+curr config
+15 16 1 tan
+1 14 1 darkorange
+17 2 1 violet
+8 13 1 dodgerblue
+8 5 1 teal
+2 6 1 lawngreen
+4 1 1 orchid
+10 18 1 blue
+goal config
+16 6 1 tan
+10 11 1 darkorange
+15 0 1 violet
+7 18 1 dodgerblue
+10 2 1 teal
+2 1 1 lawngreen
+15 12 1 orchid
+1 6 1 blue

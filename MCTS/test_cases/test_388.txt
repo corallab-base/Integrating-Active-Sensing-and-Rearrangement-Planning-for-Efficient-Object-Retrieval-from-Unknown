@@ -1,0 +1,18 @@
+curr config
+5 12 1 palegreen
+18 18 1 yellowgreen
+10 16 1 pink
+3 5 1 fuchsia
+14 2 1 orchid
+11 9 1 teal
+1 0 1 turquoise
+0 17 1 firebrick
+goal config
+14 11 1 palegreen
+7 6 1 yellowgreen
+17 2 1 pink
+1 4 1 fuchsia
+8 12 1 orchid
+15 18 1 teal
+18 7 1 turquoise
+0 12 1 firebrick

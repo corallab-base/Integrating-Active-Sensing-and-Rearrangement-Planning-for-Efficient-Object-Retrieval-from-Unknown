@@ -1,0 +1,12 @@
+curr config
+7 3 1 yellowgreen
+6 17 1 gold
+17 4 1 saddlebrown
+6 8 1 tan
+16 17 1 yellow
+goal config
+6 10 1 yellowgreen
+13 0 1 gold
+16 7 1 saddlebrown
+6 4 1 tan
+16 16 1 yellow

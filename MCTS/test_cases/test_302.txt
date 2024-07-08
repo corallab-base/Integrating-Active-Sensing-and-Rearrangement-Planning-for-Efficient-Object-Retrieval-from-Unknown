@@ -1,0 +1,16 @@
+curr config
+2 4 1 blue
+15 9 1 orchid
+2 16 1 firebrick
+18 1 1 dimgray
+11 16 1 beige
+6 11 1 turquoise
+1 9 1 red
+goal config
+17 1 1 blue
+9 1 1 orchid
+15 8 1 firebrick
+2 17 1 dimgray
+6 6 1 beige
+2 2 1 turquoise
+11 16 1 red

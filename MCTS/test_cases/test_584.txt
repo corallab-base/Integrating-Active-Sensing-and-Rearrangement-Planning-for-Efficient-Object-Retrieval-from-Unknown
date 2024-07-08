@@ -1,0 +1,16 @@
+curr config
+6 14 1 orchid
+13 9 1 crimson
+13 17 1 lawngreen
+5 3 1 tan
+11 3 1 palegreen
+18 14 1 teal
+0 2 1 sienna
+goal config
+9 13 1 orchid
+16 2 1 crimson
+4 17 1 lawngreen
+10 5 1 tan
+14 11 1 palegreen
+6 0 1 teal
+1 5 1 sienna

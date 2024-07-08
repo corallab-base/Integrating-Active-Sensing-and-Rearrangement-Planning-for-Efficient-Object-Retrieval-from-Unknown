@@ -1,0 +1,14 @@
+curr config
+13 16 1 lightcoral
+5 11 1 darkorange
+9 1 1 sienna
+18 1 1 dimgray
+12 10 1 violet
+16 6 1 cyan
+goal config
+1 2 1 lightcoral
+15 8 1 darkorange
+4 8 1 sienna
+7 13 1 dimgray
+6 18 1 violet
+16 15 1 cyan

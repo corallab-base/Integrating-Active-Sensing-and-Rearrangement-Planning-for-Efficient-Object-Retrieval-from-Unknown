@@ -1,0 +1,12 @@
+curr config
+13 2 1 lightcoral
+3 7 1 navy
+14 10 1 gold
+8 10 1 dodgerblue
+2 12 1 tan
+goal config
+17 17 1 lightcoral
+15 1 1 navy
+5 14 1 gold
+11 11 1 dodgerblue
+7 0 1 tan

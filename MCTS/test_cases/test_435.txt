@@ -1,0 +1,12 @@
+curr config
+7 6 1 blue
+15 0 1 darkorange
+3 11 1 lawngreen
+17 10 1 tan
+4 18 1 saddlebrown
+goal config
+1 5 1 blue
+11 4 1 darkorange
+7 16 1 lawngreen
+0 15 1 tan
+12 12 1 saddlebrown

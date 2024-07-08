@@ -1,0 +1,16 @@
+curr config
+12 18 1 lightcoral
+17 4 1 crimson
+10 9 1 violet
+8 1 1 gold
+3 4 1 tan
+2 18 1 beige
+17 14 1 orchid
+goal config
+13 3 1 lightcoral
+17 9 1 crimson
+15 15 1 violet
+4 4 1 gold
+18 4 1 tan
+10 10 1 beige
+5 13 1 orchid

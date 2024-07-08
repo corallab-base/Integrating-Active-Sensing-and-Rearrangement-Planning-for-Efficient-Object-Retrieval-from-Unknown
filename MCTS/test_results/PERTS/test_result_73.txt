@@ -1,0 +1,5 @@
+number of objects : 4
+time comsumption : 0.010746240615844727
+number of steps : 9
+total length travelled : 165.8849034852373
+total length displacement : 53.33228045695624

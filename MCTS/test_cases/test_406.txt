@@ -1,0 +1,12 @@
+curr config
+8 3 1 cyan
+1 16 1 fuchsia
+11 10 1 teal
+17 17 1 gold
+12 16 1 palegreen
+goal config
+18 14 1 cyan
+12 10 1 fuchsia
+15 1 1 teal
+7 4 1 gold
+8 15 1 palegreen

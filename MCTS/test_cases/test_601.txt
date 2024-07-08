@@ -1,0 +1,16 @@
+curr config
+10 4 1 saddlebrown
+16 10 1 lightcoral
+8 16 1 crimson
+14 16 1 gold
+1 9 1 sienna
+18 0 1 cyan
+0 15 1 beige
+goal config
+18 11 1 saddlebrown
+3 16 1 lightcoral
+3 8 1 crimson
+15 17 1 gold
+12 8 1 sienna
+6 0 1 cyan
+8 12 1 beige

@@ -1,0 +1,16 @@
+curr config
+0 4 1 turquoise
+15 7 1 orchid
+14 16 1 lightcoral
+9 12 1 sienna
+4 11 1 dodgerblue
+17 2 1 violet
+12 0 1 tan
+goal config
+4 14 1 turquoise
+10 10 1 orchid
+0 3 1 lightcoral
+12 3 1 sienna
+18 18 1 dodgerblue
+12 17 1 violet
+17 9 1 tan

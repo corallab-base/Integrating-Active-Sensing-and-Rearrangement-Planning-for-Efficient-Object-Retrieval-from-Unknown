@@ -1,0 +1,14 @@
+curr config
+1 15 1 yellow
+14 5 1 saddlebrown
+3 10 1 blue
+4 5 1 lawngreen
+15 10 1 pink
+10 0 1 cyan
+goal config
+8 17 1 yellow
+4 1 1 saddlebrown
+9 3 1 blue
+18 12 1 lawngreen
+3 8 1 pink
+9 10 1 cyan

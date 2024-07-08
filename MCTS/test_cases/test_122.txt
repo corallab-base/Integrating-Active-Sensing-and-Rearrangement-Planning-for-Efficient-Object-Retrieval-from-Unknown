@@ -1,0 +1,12 @@
+curr config
+10 15 1 cyan
+11 1 1 beige
+3 1 1 sienna
+17 5 1 dimgray
+18 14 1 red
+goal config
+4 15 1 cyan
+15 9 1 beige
+11 14 1 sienna
+18 0 1 dimgray
+13 4 1 red

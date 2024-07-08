@@ -1,0 +1,18 @@
+curr config
+17 5 1 navy
+12 10 1 fuchsia
+3 17 1 tan
+7 3 1 cyan
+15 0 1 saddlebrown
+16 15 1 orchid
+5 8 1 blue
+11 17 1 gold
+goal config
+5 6 1 navy
+10 7 1 fuchsia
+14 14 1 tan
+16 5 1 cyan
+7 0 1 saddlebrown
+7 14 1 orchid
+1 2 1 blue
+0 16 1 gold

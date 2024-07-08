@@ -1,0 +1,10 @@
+curr config
+1 16 1 orchid
+10 14 1 saddlebrown
+10 8 1 crimson
+2 7 1 red
+goal config
+14 2 1 orchid
+1 18 1 saddlebrown
+9 13 1 crimson
+3 7 1 red

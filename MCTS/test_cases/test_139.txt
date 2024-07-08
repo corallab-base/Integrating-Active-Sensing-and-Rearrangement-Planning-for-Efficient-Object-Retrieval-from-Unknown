@@ -1,0 +1,12 @@
+curr config
+5 1 1 teal
+11 2 1 firebrick
+14 10 1 yellow
+3 16 1 sienna
+0 11 1 blue
+goal config
+13 17 1 teal
+2 3 1 firebrick
+2 12 1 yellow
+12 6 1 sienna
+17 2 1 blue

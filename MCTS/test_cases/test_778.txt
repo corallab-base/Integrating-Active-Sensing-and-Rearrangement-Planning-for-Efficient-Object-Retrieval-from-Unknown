@@ -1,0 +1,20 @@
+curr config
+17 16 1 violet
+16 9 1 darkorange
+4 15 1 lawngreen
+4 1 1 teal
+12 13 1 dimgray
+1 9 1 pink
+12 4 1 turquoise
+17 3 1 cyan
+8 9 1 crimson
+goal config
+18 17 1 violet
+5 0 1 darkorange
+12 18 1 lawngreen
+10 4 1 teal
+8 10 1 dimgray
+7 17 1 pink
+2 15 1 turquoise
+13 12 1 cyan
+0 2 1 crimson

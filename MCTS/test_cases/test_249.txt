@@ -1,0 +1,16 @@
+curr config
+7 18 1 lightcoral
+0 13 1 yellow
+6 0 1 cyan
+17 0 1 tan
+3 6 1 saddlebrown
+7 12 1 palegreen
+12 10 1 pink
+goal config
+12 11 1 lightcoral
+14 2 1 yellow
+10 6 1 cyan
+3 11 1 tan
+10 17 1 saddlebrown
+9 1 1 palegreen
+2 6 1 pink

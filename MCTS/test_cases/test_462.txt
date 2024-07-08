@@ -1,0 +1,12 @@
+curr config
+1 8 1 yellow
+12 16 1 gold
+5 1 1 saddlebrown
+9 11 1 orchid
+17 8 1 violet
+goal config
+10 18 1 yellow
+13 3 1 gold
+16 16 1 saddlebrown
+1 9 1 orchid
+10 12 1 violet

@@ -1,0 +1,18 @@
+curr config
+15 5 1 teal
+10 8 1 violet
+18 10 1 lawngreen
+9 13 1 yellow
+15 16 1 palegreen
+2 16 1 saddlebrown
+1 0 1 sienna
+10 1 1 darkorange
+goal config
+2 15 1 teal
+7 3 1 violet
+17 11 1 lawngreen
+6 9 1 yellow
+1 4 1 palegreen
+15 3 1 saddlebrown
+0 10 1 sienna
+16 17 1 darkorange

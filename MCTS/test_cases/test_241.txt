@@ -1,0 +1,16 @@
+curr config
+6 14 1 cyan
+7 3 1 dodgerblue
+14 9 1 red
+12 1 1 pink
+13 14 1 blue
+7 9 1 yellow
+1 17 1 lightcoral
+goal config
+6 1 1 cyan
+18 6 1 dodgerblue
+4 8 1 red
+13 9 1 pink
+12 4 1 blue
+10 14 1 yellow
+2 16 1 lightcoral

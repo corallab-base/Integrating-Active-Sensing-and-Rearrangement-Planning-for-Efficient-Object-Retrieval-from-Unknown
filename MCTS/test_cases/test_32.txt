@@ -1,0 +1,10 @@
+curr config
+3 14 1 lightcoral
+11 13 1 fuchsia
+5 0 1 red
+5 9 1 gold
+goal config
+14 0 1 lightcoral
+15 17 1 fuchsia
+5 1 1 red
+5 16 1 gold

@@ -1,0 +1,20 @@
+curr config
+18 10 1 orchid
+8 16 1 lawngreen
+9 11 1 yellowgreen
+12 3 1 saddlebrown
+1 17 1 firebrick
+7 1 1 palegreen
+2 11 1 tan
+18 17 1 dodgerblue
+1 2 1 dimgray
+goal config
+3 11 1 orchid
+15 11 1 lawngreen
+9 18 1 yellowgreen
+6 6 1 saddlebrown
+17 0 1 firebrick
+10 10 1 palegreen
+9 1 1 tan
+16 17 1 dodgerblue
+15 5 1 dimgray

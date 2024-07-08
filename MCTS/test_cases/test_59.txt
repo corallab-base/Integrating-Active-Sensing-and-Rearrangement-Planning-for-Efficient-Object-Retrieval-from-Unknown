@@ -1,0 +1,10 @@
+curr config
+13 0 1 lawngreen
+10 7 1 teal
+15 11 1 darkorange
+11 16 1 firebrick
+goal config
+12 10 1 lawngreen
+5 1 1 teal
+5 15 1 darkorange
+18 4 1 firebrick

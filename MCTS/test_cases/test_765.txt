@@ -1,0 +1,20 @@
+curr config
+0 4 1 dodgerblue
+7 8 1 palegreen
+5 1 1 lightcoral
+9 16 1 fuchsia
+15 5 1 navy
+4 17 1 blue
+13 0 1 beige
+15 11 1 firebrick
+0 11 1 red
+goal config
+1 4 1 dodgerblue
+12 12 1 palegreen
+9 5 1 lightcoral
+15 6 1 fuchsia
+3 17 1 navy
+4 10 1 blue
+16 18 1 beige
+8 18 1 firebrick
+17 1 1 red

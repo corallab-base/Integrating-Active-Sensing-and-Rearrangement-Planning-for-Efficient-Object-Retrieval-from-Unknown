@@ -1,0 +1,16 @@
+curr config
+5 12 1 teal
+12 15 1 darkorange
+9 5 1 dimgray
+16 1 1 cyan
+18 12 1 yellowgreen
+1 1 1 navy
+6 17 1 saddlebrown
+goal config
+1 17 1 teal
+12 5 1 darkorange
+2 1 1 dimgray
+10 14 1 cyan
+0 12 1 yellowgreen
+16 0 1 navy
+18 8 1 saddlebrown

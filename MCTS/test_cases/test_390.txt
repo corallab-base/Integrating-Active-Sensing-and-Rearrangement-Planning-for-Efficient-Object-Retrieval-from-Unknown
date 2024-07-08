@@ -1,0 +1,18 @@
+curr config
+18 8 1 orchid
+15 2 1 crimson
+8 1 1 pink
+10 7 1 cyan
+0 15 1 gold
+13 16 1 teal
+0 7 1 palegreen
+6 17 1 red
+goal config
+15 6 1 orchid
+14 1 1 crimson
+13 12 1 pink
+7 6 1 cyan
+9 18 1 gold
+1 18 1 teal
+0 2 1 palegreen
+7 13 1 red

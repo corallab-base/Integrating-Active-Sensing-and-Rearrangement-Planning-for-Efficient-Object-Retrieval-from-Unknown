@@ -1,0 +1,18 @@
+curr config
+17 16 1 tan
+11 6 1 pink
+5 0 1 red
+9 13 1 lawngreen
+1 9 1 saddlebrown
+0 4 1 blue
+14 11 1 cyan
+15 2 1 navy
+goal config
+6 17 1 tan
+16 12 1 pink
+2 6 1 red
+9 2 1 lawngreen
+16 5 1 saddlebrown
+9 8 1 blue
+11 14 1 cyan
+2 13 1 navy

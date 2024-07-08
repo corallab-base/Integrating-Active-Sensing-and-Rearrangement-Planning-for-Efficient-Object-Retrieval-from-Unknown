@@ -1,0 +1,16 @@
+curr config
+7 10 1 palegreen
+13 7 1 yellow
+1 10 1 pink
+16 16 1 turquoise
+6 18 1 beige
+18 5 1 lightcoral
+7 1 1 dimgray
+goal config
+0 7 1 palegreen
+2 0 1 yellow
+10 3 1 pink
+17 6 1 turquoise
+17 15 1 beige
+9 15 1 lightcoral
+3 13 1 dimgray

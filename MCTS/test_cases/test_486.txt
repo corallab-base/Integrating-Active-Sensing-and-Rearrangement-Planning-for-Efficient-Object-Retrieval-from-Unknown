@@ -1,0 +1,14 @@
+curr config
+5 1 1 lawngreen
+1 9 1 gold
+18 11 1 sienna
+16 18 1 violet
+12 7 1 teal
+15 2 1 navy
+goal config
+4 12 1 lawngreen
+13 14 1 gold
+8 18 1 sienna
+3 4 1 violet
+15 4 1 teal
+8 2 1 navy

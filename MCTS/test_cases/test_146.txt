@@ -1,0 +1,12 @@
+curr config
+16 4 1 fuchsia
+2 8 1 gold
+9 15 1 tan
+4 18 1 cyan
+12 8 1 pink
+goal config
+13 16 1 fuchsia
+1 10 1 gold
+4 2 1 tan
+18 10 1 cyan
+14 4 1 pink

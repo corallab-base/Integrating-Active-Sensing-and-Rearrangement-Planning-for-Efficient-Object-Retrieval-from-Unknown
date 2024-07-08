@@ -1,0 +1,16 @@
+curr config
+18 14 1 violet
+4 18 1 tan
+12 2 1 navy
+8 7 1 beige
+13 10 1 turquoise
+4 0 1 yellow
+3 13 1 lawngreen
+goal config
+18 4 1 violet
+2 2 1 tan
+14 17 1 navy
+13 0 1 beige
+18 12 1 turquoise
+8 3 1 yellow
+9 15 1 lawngreen

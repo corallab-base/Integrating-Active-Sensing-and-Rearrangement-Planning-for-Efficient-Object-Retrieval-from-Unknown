@@ -1,0 +1,16 @@
+curr config
+8 1 1 dodgerblue
+16 13 1 sienna
+2 9 1 red
+4 17 1 cyan
+7 12 1 dimgray
+13 0 1 palegreen
+15 8 1 lawngreen
+goal config
+15 6 1 dodgerblue
+5 7 1 sienna
+7 15 1 red
+17 0 1 cyan
+0 6 1 dimgray
+14 12 1 palegreen
+1 11 1 lawngreen

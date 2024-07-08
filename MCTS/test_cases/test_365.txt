@@ -1,0 +1,18 @@
+curr config
+3 2 1 gold
+13 2 1 fuchsia
+18 0 1 palegreen
+13 13 1 blue
+12 7 1 violet
+18 15 1 teal
+1 16 1 saddlebrown
+5 10 1 sienna
+goal config
+5 10 1 gold
+18 12 1 fuchsia
+13 2 1 palegreen
+9 14 1 blue
+0 17 1 violet
+18 5 1 teal
+11 8 1 saddlebrown
+6 5 1 sienna

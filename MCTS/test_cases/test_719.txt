@@ -1,0 +1,18 @@
+curr config
+3 7 1 cyan
+9 16 1 navy
+13 6 1 teal
+0 1 1 firebrick
+15 11 1 saddlebrown
+0 18 1 orchid
+1 12 1 yellow
+18 16 1 sienna
+goal config
+18 10 1 cyan
+10 12 1 navy
+0 16 1 teal
+11 3 1 firebrick
+3 3 1 saddlebrown
+14 17 1 orchid
+1 10 1 yellow
+17 5 1 sienna

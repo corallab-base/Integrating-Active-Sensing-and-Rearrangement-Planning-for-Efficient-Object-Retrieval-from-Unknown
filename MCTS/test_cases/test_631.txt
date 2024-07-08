@@ -1,0 +1,16 @@
+curr config
+14 13 1 palegreen
+13 2 1 pink
+9 17 1 lightcoral
+6 2 1 darkorange
+16 18 1 firebrick
+4 18 1 red
+16 8 1 gold
+goal config
+13 5 1 palegreen
+4 12 1 pink
+12 12 1 lightcoral
+7 6 1 darkorange
+18 18 1 firebrick
+11 18 1 red
+5 17 1 gold

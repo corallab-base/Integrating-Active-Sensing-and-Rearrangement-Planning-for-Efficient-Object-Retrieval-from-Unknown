@@ -1,0 +1,20 @@
+curr config
+3 2 1 yellow
+4 9 1 sienna
+16 3 1 orchid
+9 2 1 violet
+8 18 1 teal
+15 10 1 palegreen
+9 13 1 tan
+2 14 1 cyan
+16 16 1 pink
+goal config
+3 12 1 yellow
+17 2 1 sienna
+5 5 1 orchid
+6 18 1 violet
+14 10 1 teal
+10 0 1 palegreen
+11 15 1 tan
+8 10 1 cyan
+11 5 1 pink

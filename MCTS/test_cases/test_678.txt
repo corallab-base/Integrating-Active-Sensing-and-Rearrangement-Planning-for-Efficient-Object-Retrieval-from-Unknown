@@ -1,0 +1,18 @@
+curr config
+3 7 1 violet
+10 14 1 palegreen
+11 2 1 pink
+16 7 1 turquoise
+15 18 1 orchid
+2 16 1 lawngreen
+4 1 1 cyan
+16 0 1 tan
+goal config
+8 0 1 violet
+15 0 1 palegreen
+15 16 1 pink
+3 3 1 turquoise
+14 8 1 orchid
+1 18 1 lawngreen
+3 12 1 cyan
+8 13 1 tan

@@ -1,0 +1,18 @@
+curr config
+2 15 1 crimson
+12 13 1 dodgerblue
+12 5 1 gold
+7 14 1 teal
+18 9 1 pink
+5 2 1 darkorange
+17 15 1 navy
+7 7 1 firebrick
+goal config
+10 14 1 crimson
+6 0 1 dodgerblue
+17 14 1 gold
+5 8 1 teal
+12 8 1 pink
+17 5 1 darkorange
+0 13 1 navy
+1 4 1 firebrick

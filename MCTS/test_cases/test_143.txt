@@ -1,0 +1,12 @@
+curr config
+17 1 1 red
+18 16 1 saddlebrown
+2 15 1 fuchsia
+6 3 1 dodgerblue
+16 6 1 lightcoral
+goal config
+4 5 1 red
+17 17 1 saddlebrown
+14 5 1 fuchsia
+1 18 1 dodgerblue
+17 0 1 lightcoral

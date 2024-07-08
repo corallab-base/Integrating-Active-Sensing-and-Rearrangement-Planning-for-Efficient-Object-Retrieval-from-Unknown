@@ -1,0 +1,10 @@
+curr config
+10 9 1 crimson
+6 1 1 teal
+18 5 1 dimgray
+12 2 1 dodgerblue
+goal config
+9 15 1 crimson
+12 10 1 teal
+2 15 1 dimgray
+11 2 1 dodgerblue

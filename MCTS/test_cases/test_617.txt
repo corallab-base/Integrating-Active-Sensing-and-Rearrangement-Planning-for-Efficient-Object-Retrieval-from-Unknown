@@ -1,0 +1,16 @@
+curr config
+3 10 1 crimson
+11 1 1 gold
+3 16 1 teal
+8 18 1 violet
+16 11 1 saddlebrown
+8 11 1 turquoise
+5 5 1 fuchsia
+goal config
+18 0 1 crimson
+10 13 1 gold
+2 16 1 teal
+7 2 1 violet
+13 3 1 saddlebrown
+16 9 1 turquoise
+9 7 1 fuchsia

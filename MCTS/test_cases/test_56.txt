@@ -1,0 +1,10 @@
+curr config
+10 8 1 darkorange
+12 17 1 gold
+0 4 1 dimgray
+17 8 1 crimson
+goal config
+12 11 1 darkorange
+9 6 1 gold
+12 1 1 dimgray
+11 16 1 crimson

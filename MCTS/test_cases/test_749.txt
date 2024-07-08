@@ -1,0 +1,20 @@
+curr config
+11 7 1 darkorange
+7 18 1 cyan
+12 16 1 lightcoral
+0 7 1 sienna
+2 14 1 fuchsia
+16 2 1 saddlebrown
+7 0 1 pink
+17 8 1 firebrick
+18 15 1 dodgerblue
+goal config
+13 6 1 darkorange
+1 17 1 cyan
+6 1 1 lightcoral
+18 4 1 sienna
+0 11 1 fuchsia
+10 11 1 saddlebrown
+17 12 1 pink
+2 5 1 firebrick
+16 18 1 dodgerblue

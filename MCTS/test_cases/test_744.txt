@@ -1,0 +1,20 @@
+curr config
+8 1 1 blue
+3 7 1 firebrick
+12 8 1 red
+16 15 1 crimson
+1 13 1 lightcoral
+11 18 1 gold
+0 2 1 violet
+18 1 1 yellow
+5 17 1 pink
+goal config
+10 3 1 blue
+5 1 1 firebrick
+5 9 1 red
+2 16 1 crimson
+12 11 1 lightcoral
+17 5 1 gold
+12 17 1 violet
+18 18 1 yellow
+18 11 1 pink

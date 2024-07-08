@@ -1,0 +1,18 @@
+curr config
+8 1 1 yellowgreen
+16 9 1 firebrick
+0 3 1 tan
+0 10 1 sienna
+12 18 1 teal
+11 10 1 red
+13 3 1 fuchsia
+7 14 1 orchid
+goal config
+12 8 1 yellowgreen
+5 1 1 firebrick
+7 11 1 tan
+18 5 1 sienna
+12 1 1 teal
+18 15 1 red
+12 17 1 fuchsia
+0 17 1 orchid

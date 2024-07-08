@@ -1,0 +1,14 @@
+curr config
+13 12 1 blue
+2 4 1 gold
+6 8 1 navy
+18 13 1 firebrick
+1 14 1 crimson
+12 18 1 sienna
+goal config
+0 7 1 blue
+1 17 1 gold
+10 13 1 navy
+14 6 1 firebrick
+18 12 1 crimson
+9 18 1 sienna

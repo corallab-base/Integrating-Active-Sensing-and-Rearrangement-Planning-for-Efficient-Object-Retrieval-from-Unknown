@@ -1,0 +1,18 @@
+curr config
+3 5 1 blue
+10 12 1 firebrick
+3 16 1 violet
+11 4 1 teal
+18 9 1 lawngreen
+1 0 1 crimson
+8 17 1 cyan
+17 1 1 orchid
+goal config
+10 9 1 blue
+6 4 1 firebrick
+10 15 1 violet
+16 2 1 teal
+2 12 1 lawngreen
+18 9 1 crimson
+0 18 1 cyan
+1 2 1 orchid

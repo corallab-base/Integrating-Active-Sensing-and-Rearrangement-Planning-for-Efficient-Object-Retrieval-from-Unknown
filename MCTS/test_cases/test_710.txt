@@ -1,0 +1,18 @@
+curr config
+7 11 1 turquoise
+17 7 1 sienna
+7 1 1 gold
+15 12 1 violet
+7 18 1 firebrick
+2 2 1 saddlebrown
+1 15 1 fuchsia
+18 18 1 dodgerblue
+goal config
+3 8 1 turquoise
+7 18 1 sienna
+16 5 1 gold
+6 3 1 violet
+8 10 1 firebrick
+16 11 1 saddlebrown
+3 14 1 fuchsia
+13 17 1 dodgerblue

@@ -1,0 +1,16 @@
+curr config
+14 3 1 firebrick
+4 10 1 dodgerblue
+1 16 1 yellow
+9 1 1 fuchsia
+13 8 1 sienna
+13 14 1 gold
+0 1 1 crimson
+goal config
+11 10 1 firebrick
+18 7 1 dodgerblue
+8 3 1 yellow
+10 16 1 fuchsia
+2 12 1 sienna
+3 5 1 gold
+2 18 1 crimson

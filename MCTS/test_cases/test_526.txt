@@ -1,0 +1,14 @@
+curr config
+15 16 1 dimgray
+3 12 1 beige
+10 3 1 cyan
+13 11 1 teal
+8 9 1 saddlebrown
+8 18 1 dodgerblue
+goal config
+10 11 1 dimgray
+11 3 1 beige
+0 15 1 cyan
+16 4 1 teal
+4 4 1 saddlebrown
+9 16 1 dodgerblue

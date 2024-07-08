@@ -1,0 +1,16 @@
+curr config
+4 4 1 crimson
+12 0 1 gold
+7 14 1 dodgerblue
+1 18 1 tan
+16 10 1 turquoise
+0 8 1 yellowgreen
+12 6 1 cyan
+goal config
+16 7 1 crimson
+3 16 1 gold
+13 18 1 dodgerblue
+11 3 1 tan
+11 13 1 turquoise
+6 8 1 yellowgreen
+18 12 1 cyan

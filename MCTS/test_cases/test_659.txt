@@ -1,0 +1,18 @@
+curr config
+17 5 1 firebrick
+3 17 1 crimson
+14 18 1 cyan
+18 10 1 tan
+7 9 1 palegreen
+3 1 1 gold
+12 11 1 sienna
+8 0 1 dimgray
+goal config
+8 7 1 firebrick
+8 15 1 crimson
+13 14 1 cyan
+14 1 1 tan
+0 9 1 palegreen
+3 18 1 gold
+3 4 1 sienna
+18 18 1 dimgray

@@ -1,0 +1,16 @@
+curr config
+9 17 1 yellow
+5 10 1 gold
+17 17 1 firebrick
+14 1 1 cyan
+18 12 1 sienna
+0 18 1 fuchsia
+0 4 1 tan
+goal config
+9 0 1 yellow
+5 18 1 gold
+15 1 1 firebrick
+12 7 1 cyan
+3 0 1 sienna
+15 16 1 fuchsia
+4 13 1 tan

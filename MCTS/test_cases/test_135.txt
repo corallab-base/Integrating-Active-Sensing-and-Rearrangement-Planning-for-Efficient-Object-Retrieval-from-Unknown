@@ -1,0 +1,12 @@
+curr config
+17 12 1 palegreen
+13 8 1 red
+13 0 1 saddlebrown
+10 15 1 fuchsia
+4 12 1 sienna
+goal config
+6 16 1 palegreen
+12 14 1 red
+12 4 1 saddlebrown
+18 2 1 fuchsia
+17 8 1 sienna

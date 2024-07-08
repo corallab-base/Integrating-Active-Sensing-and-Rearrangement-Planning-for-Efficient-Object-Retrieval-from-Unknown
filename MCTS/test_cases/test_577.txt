@@ -1,0 +1,16 @@
+curr config
+0 8 1 tan
+4 2 1 teal
+18 8 1 gold
+7 12 1 turquoise
+14 17 1 yellow
+0 14 1 darkorange
+5 7 1 saddlebrown
+goal config
+13 8 1 tan
+3 15 1 teal
+12 0 1 gold
+3 2 1 turquoise
+15 14 1 yellow
+1 10 1 darkorange
+8 6 1 saddlebrown

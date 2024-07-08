@@ -1,0 +1,10 @@
+curr config
+14 16 1 turquoise
+9 15 1 lawngreen
+18 2 1 orchid
+4 14 1 darkorange
+goal config
+15 18 1 turquoise
+13 9 1 lawngreen
+2 9 1 orchid
+6 17 1 darkorange

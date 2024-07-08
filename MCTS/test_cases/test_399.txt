@@ -1,0 +1,18 @@
+curr config
+7 9 1 gold
+2 15 1 cyan
+1 5 1 firebrick
+16 10 1 teal
+12 4 1 sienna
+13 18 1 lawngreen
+18 17 1 red
+7 17 1 violet
+goal config
+0 11 1 gold
+11 2 1 cyan
+4 16 1 firebrick
+5 4 1 teal
+6 11 1 sienna
+15 17 1 lawngreen
+18 12 1 red
+18 4 1 violet

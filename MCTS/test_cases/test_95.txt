@@ -1,0 +1,12 @@
+curr config
+14 6 1 crimson
+8 16 1 dimgray
+17 0 1 navy
+6 4 1 sienna
+16 14 1 dodgerblue
+goal config
+14 10 1 crimson
+12 5 1 dimgray
+0 17 1 navy
+8 1 1 sienna
+7 7 1 dodgerblue

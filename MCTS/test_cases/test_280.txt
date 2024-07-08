@@ -1,0 +1,16 @@
+curr config
+10 13 1 turquoise
+13 3 1 sienna
+1 0 1 darkorange
+4 8 1 red
+18 6 1 saddlebrown
+14 17 1 cyan
+3 17 1 teal
+goal config
+6 2 1 turquoise
+17 16 1 sienna
+0 14 1 darkorange
+1 6 1 red
+11 6 1 saddlebrown
+18 4 1 cyan
+6 17 1 teal

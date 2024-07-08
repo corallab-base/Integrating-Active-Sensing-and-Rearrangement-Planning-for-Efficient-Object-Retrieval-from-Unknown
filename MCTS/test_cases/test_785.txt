@@ -1,0 +1,20 @@
+curr config
+18 18 1 lightcoral
+7 1 1 yellowgreen
+14 9 1 navy
+2 3 1 violet
+0 18 1 gold
+1 13 1 teal
+7 18 1 yellow
+13 17 1 sienna
+7 11 1 fuchsia
+goal config
+14 18 1 lightcoral
+14 4 1 yellowgreen
+4 8 1 navy
+2 14 1 violet
+4 0 1 gold
+12 9 1 teal
+8 14 1 yellow
+10 0 1 sienna
+18 13 1 fuchsia

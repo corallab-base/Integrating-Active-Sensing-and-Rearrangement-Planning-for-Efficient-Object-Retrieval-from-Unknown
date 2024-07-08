@@ -1,0 +1,10 @@
+curr config
+7 0 1 yellow
+10 6 1 red
+9 13 1 yellowgreen
+15 3 1 fuchsia
+goal config
+8 6 1 yellow
+3 15 1 red
+0 10 1 yellowgreen
+1 4 1 fuchsia

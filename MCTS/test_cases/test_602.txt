@@ -1,0 +1,16 @@
+curr config
+15 7 1 dimgray
+5 17 1 cyan
+16 15 1 gold
+3 4 1 orchid
+1 12 1 turquoise
+13 1 1 fuchsia
+8 2 1 crimson
+goal config
+17 6 1 dimgray
+13 14 1 cyan
+5 11 1 gold
+3 5 1 orchid
+2 17 1 turquoise
+12 1 1 fuchsia
+11 6 1 crimson

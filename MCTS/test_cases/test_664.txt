@@ -1,0 +1,18 @@
+curr config
+15 6 1 navy
+5 17 1 dodgerblue
+7 10 1 gold
+11 15 1 fuchsia
+1 13 1 yellow
+2 0 1 teal
+16 17 1 yellowgreen
+11 2 1 red
+goal config
+11 13 1 navy
+8 3 1 dodgerblue
+2 13 1 gold
+18 13 1 fuchsia
+16 4 1 yellow
+7 9 1 teal
+3 2 1 yellowgreen
+10 18 1 red

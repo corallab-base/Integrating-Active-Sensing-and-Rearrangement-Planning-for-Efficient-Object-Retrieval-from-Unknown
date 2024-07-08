@@ -1,0 +1,16 @@
+curr config
+14 11 1 sienna
+3 6 1 navy
+8 4 1 gold
+7 11 1 dimgray
+4 16 1 crimson
+13 17 1 lawngreen
+13 2 1 turquoise
+goal config
+18 14 1 sienna
+10 18 1 navy
+4 18 1 gold
+9 6 1 dimgray
+7 13 1 crimson
+1 5 1 lawngreen
+10 1 1 turquoise

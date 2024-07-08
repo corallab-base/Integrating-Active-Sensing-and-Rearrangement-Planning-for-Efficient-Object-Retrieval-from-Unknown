@@ -1,0 +1,14 @@
+curr config
+8 8 1 blue
+6 2 1 navy
+17 8 1 fuchsia
+16 17 1 yellowgreen
+15 2 1 cyan
+7 16 1 crimson
+goal config
+3 7 1 blue
+15 11 1 navy
+8 3 1 fuchsia
+8 10 1 yellowgreen
+13 18 1 cyan
+17 5 1 crimson

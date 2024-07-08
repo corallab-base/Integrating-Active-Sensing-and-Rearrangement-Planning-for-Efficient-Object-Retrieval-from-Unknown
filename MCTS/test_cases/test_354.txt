@@ -1,0 +1,18 @@
+curr config
+7 5 1 palegreen
+17 6 1 orchid
+5 18 1 beige
+8 10 1 crimson
+14 18 1 dimgray
+5 0 1 turquoise
+0 12 1 fuchsia
+0 3 1 yellow
+goal config
+4 13 1 palegreen
+15 15 1 orchid
+18 4 1 beige
+16 9 1 crimson
+11 7 1 dimgray
+5 3 1 turquoise
+10 18 1 fuchsia
+10 2 1 yellow

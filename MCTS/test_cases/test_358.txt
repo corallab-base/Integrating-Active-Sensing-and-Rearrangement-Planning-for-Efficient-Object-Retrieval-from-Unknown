@@ -1,0 +1,18 @@
+curr config
+12 6 1 dimgray
+1 10 1 crimson
+14 17 1 pink
+8 14 1 navy
+9 0 1 fuchsia
+2 17 1 teal
+16 12 1 blue
+18 1 1 dodgerblue
+goal config
+18 5 1 dimgray
+10 15 1 crimson
+4 4 1 pink
+10 8 1 navy
+0 11 1 fuchsia
+17 0 1 teal
+9 3 1 blue
+16 13 1 dodgerblue

@@ -1,0 +1,14 @@
+curr config
+6 15 1 saddlebrown
+13 3 1 yellow
+18 4 1 beige
+1 10 1 turquoise
+8 0 1 lightcoral
+13 12 1 orchid
+goal config
+6 7 1 saddlebrown
+16 8 1 yellow
+15 17 1 beige
+0 3 1 turquoise
+11 13 1 lightcoral
+17 3 1 orchid

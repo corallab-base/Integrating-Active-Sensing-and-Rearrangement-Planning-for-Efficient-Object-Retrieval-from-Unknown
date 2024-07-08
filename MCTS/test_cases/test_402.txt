@@ -1,0 +1,12 @@
+curr config
+1 13 1 violet
+2 8 1 tan
+14 0 1 darkorange
+17 7 1 gold
+11 11 1 blue
+goal config
+2 15 1 violet
+3 1 1 tan
+17 8 1 darkorange
+10 14 1 gold
+10 4 1 blue

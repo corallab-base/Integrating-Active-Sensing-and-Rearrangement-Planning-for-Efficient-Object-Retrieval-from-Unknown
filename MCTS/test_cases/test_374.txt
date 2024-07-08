@@ -1,0 +1,18 @@
+curr config
+12 14 1 yellowgreen
+5 10 1 crimson
+4 15 1 cyan
+17 13 1 blue
+9 1 1 fuchsia
+16 18 1 red
+17 5 1 sienna
+2 2 1 saddlebrown
+goal config
+15 17 1 yellowgreen
+5 16 1 crimson
+0 15 1 cyan
+11 7 1 blue
+2 6 1 fuchsia
+18 0 1 red
+16 9 1 sienna
+5 1 1 saddlebrown

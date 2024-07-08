@@ -1,0 +1,16 @@
+curr config
+11 13 1 teal
+17 10 1 sienna
+17 16 1 lightcoral
+4 1 1 lawngreen
+11 6 1 pink
+6 12 1 dodgerblue
+16 2 1 orchid
+goal config
+11 2 1 teal
+5 8 1 sienna
+15 17 1 lightcoral
+7 16 1 lawngreen
+15 9 1 pink
+0 14 1 dodgerblue
+0 6 1 orchid

@@ -1,0 +1,12 @@
+curr config
+8 15 1 dimgray
+14 17 1 saddlebrown
+16 8 1 yellowgreen
+1 16 1 firebrick
+11 10 1 beige
+goal config
+15 11 1 dimgray
+1 11 1 saddlebrown
+15 4 1 yellowgreen
+0 2 1 firebrick
+8 17 1 beige

@@ -1,0 +1,10 @@
+curr config
+15 9 1 fuchsia
+7 1 1 teal
+11 18 1 dimgray
+0 10 1 yellowgreen
+goal config
+13 13 1 fuchsia
+9 8 1 teal
+16 0 1 dimgray
+9 0 1 yellowgreen

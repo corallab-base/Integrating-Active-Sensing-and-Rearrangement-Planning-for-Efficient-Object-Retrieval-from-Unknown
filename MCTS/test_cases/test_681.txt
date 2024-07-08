@@ -1,0 +1,18 @@
+curr config
+3 18 1 dodgerblue
+16 9 1 lightcoral
+13 1 1 saddlebrown
+5 7 1 dimgray
+14 18 1 violet
+11 13 1 fuchsia
+7 0 1 yellowgreen
+10 8 1 crimson
+goal config
+4 4 1 dodgerblue
+18 12 1 lightcoral
+17 7 1 saddlebrown
+10 14 1 dimgray
+3 9 1 violet
+10 6 1 fuchsia
+17 17 1 yellowgreen
+3 16 1 crimson

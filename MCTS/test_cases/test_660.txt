@@ -1,0 +1,18 @@
+curr config
+3 2 1 saddlebrown
+17 7 1 palegreen
+13 3 1 beige
+2 17 1 fuchsia
+2 8 1 turquoise
+7 10 1 red
+17 15 1 cyan
+11 16 1 darkorange
+goal config
+6 8 1 saddlebrown
+12 14 1 palegreen
+11 2 1 beige
+18 11 1 fuchsia
+2 2 1 turquoise
+17 6 1 red
+0 7 1 cyan
+1 15 1 darkorange

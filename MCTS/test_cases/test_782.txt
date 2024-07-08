@@ -1,0 +1,20 @@
+curr config
+8 5 1 beige
+15 5 1 palegreen
+7 13 1 turquoise
+1 15 1 sienna
+0 8 1 yellow
+7 0 1 fuchsia
+17 16 1 violet
+12 15 1 lightcoral
+16 10 1 cyan
+goal config
+10 11 1 beige
+1 12 1 palegreen
+15 1 1 turquoise
+1 3 1 sienna
+6 4 1 yellow
+10 0 1 fuchsia
+13 18 1 violet
+15 10 1 lightcoral
+5 16 1 cyan

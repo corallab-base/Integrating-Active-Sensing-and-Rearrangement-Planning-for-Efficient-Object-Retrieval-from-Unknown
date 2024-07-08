@@ -1,0 +1,20 @@
+curr config
+12 1 1 saddlebrown
+12 10 1 tan
+1 12 1 beige
+16 14 1 yellowgreen
+6 17 1 fuchsia
+5 2 1 gold
+17 4 1 dimgray
+2 7 1 darkorange
+7 9 1 navy
+goal config
+15 15 1 saddlebrown
+3 10 1 tan
+4 16 1 beige
+14 4 1 yellowgreen
+3 0 1 fuchsia
+8 5 1 gold
+2 5 1 dimgray
+10 11 1 darkorange
+10 0 1 navy

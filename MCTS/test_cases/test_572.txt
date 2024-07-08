@@ -1,0 +1,16 @@
+curr config
+14 15 1 gold
+14 8 1 navy
+9 18 1 sienna
+1 18 1 turquoise
+6 10 1 teal
+10 0 1 fuchsia
+0 5 1 saddlebrown
+goal config
+5 0 1 gold
+16 10 1 navy
+14 2 1 sienna
+3 16 1 turquoise
+7 10 1 teal
+1 8 1 fuchsia
+17 17 1 saddlebrown

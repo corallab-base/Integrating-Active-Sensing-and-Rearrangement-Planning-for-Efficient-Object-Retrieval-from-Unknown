@@ -1,0 +1,14 @@
+curr config
+13 12 1 pink
+11 7 1 blue
+4 5 1 teal
+1 10 1 yellow
+13 2 1 violet
+7 13 1 sienna
+goal config
+4 12 1 pink
+13 6 1 blue
+13 16 1 teal
+7 2 1 yellow
+17 0 1 violet
+5 18 1 sienna

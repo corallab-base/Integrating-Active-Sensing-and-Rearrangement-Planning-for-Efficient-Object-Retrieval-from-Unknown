@@ -1,0 +1,20 @@
+curr config
+2 9 1 dodgerblue
+16 13 1 darkorange
+3 17 1 gold
+9 9 1 firebrick
+15 8 1 dimgray
+5 4 1 palegreen
+9 15 1 red
+15 2 1 crimson
+15 18 1 fuchsia
+goal config
+8 4 1 dodgerblue
+1 15 1 darkorange
+2 6 1 gold
+17 12 1 firebrick
+18 1 1 dimgray
+7 13 1 palegreen
+1 1 1 red
+11 17 1 crimson
+15 6 1 fuchsia

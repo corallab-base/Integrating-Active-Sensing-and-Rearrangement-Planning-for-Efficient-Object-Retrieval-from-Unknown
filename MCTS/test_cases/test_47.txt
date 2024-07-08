@@ -1,0 +1,10 @@
+curr config
+16 13 1 lightcoral
+7 6 1 yellow
+11 12 1 saddlebrown
+13 7 1 yellowgreen
+goal config
+1 14 1 lightcoral
+18 14 1 yellow
+11 14 1 saddlebrown
+0 9 1 yellowgreen

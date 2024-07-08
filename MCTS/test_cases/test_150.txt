@@ -1,0 +1,12 @@
+curr config
+5 2 1 blue
+5 10 1 dimgray
+14 3 1 yellow
+14 11 1 orchid
+11 17 1 fuchsia
+goal config
+10 18 1 blue
+1 7 1 dimgray
+18 17 1 yellow
+15 8 1 orchid
+2 16 1 fuchsia

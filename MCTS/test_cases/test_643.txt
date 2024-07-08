@@ -1,0 +1,18 @@
+curr config
+13 5 1 orchid
+10 10 1 fuchsia
+5 2 1 dimgray
+4 11 1 pink
+18 7 1 navy
+2 17 1 gold
+13 16 1 violet
+18 0 1 red
+goal config
+4 10 1 orchid
+3 15 1 fuchsia
+14 8 1 dimgray
+13 0 1 pink
+12 17 1 navy
+7 5 1 gold
+10 12 1 violet
+6 0 1 red

@@ -1,0 +1,14 @@
+curr config
+15 17 1 orchid
+14 9 1 yellowgreen
+5 11 1 firebrick
+7 4 1 navy
+18 2 1 fuchsia
+0 1 1 dimgray
+goal config
+2 14 1 orchid
+17 10 1 yellowgreen
+10 0 1 firebrick
+17 3 1 navy
+8 13 1 fuchsia
+15 16 1 dimgray

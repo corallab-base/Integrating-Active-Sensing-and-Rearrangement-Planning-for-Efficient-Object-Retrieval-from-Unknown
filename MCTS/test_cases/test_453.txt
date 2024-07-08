@@ -1,0 +1,12 @@
+curr config
+17 18 1 palegreen
+11 9 1 gold
+3 9 1 beige
+5 0 1 red
+12 17 1 teal
+goal config
+0 4 1 palegreen
+3 9 1 gold
+16 2 1 beige
+9 10 1 red
+12 16 1 teal

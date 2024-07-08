@@ -1,0 +1,20 @@
+curr config
+14 1 1 sienna
+7 0 1 lightcoral
+12 17 1 crimson
+8 8 1 blue
+18 13 1 red
+0 5 1 darkorange
+6 18 1 gold
+3 11 1 palegreen
+14 8 1 dimgray
+goal config
+9 18 1 sienna
+16 13 1 lightcoral
+6 11 1 crimson
+12 1 1 blue
+3 16 1 red
+12 7 1 darkorange
+17 5 1 gold
+1 7 1 palegreen
+7 3 1 dimgray

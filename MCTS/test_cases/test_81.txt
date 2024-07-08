@@ -1,0 +1,12 @@
+curr config
+18 9 1 pink
+6 11 1 navy
+10 4 1 violet
+4 17 1 teal
+3 4 1 gold
+goal config
+12 0 1 pink
+17 15 1 navy
+18 7 1 violet
+5 2 1 teal
+9 16 1 gold

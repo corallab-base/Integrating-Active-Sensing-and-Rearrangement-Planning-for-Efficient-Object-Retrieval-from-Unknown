@@ -1,0 +1,20 @@
+curr config
+11 8 1 lightcoral
+5 14 1 dimgray
+18 10 1 saddlebrown
+9 1 1 darkorange
+0 3 1 gold
+5 6 1 firebrick
+13 13 1 fuchsia
+17 2 1 cyan
+0 9 1 pink
+goal config
+9 7 1 lightcoral
+1 3 1 dimgray
+10 1 1 saddlebrown
+12 13 1 darkorange
+17 11 1 gold
+15 2 1 firebrick
+6 15 1 fuchsia
+3 10 1 cyan
+15 18 1 pink

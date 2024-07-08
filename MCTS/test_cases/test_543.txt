@@ -1,0 +1,14 @@
+curr config
+7 12 1 pink
+14 4 1 lightcoral
+17 17 1 navy
+0 7 1 tan
+6 1 1 orchid
+17 11 1 red
+goal config
+7 14 1 pink
+18 10 1 lightcoral
+7 3 1 navy
+15 17 1 tan
+3 18 1 orchid
+4 8 1 red

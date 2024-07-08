@@ -1,0 +1,20 @@
+curr config
+15 4 1 violet
+4 0 1 firebrick
+15 12 1 turquoise
+6 5 1 darkorange
+9 12 1 orchid
+0 16 1 fuchsia
+0 10 1 dodgerblue
+6 18 1 yellowgreen
+11 0 1 red
+goal config
+5 14 1 violet
+1 5 1 firebrick
+15 7 1 turquoise
+9 3 1 darkorange
+12 17 1 orchid
+16 1 1 fuchsia
+6 9 1 dodgerblue
+0 10 1 yellowgreen
+17 15 1 red

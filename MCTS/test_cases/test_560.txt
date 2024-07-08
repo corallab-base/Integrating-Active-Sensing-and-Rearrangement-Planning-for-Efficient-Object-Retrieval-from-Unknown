@@ -1,0 +1,16 @@
+curr config
+15 5 1 saddlebrown
+8 16 1 fuchsia
+6 8 1 cyan
+1 11 1 lightcoral
+0 3 1 palegreen
+11 9 1 lawngreen
+14 0 1 yellowgreen
+goal config
+9 6 1 saddlebrown
+1 1 1 fuchsia
+14 3 1 cyan
+16 8 1 lightcoral
+11 14 1 palegreen
+16 17 1 lawngreen
+3 6 1 yellowgreen

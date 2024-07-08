@@ -1,0 +1,12 @@
+curr config
+7 16 1 turquoise
+2 9 1 fuchsia
+15 14 1 firebrick
+13 4 1 dimgray
+4 2 1 cyan
+goal config
+14 2 1 turquoise
+2 6 1 fuchsia
+8 9 1 firebrick
+17 14 1 dimgray
+10 14 1 cyan

@@ -1,0 +1,12 @@
+curr config
+12 2 1 crimson
+2 14 1 sienna
+14 15 1 gold
+1 1 1 firebrick
+3 6 1 lightcoral
+goal config
+0 14 1 crimson
+15 3 1 sienna
+18 8 1 gold
+10 9 1 firebrick
+5 10 1 lightcoral

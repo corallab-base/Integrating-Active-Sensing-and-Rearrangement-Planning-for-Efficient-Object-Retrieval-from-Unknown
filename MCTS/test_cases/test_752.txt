@@ -1,0 +1,20 @@
+curr config
+1 16 1 violet
+1 6 1 navy
+16 7 1 fuchsia
+7 7 1 beige
+18 12 1 darkorange
+12 1 1 yellow
+5 0 1 sienna
+12 17 1 yellowgreen
+18 1 1 gold
+goal config
+0 13 1 violet
+5 0 1 navy
+11 15 1 fuchsia
+17 2 1 beige
+17 13 1 darkorange
+14 7 1 yellow
+7 9 1 sienna
+11 0 1 yellowgreen
+6 18 1 gold

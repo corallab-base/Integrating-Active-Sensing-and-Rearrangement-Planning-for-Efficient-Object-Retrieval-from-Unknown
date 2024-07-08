@@ -1,0 +1,14 @@
+curr config
+11 14 1 firebrick
+13 6 1 tan
+18 4 1 fuchsia
+5 8 1 yellowgreen
+18 15 1 beige
+0 17 1 palegreen
+goal config
+17 6 1 firebrick
+6 6 1 tan
+18 18 1 fuchsia
+6 16 1 yellowgreen
+1 11 1 beige
+17 12 1 palegreen

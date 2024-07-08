@@ -1,0 +1,16 @@
+curr config
+17 9 1 teal
+5 15 1 tan
+0 7 1 sienna
+3 2 1 dimgray
+11 1 1 orchid
+18 1 1 lightcoral
+12 14 1 crimson
+goal config
+17 3 1 teal
+13 9 1 tan
+4 17 1 sienna
+1 4 1 dimgray
+1 10 1 orchid
+17 16 1 lightcoral
+12 15 1 crimson

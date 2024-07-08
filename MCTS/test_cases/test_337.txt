@@ -1,0 +1,18 @@
+curr config
+12 11 1 saddlebrown
+12 0 1 dimgray
+18 17 1 teal
+6 13 1 violet
+7 6 1 darkorange
+18 9 1 lawngreen
+11 17 1 fuchsia
+1 16 1 orchid
+goal config
+0 6 1 saddlebrown
+10 5 1 dimgray
+1 11 1 teal
+7 16 1 violet
+18 8 1 darkorange
+6 0 1 lawngreen
+0 0 1 fuchsia
+18 1 1 orchid

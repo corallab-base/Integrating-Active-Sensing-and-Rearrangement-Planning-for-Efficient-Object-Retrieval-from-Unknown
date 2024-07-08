@@ -1,0 +1,20 @@
+curr config
+4 9 1 beige
+12 11 1 gold
+12 2 1 tan
+2 3 1 dodgerblue
+3 15 1 violet
+18 16 1 saddlebrown
+17 10 1 fuchsia
+9 16 1 blue
+18 2 1 cyan
+goal config
+12 0 1 beige
+16 6 1 gold
+3 16 1 tan
+3 5 1 dodgerblue
+13 15 1 violet
+5 0 1 saddlebrown
+9 10 1 fuchsia
+17 11 1 blue
+18 1 1 cyan

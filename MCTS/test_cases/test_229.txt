@@ -1,0 +1,14 @@
+curr config
+9 9 1 yellowgreen
+3 0 1 crimson
+15 5 1 turquoise
+13 15 1 beige
+5 18 1 dodgerblue
+4 5 1 firebrick
+goal config
+6 14 1 yellowgreen
+16 1 1 crimson
+11 6 1 turquoise
+1 11 1 beige
+4 1 1 dodgerblue
+17 13 1 firebrick

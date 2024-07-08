@@ -1,0 +1,14 @@
+curr config
+13 14 1 dimgray
+6 12 1 lawngreen
+4 1 1 saddlebrown
+11 8 1 firebrick
+2 16 1 orchid
+1 7 1 lightcoral
+goal config
+9 8 1 dimgray
+17 10 1 lawngreen
+5 14 1 saddlebrown
+8 0 1 firebrick
+16 18 1 orchid
+3 6 1 lightcoral

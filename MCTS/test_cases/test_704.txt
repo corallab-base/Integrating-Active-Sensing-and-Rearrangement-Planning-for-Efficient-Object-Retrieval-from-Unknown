@@ -1,0 +1,18 @@
+curr config
+4 5 1 teal
+15 8 1 palegreen
+6 15 1 dimgray
+8 9 1 navy
+15 2 1 gold
+1 13 1 red
+0 1 1 fuchsia
+5 0 1 lightcoral
+goal config
+4 11 1 teal
+10 12 1 palegreen
+18 17 1 dimgray
+3 1 1 navy
+3 17 1 gold
+12 17 1 red
+16 6 1 fuchsia
+9 7 1 lightcoral

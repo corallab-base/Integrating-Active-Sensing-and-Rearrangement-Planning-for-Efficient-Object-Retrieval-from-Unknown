@@ -1,0 +1,18 @@
+curr config
+16 1 1 pink
+1 15 1 blue
+10 6 1 palegreen
+12 12 1 fuchsia
+5 2 1 dimgray
+12 18 1 yellow
+10 0 1 lawngreen
+17 15 1 saddlebrown
+goal config
+11 5 1 pink
+14 10 1 blue
+6 2 1 palegreen
+0 13 1 fuchsia
+7 9 1 dimgray
+16 4 1 yellow
+10 15 1 lawngreen
+1 1 1 saddlebrown

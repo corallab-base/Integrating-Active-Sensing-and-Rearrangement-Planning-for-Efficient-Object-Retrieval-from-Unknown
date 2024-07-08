@@ -1,0 +1,16 @@
+curr config
+8 14 1 lightcoral
+17 2 1 sienna
+15 13 1 crimson
+2 11 1 tan
+5 6 1 orchid
+1 17 1 dodgerblue
+9 1 1 firebrick
+goal config
+2 18 1 lightcoral
+17 7 1 sienna
+4 0 1 crimson
+15 1 1 tan
+1 10 1 orchid
+8 8 1 dodgerblue
+15 15 1 firebrick

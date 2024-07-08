@@ -1,0 +1,12 @@
+curr config
+14 18 1 saddlebrown
+15 11 1 pink
+16 2 1 beige
+2 4 1 sienna
+8 2 1 navy
+goal config
+7 9 1 saddlebrown
+17 17 1 pink
+2 14 1 beige
+1 1 1 sienna
+15 8 1 navy

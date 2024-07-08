@@ -1,0 +1,14 @@
+curr config
+2 12 1 lightcoral
+13 9 1 palegreen
+4 6 1 cyan
+16 15 1 yellow
+9 13 1 red
+9 0 1 beige
+goal config
+1 16 1 lightcoral
+4 1 1 palegreen
+15 15 1 cyan
+6 13 1 yellow
+15 1 1 red
+7 6 1 beige

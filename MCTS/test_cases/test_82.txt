@@ -1,0 +1,12 @@
+curr config
+15 14 1 red
+13 3 1 dimgray
+6 17 1 navy
+8 9 1 violet
+2 5 1 gold
+goal config
+1 14 1 red
+7 6 1 dimgray
+11 14 1 navy
+17 4 1 violet
+1 5 1 gold

@@ -1,0 +1,20 @@
+curr config
+5 9 1 sienna
+3 17 1 lawngreen
+5 3 1 yellow
+17 8 1 lightcoral
+12 6 1 turquoise
+13 15 1 navy
+0 2 1 yellowgreen
+14 1 1 darkorange
+0 12 1 teal
+goal config
+14 3 1 sienna
+7 12 1 lawngreen
+15 13 1 yellow
+1 7 1 lightcoral
+17 18 1 turquoise
+13 8 1 navy
+2 1 1 yellowgreen
+7 0 1 darkorange
+2 13 1 teal

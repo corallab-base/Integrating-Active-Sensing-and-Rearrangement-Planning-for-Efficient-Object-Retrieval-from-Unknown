@@ -1,0 +1,10 @@
+curr config
+11 5 1 lawngreen
+5 4 1 dodgerblue
+15 0 1 blue
+8 10 1 violet
+goal config
+4 13 1 lawngreen
+17 18 1 dodgerblue
+9 1 1 blue
+0 7 1 violet

@@ -1,0 +1,14 @@
+curr config
+13 18 1 navy
+11 5 1 firebrick
+3 4 1 tan
+14 0 1 palegreen
+10 10 1 teal
+0 13 1 turquoise
+goal config
+1 8 1 navy
+18 10 1 firebrick
+10 9 1 tan
+2 1 1 palegreen
+6 18 1 teal
+1 15 1 turquoise

@@ -1,0 +1,18 @@
+curr config
+16 3 1 blue
+1 12 1 pink
+7 11 1 yellow
+9 17 1 fuchsia
+9 0 1 palegreen
+12 7 1 crimson
+2 6 1 teal
+0 17 1 yellowgreen
+goal config
+16 6 1 blue
+17 17 1 pink
+0 14 1 yellow
+9 0 1 fuchsia
+8 16 1 palegreen
+0 1 1 crimson
+12 12 1 teal
+17 0 1 yellowgreen

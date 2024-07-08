@@ -1,0 +1,20 @@
+curr config
+0 2 1 pink
+7 6 1 navy
+17 7 1 gold
+12 16 1 blue
+17 15 1 darkorange
+2 11 1 cyan
+5 16 1 turquoise
+17 1 1 teal
+12 2 1 crimson
+goal config
+0 11 1 pink
+0 0 1 navy
+17 0 1 gold
+12 2 1 blue
+7 5 1 darkorange
+7 15 1 cyan
+10 10 1 turquoise
+16 10 1 teal
+0 18 1 crimson

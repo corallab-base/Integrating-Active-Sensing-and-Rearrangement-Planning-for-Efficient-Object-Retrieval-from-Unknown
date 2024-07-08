@@ -1,0 +1,16 @@
+curr config
+8 17 1 turquoise
+3 11 1 saddlebrown
+2 3 1 lawngreen
+18 2 1 violet
+12 9 1 cyan
+14 14 1 fuchsia
+18 8 1 pink
+goal config
+14 7 1 turquoise
+9 8 1 saddlebrown
+10 13 1 lawngreen
+3 15 1 violet
+16 16 1 cyan
+16 2 1 fuchsia
+4 0 1 pink

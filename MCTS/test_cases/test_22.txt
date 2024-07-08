@@ -1,0 +1,10 @@
+curr config
+6 11 1 cyan
+14 13 1 sienna
+2 4 1 tan
+14 0 1 lawngreen
+goal config
+14 9 1 cyan
+10 2 1 sienna
+0 7 1 tan
+15 1 1 lawngreen

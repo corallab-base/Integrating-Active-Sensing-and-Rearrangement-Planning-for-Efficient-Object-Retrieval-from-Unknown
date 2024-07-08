@@ -1,0 +1,16 @@
+curr config
+16 12 1 red
+14 1 1 gold
+9 11 1 sienna
+0 2 1 dodgerblue
+3 7 1 navy
+0 16 1 turquoise
+9 0 1 beige
+goal config
+13 10 1 red
+1 18 1 gold
+1 12 1 sienna
+17 3 1 dodgerblue
+8 0 1 navy
+7 11 1 turquoise
+8 6 1 beige

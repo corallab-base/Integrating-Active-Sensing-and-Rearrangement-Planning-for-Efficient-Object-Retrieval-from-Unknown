@@ -1,0 +1,16 @@
+curr config
+6 15 1 violet
+4 3 1 navy
+6 9 1 turquoise
+15 14 1 gold
+14 0 1 tan
+13 5 1 fuchsia
+0 12 1 darkorange
+goal config
+13 12 1 violet
+17 2 1 navy
+17 18 1 turquoise
+2 1 1 gold
+1 7 1 tan
+6 17 1 fuchsia
+6 9 1 darkorange
