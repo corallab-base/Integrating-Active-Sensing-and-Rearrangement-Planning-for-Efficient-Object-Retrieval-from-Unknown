@@ -26,7 +26,9 @@ from grasp_util.robot_arm_configuration import path_planner
 from grasp_util.robot_arm_configuration import ur5e_valid
 
 import pdb
-
+import robot_arm_configuration as RC
+import MCTS_algo_ICRA as mct
+import matplotlib.pyplot as plt
 
 file_dir = os.path.dirname(__file__)
 util_dir = os.path.join(file_dir, '../util')
@@ -156,7 +158,8 @@ def convert_depth_image(raw_image):
     for i in range(x_dim):
         for j in range(y_dim):
             if raw_image[i][j] != mini:
-                new_image[i][j][0] = - int(raw_image[i][j]*1000)
+                # new_image[i][j][0] = - int(raw_image[i][j]*1000)
+                new_image[i][j][0] = -(raw_image[i][j]*1000).astype(int)
             else:
                 new_image[i][j][0] = 65535
     return new_image
@@ -194,6 +197,52 @@ def get_best_cam_pose(scene, camera_pose_list):
     print (f'best score is : {best_score}')
     return best_index
 
+def random_sample_swept_volume_selection(sim, env, test_cam, scene, swept_center):
+    camera_pose_list = []
+    camera_setting_list = []
+    while len(camera_pose_list) < 50:
+        camera_loc = get_random_loc(0 + 0.2, table_dims.x + 0.3,
+                                    -table_dims.y*0.5 + 0.02, table_dims.y*0.5 - 0.02,
+                                    table_dims.z, table_dims.z + drawer_height - 0.02)
+        camera_focus = gymapi.Vec3(swept_center[0], swept_center[1], swept_center[2])
+        gym.set_camera_location(test_cam, env, 
+                                camera_loc, 
+                                camera_focus)
+        target_pos = gym.get_camera_transform(sim, env, test_cam).p
+        target_quat = gym.get_camera_transform(sim, env, test_cam).r
+        camera_pose = np.array([target_quat.x, target_quat.y, target_quat.z, target_quat.w,
+                                target_pos.x, target_pos.y, target_pos.z])
+
+        r_rot = R.from_quat([target_quat.x, target_quat.y, target_quat.z, target_quat.w])
+        cam_offset_vector = np.array([0.11, 0, 0.08])
+        rot_cam_offset_vector = r_rot.apply(cam_offset_vector)
+        converted_coord = global_coord_converter(target_pos.x - rot_cam_offset_vector[0],
+                                                 target_pos.y - rot_cam_offset_vector[1],
+                                                 target_pos.z - rot_cam_offset_vector[2], 
+                                                 ur5e_pose.p.x, 
+                                                 ur5e_pose.p.y,
+                                                 ur5e_pose.p.z)
+        converted_quat = quaternion_multiply(gymapi.Quat(-math.sqrt(2)/2, 0, 0, math.sqrt(2)/2), target_quat)
+
+        seed_state = [0.0]*ik_solver2.number_of_joints
+        dof_result = ik_solver2.get_ik(seed_state, 
+                                       converted_coord[0],
+                                       converted_coord[1],
+                                       converted_coord[2],
+                                       converted_quat.x, 
+                                       converted_quat.y,
+                                       converted_quat.z,
+                                       converted_quat.w)
+        if dof_result:
+            end_state_collision_free = rac.arm_collision_free(dof_result, plane_obj, object_collision_models, flexible_collision_models)
+
+
+            if end_state_collision_free:
+                camera_pose_list.append(camera_pose)
+                camera_setting_list.append([camera_loc, camera_focus, dof_result])
+         
+    best_cam_pose_index = get_best_cam_pose(scene, camera_pose_list)
+    return camera_setting_list[best_cam_pose_index][0], camera_setting_list[best_cam_pose_index][1], camera_setting_list[best_cam_pose_index][2]
 
 
 def random_sample_guided_selection(sim, env, test_cam, scene):
@@ -244,6 +293,29 @@ def random_sample_guided_selection(sim, env, test_cam, scene):
          
     best_cam_pose_index = get_best_cam_pose(scene, camera_pose_list)
     return camera_setting_list[best_cam_pose_index][0], camera_setting_list[best_cam_pose_index][1], camera_setting_list[best_cam_pose_index][2]
+
+def swept_coverage_check(scene, swept_verts):
+    covered = 0
+    for i, verts in enumerate(swept_verts):
+        idx = verts * 100
+        idx[0] -= 30
+        idx[1] += 60
+        idx = np.rint(idx).astype(int)
+        checked = scene.scene_[idx[0], idx[1], idx[2]]
+        if checked < 0:
+            swept_verts.pop(i)
+        if checked > 0:
+            covered += 1
+    return covered / len(swept_verts)
+
+def get_unobserved_area(scene):
+    floor = scene.scene_[:scene.x_limit_, scene.y_left_:scene.y_limit_, scene.g_height_ + 1]
+    unknown_area = np.argwhere(floor == 0)[:,:2]
+    unknown_area[:, 0] += 30
+    unknown_area[:, 1] -= 60
+    unknown_area = unknown_area / 100
+    return unknown_area
+
 
     
 #*************************************************************************************************#
@@ -542,7 +614,7 @@ while start_i <= table_dims.x - 0.1 + 0.3:
     region_candidates.append(temp_candidates)
     start_i += 0.1
 
-print (len(region_candidates), len(region_candidates[0]))
+print(len(region_candidates), len(region_candidates[0]))
 
 envs = []
 ur5e_handles = []
@@ -552,7 +624,7 @@ chosen_object = []
 chosen_scale = []
 object_normalize = []
 # num_of_objects = np.random.randint(min_num_of_objects, max_num_of_objects+1)
-num_of_objects = 1
+num_of_objects = 4
 
 observed_objects = []
 gripper_location = None
@@ -600,7 +672,8 @@ for i in range(num_of_envs):
 
     # object_index = np.random.randint(len(object_asset_files), size=num_of_objects-1)
     # object_index = np.insert(object_index, 0, len(object_asset_files)-1, axis = 0)
-    object_index = np.array([0])
+    target_file_idx = 3
+    object_index = np.array([0] * (num_of_objects-1) + [target_file_idx])
 
     #object_index = np.array([8, 21, 21, 21, 21])
     chosen_object.append(object_index)
@@ -630,24 +703,42 @@ for i in range(num_of_envs):
     #object_loc_index = [14, 11, 2, 13, 1]
         
 
-    #set up objects///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    # set up objects///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     # creating manager
     objs_manager = fcl.DynamicAABBTreeCollisionManager()
     objs_manager.setup()
-    collision_objs = []
+    obstacle_objs = []
+    obj_pos_list = []
+    target_pos = [0.63490678, -0.14333366, table_dims.z + 0.08]
 
-    for k in range(num_of_objects):
+    for k in range(num_of_objects - 1, -1, -1):
         object_pose = gymapi.Transform()
-        # tx, ty, tz = object_loc[k]
+        is_collision = True
+
+        # add target obj
+        if k == num_of_objects - 1:
+            object_pose.p = gymapi.Vec3(target_pos[0], target_pos[1], target_pos[2])
+
+            file_path = object_collision_files[object_index[-1]]
+            collision_mesh = obj_reader(asset_root + file_path)
+            collision_mesh.set_scale(object_scaling_factor[-1])
+            collision_mesh.add_offset(object_offset[object_index[-1]])
+            verts, tris = collision_mesh.get_bounding_box_mesh()
+            temp_center = collision_mesh.get_center()
+            temp_bounding_box = collision_mesh.get_bounding_box()
+
+            m = fcl.BVHModel()
+            m.beginModel(len(verts), len(tris))
+            m.addSubModel(verts, tris)
+            m.endModel()
+            t = fcl.Transform(np.array(target_pos))
+            is_collision = False
 
         # random selec obj location
-        is_collision = True
         while is_collision:
             tx = np.random.uniform(0.35, table_dims.x + 0.2)
             ty = np.random.uniform(-table_dims.y/2 + 0.1, table_dims.y/2 - 0.2)
             tz = table_dims.z + 0.08
-            # tx = 0.4
-            # ty = -0.2
 
             object_pose.p = gymapi.Vec3(tx, ty, tz)
 
@@ -673,13 +764,28 @@ for i in range(num_of_envs):
             objs_manager.collide(fcl.CollisionObject(m, t), rdata, fcl.defaultCollisionCallback)
 
             is_collision = rdata.result.is_collision # update collision status
-            print("collision result:", is_collision)
+
+            if not is_collision:
+                    dist = np.sqrt((tx - target_pos[0])**2 + (ty - target_pos[1])**2)
+                    if dist <= 0.16:
+                        is_collision = True
+                        print("target contact recalc")
+                        continue
+
+                    for obj in obj_pos_list:
+                        dist = np.sqrt((tx - obj[0])**2 + (ty - obj[1])**2)
+                        # print("idx:", i, "dist:", dist)
+                        if dist <= 0.16:
+                            is_collision = True
+                            print("recalc")
+                            continue
 
 
         if k == 0: gripper_location = gymapi.Vec3(tx, ty, tz + 0.2)
         #object_pose.p = get_random_loc(0.3 + table_dims.x*0.2, 0.3 + table_dims.x*0.8,
         #                               -table_dims.y*0.4, table_dims.y*0.4,
         #                               table_dims.z, table_dims.z + drawer_height*0.5)
+        obj_pos_list.append([object_pose.p.x, object_pose.p.y])
         object_handles.append(gym.create_actor(envs[-1], 
                                                object_assets[object_index[k]], 
                                                object_pose, 
@@ -689,8 +795,8 @@ for i in range(num_of_envs):
         object_reader_tracker.append(collision_mesh)
         object_status_list.append([temp_center, temp_bounding_box])
         object_collision_lib.append(m)
-        collision_objs.append(fcl.CollisionObject(m, t))
-        objs_manager.registerObjects(collision_objs)
+        obstacle_objs.append(fcl.CollisionObject(m, t))
+        objs_manager.registerObjects(obstacle_objs)
         objs_manager.setup()
 
     #set up global camera to record configuration
@@ -857,6 +963,19 @@ for i in range(num_of_envs):
 #    return self_collision_flag == True or env_collision_flag == True
 
 
+data = np.load("test_data/MCTS_input/ur5_test.npy", allow_pickle=True)
+init2grasp_path = data[0]["init2grasp_path"]
+grasp2init_path = data[0]["grasp2init_path"]
+w_target = data[0]["w_target"]
+target_pos = data[0]["target_pos"]
+target_mesh = data[0]["target_mesh"]
+scene_info = [table_dims.x, table_dims.y, table_dims.z, 0.5]
+print("SCENE INFO", scene_info)
+
+rac_main = RC.robot_arm_configuration('../assets/urdf/ur5e/meshes/collision/', np.array([0.0, 0, 0]), scene_info, target_mesh=target_mesh, obstacles_num=0, target_pos=target_pos) # point_cloud=point_cloud
+swept_volume1, swept_verts1 = rac_main.get_swept_volume(init2grasp_path, None, 0, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False, with_scene=True)
+swept_volume2, swept_verts2 = rac_main.get_swept_volume(grasp2init_path, None, 0, w_target=w_target, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False, with_scene=True)
+swept_center, swept_verts = rac_main.get_swept_center(swept_verts1+swept_verts2, scene_info)
 
 
 #*************************************************************************************************#
@@ -884,6 +1003,14 @@ for t in range(2000):
         gym.set_dof_target_position(envs[-1], wj1, -0.3)
         gym.set_dof_target_position(envs[-1], wj2, 0.7)
         gym.set_dof_target_position(envs[-1], wj3, 0)
+
+        # # check grasp
+        # gym.set_dof_target_position(envs[-1], spj, init2grasp_path[-1][0])
+        # gym.set_dof_target_position(envs[-1], slj, init2grasp_path[-1][1])
+        # gym.set_dof_target_position(envs[-1], ej,  init2grasp_path[-1][2])
+        # gym.set_dof_target_position(envs[-1], wj1, init2grasp_path[-1][3])
+        # gym.set_dof_target_position(envs[-1], wj2, init2grasp_path[-1][4])
+        # gym.set_dof_target_position(envs[-1], wj3, init2grasp_path[-1][5])
 
         # reset motion
         # gym.set_dof_target_position(envs[-1], spj, 0)
@@ -977,8 +1104,10 @@ saved_scene_faces = None
 #     gym.sync_frame_time(sim)
 
 #active sensing here
-while not gym.query_viewer_has_closed(viewer):
-    if coverage_score >= 0.9 or sequence_count >= 10: break
+obj_pos_MCTS = {}
+obj_mesh_MCTS = {}
+while not gym.query_viewer_has_closed(viewer):#///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    if coverage_score >=0.95 or sequence_count >= 10: break
     if need_acquire:
         if acquire_counter > 500:
             gym.clear_lines(viewer)
@@ -1003,10 +1132,12 @@ while not gym.query_viewer_has_closed(viewer):
                          [0, 0, 1]])
                     # print("view_matrix:", view_matrix)
                     # print("View_matrix size:", view_matrix.shape)
+
+
                     color_img_saved = write_to_image(color_image, 'test_data/test_image/' + str(sequence_count) + '.png')
                     write_to_seg_image(seg_image, 'test_data/test_seg_image/' + str(sequence_count) + '.png')
                     write_to_depth_image(depth_image, 'test_data/test_depth_image/' + str(sequence_count) + '.png')
-                    # pdb.set_trace()
+       
                     temp_cam = body_cam_handles[q] 
                     cam_rotation = gym.get_camera_transform(sim, envs[-1], temp_cam).r
                     cam_translation = gym.get_camera_transform(sim, envs[-1], temp_cam).p
@@ -1022,7 +1153,9 @@ while not gym.query_viewer_has_closed(viewer):
                                                     cam_translation.y,
                                                     cam_translation.z])
                     
-                    write_for_contact_grasp(color_img_saved, seg_image, -depth_image, K, new_cam_rotation, new_cam_translation,'test_data/test_npy/' + str(sequence_count)+'.npy')
+                    # write_for_contact_grasp(color_img_saved, seg_image, -depth_image, K, new_cam_rotation, new_cam_translation,'test_data/test_npy/' + str(sequence_count)+'.npy')
+
+
 
                     dist1 = np.linalg.norm(final_rotation - new_cam_rotation)
                     dist3 = np.linalg.norm(final_rotation - new_cam_rotation*-1)
@@ -1032,7 +1165,39 @@ while not gym.query_viewer_has_closed(viewer):
                         print ('start pc extraction')
                         pc_extractor_grasp(new_rgb_image, new_depth_image, new_seg_image, new_cam_rotation, new_cam_translation, object_dict, table_dims.z)
 
-                        coverage_score = scene.register_camera_view(list(new_cam_rotation), list(new_cam_translation), new_depth_image, object_dict)
+                        print("obj", object_dict)
+                        # plt.imshow(new_rgb_image); plt.show()
+                        # plt.imshow(new_seg_image); plt.show()
+                        
+                        for i in object_dict:
+                            print("idx", i)
+                            mask = new_seg_image == 1
+                            temp_seg_image = copy.deepcopy(new_seg_image)
+                            mask = new_seg_image == i
+                            temp_seg_image[~mask] = 0
+                            temp_seg_image[mask] = 1
+
+                            point_cloud, pcd = RC.write_to_pointcloud(new_rgb_image, new_depth_image, temp_seg_image, new_cam_rotation, new_cam_translation, visualization=False)
+
+                            # find matching object mesh file
+                            downpcd = pcd.voxel_down_sample(voxel_size=0.005) # downsampe pcd
+                            obj_mesh, obj_pos, dist = RC.get_mathcing_mesh(downpcd, visualize=False) # matching does not work for some reason lol
+                            print("obj pos list",obj_pos_list)
+                            print(obj_pos[0:2])
+
+                            if i in obj_pos_MCTS.keys():
+                                min_dist = obj_pos_MCTS[i]["dist"]
+                                if min_dist > dist:
+                                    # add pcd together for each observation!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
+                                    obj_pos_MCTS[i] = {"pos" : obj_pos[0:2], "dist" : dist}
+                                    obj_mesh_MCTS[i] = obj_mesh
+                            else:
+                                obj_pos_MCTS[i] = {"pos" : obj_pos[0:2].tolist(), "dist" : dist}
+                                obj_mesh_MCTS[i] = obj_mesh
+
+                        _ = scene.register_camera_view(list(new_cam_rotation), list(new_cam_translation), new_depth_image, object_dict)
+                        coverage_score = swept_coverage_check(scene, swept_verts)
+                        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!score", coverage_score, "////", _)
 
                         sequence_count += 1
             need_acquire = False
@@ -1068,7 +1233,6 @@ while not gym.query_viewer_has_closed(viewer):
         m.endModel()
 
         flexible_collision_models.append(fcl.CollisionObject(m))
-
         print ('There are {0} objects detected\n'.format(len(object_dict)))
 
         for obj_id, obj_ins in object_dict.items():
@@ -1085,7 +1249,8 @@ while not gym.query_viewer_has_closed(viewer):
 
         end_state_collision_free = False
         while not end_state_collision_free:
-            camera_loc, camera_focus, dof_result = random_sample_guided_selection(sim, envs[-1], test_cam, scene)
+            # camera_loc, camera_focus, dof_result = random_sample_guided_selection(sim, envs[-1], test_cam, scene)
+            camera_loc, camera_focus, dof_result = random_sample_swept_volume_selection(sim, envs[-1], test_cam, scene, swept_center)
 
             print (camera_loc, camera_focus)
             gym.set_camera_location(test_cam, envs[-1], camera_loc, camera_focus)
@@ -1143,7 +1308,19 @@ while not gym.query_viewer_has_closed(viewer):
     gym.draw_viewer(viewer, sim, True)
     
     gym.sync_frame_time(sim)
-    
+
+# MCTS/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+unknowen_area = get_unobserved_area(scene)
+rac_main.obstacles_num = num_of_objects
+rac_main.obj_mesh = list(obj_mesh_MCTS.items())
+rac_main.obj_pos_list = list(obj_pos_MCTS.items())
+rac_main.target_mesh = obj_mesh_MCTS[num_of_objects]
+target_pos_MCT = obj_pos_MCTS[num_of_objects]
+pdb.set_trace()
+curr_config, target_pos_MCT = rac_main.get_MCT_config(rac.obj_pos_list, rac.obj_mesh, target_pos_MCT, rac_main.target_mesh)
+
+
+   
 saved_region_name = './saved_as_result_narrow/env_' + str(env_id) + '_region_info.npy'
 region_data = []
 

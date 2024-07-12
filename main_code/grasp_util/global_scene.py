@@ -8,6 +8,7 @@ file_dir = os.path.dirname(__file__)
 root_dir = os.path.join(file_dir, '../../')
 sys.path.append(root_dir)
 from test_module.camera_view import camera
+import pdb
 
 class global_scene:
 
@@ -24,7 +25,6 @@ class global_scene:
 
         self.offset_ = offset
         self.scene_ = np.full((self.dim_x_ * self.dim_y_ * self.dim_z_), -1).reshape(self.dim_x_, self.dim_y_, self.dim_z_, 1)
-        
         for i in range(min(self.x_limit_, self.dim_x_)):
             for j in range(self.y_left_, min(self.y_left_ + self.y_limit_, self.dim_y_)):
                 for k in range(self.g_height_, min(self.g_height_ + self.z_limit_, self.dim_z_)):
