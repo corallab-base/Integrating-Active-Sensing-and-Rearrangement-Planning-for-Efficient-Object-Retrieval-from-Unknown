@@ -2300,11 +2300,15 @@ def check_MCTS(MCTS_root, MCTS_name, file_path, i=None):
     # rac = robot_arm_configuration(file_path, np.array([0.0, 0, 0]), scene_info, target_mesh=target_mesh, obstacles_num=obstacles_num, target_pos=target_pos) # point_cloud=point_cloud
     rac = robot_arm_configuration(file_path, np.array([0.0, 0, 0]), scene_info) # point_cloud=point_cloud
     rac.target_mesh = target_mesh
-    rac.obstacles_num=obstacles_num
+    rac.obstacles_num = obstacles_num
     rac.target_pos = target_pos
     rac.obstacles_num = obstacles_num
     rac.obj_mesh = obj_mesh
     rac.obj_pos_list = obj_pos_list
+
+    # ['#00fffb', '#ff00dd', '#bf00ff', '#ffae00', '#59ff00', '#FFFF00']
+    #    cyan      pink       purple     orange    green       yellow
+    #     0         1           2          3         4            5
 
     # calculate swept volume with bounding box
     swept_volume1, swept_verts1 = rac.get_swept_volume(init2grasp_path, test_name, idx, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False, with_scene=True)
@@ -2390,9 +2394,13 @@ def check_MCTS(MCTS_root, MCTS_name, file_path, i=None):
                                             swept_volume1=swept_volume1, swept_volume2=swept_volume2, obj_mesh=rac.obj_mesh,
                                             target_pos=target_pos_MCT)
     
+    swept_volume1, _ = rac.get_swept_volume(init2grasp_path, test_name, idx, frame_rate=60, scene_info=scene_info, animation=False, static_vi=True)
+
     ML_MCTS_ins.init_MCTS()
     ML_MCTS_ins.scenario_check()
-    ML_MCTS_ins.run_mcts()
+    is_plan_success = ML_MCTS_ins.run_mcts(30)
+    if not is_plan_success:
+        return
     
     # obj_idx, spots = ML_MCTS_ins.unknown_tunnel_check() # modify to have only center value return
     # cluster_angles = cal_cam_angle_for_area(spots, curr_config + [target_pos_MCT], scene_info, visualize=True)
@@ -2422,10 +2430,6 @@ def check_MCTS(MCTS_root, MCTS_name, file_path, i=None):
     ML_MCTS_ins.animate_whole_sequence()
 
     # print("result: ", ML_MCTS_ins.track_level_steps_)
-
-    # ['#00fffb', '#ff00dd', '#bf00ff', '#ffae00', '#59ff00', '#FFFF00']
-    #    cyan      pink       purple     orange    green       yellow
-    #     0         1           2          3         4            5
 
     # update values
     rac.obj_pos_list, rac.obj_mesh = get_rearrange_result(ML_MCTS_ins)
@@ -2594,7 +2598,7 @@ if __name__ == '__main__':
     # mcts_name = "pcd2_grasp_65_obj_num_10_bigS.npy"
     # mcts_name = "pcd2_grasp_101_obj_num_10_bigS.npy" #depend
     # mcts_name = "pcd2_grasp_169_obj_num_10_bigS.npy" # not solve
-    mcts_name = "pcd2_grasp_54_obj_num_10_bigS.npy" # hard 3min
+    # mcts_name = "pcd2_grasp_54_obj_num_10_bigS.npy" # hard 3min
     # mcts_name = "pcd2_grasp_115_obj_num_10_bigS.npy" # depend
     # mcts_name = "pcd2_grasp_65_obj_num_10_bigSS.npy"
     # mcts_name = "pcd2_grasp_101_obj_num_10_bigSS.npy" # hard
@@ -2608,11 +2612,11 @@ if __name__ == '__main__':
     # mcts_name = "pcd2_grasp_54_obj_num_11_bigS.npy" # 25s
     # mcts_name = "pcd2_grasp_115_obj_num_11_bigS.npy" # depend
 
-    mcts_name = "pcd2_grasp_51_obj_num_12_bigS.npy"
+    # mcts_name = "pcd2_grasp_51_obj_num_12_bigS.npy"
     # mcts_name = "pcd2_grasp_6_obj_num_12_bigS.npy" # depend
     # mcts_name = "pcd2_grasp_80_obj_num_12_bigS.npy" # depend
     # mcts_name = "pcd2_grasp_45_obj_num_12_bigS.npy" # hard unsolve
-    # mcts_name = "pcd2_grasp_160_obj_num_12_bigS.npy"
+    mcts_name = "pcd2_grasp_160_obj_num_12_bigS.npy"
     # mcts_name = "pcd2_grasp_16_obj_num_12_bigS.npy" # hard 20min
     # mcts_name = "pcd2_grasp_65_obj_num_12_bigS.npy" # no collision
     # mcts_name = "pcd2_grasp_101_obj_num_12_bigS.npy" # depend

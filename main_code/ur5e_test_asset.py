@@ -1513,7 +1513,7 @@ is_target_detected = False
 target_template = None
 while not gym.query_viewer_has_closed(viewer):#///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     if is_target_detected and is_cluster_covered:
-        # ML_MCTS_ins.run_mcts() # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        is_plan_success = ML_MCTS_ins.run_mcts()
         break
     if need_acquire:
         if acquire_counter > 500:
