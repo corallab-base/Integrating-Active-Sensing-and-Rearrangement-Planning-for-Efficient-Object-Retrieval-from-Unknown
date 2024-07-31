@@ -1,7 +1,7 @@
 #
 # file   rearrangement_planning_util.py
 # brief  Defines search tree node and related util functions
-# author Hanwen Ren
+# author Hanwen Ren ---Jun
 # date   2023-03-08
 #
 
@@ -216,7 +216,7 @@ def smart_LMP_motion(source_treenode, target_treenode):
 #**************************************************************************************************
 
 class Tree_Node():
-    def __init__(self, current_config, goal_config, current_grid, static_config = [], total_distance = 0, robot= [10.0, -2.0], swept_volume1=None, swept_volume2=None, obj_mesh=None, scale=None, target_pos=[]):
+    def __init__(self, current_config, goal_config, current_grid, static_config = [], total_distance = 0, robot= [10.0, -2.0], swept_volume1=None, swept_volume2=None, obj_mesh=None, scale=None, target_pos=[], unknown_area=[], valid_area=[], potential_centers=[]):
         self.reward_ = 0.0
         self.visited_ = 0.0
         self.parent_ = None
@@ -229,28 +229,43 @@ class Tree_Node():
         self.grid_ = current_grid
         self.robot_ = [0,0]
         self.robot_width_ = 2
+        self.robot_width_ = (0.104 / scale)
+        self.radius = (0.0515 / scale)
         self.object_in_collision_ = None
         self.total_distance_ = total_distance
-        self.x_min_ = int(-len(current_grid[0]) / 2)
-        self.x_max_ = int(len(current_grid[0]) / 2)
+        self.unknown_area = unknown_area
+        self.valid_area = valid_area
+
+        self.potential_centers=potential_centers
+
+        if unknown_area is not None:
+            max_radius = -sys.maxsize
+            for config in current_config:
+                if max_radius < config[2]:
+                    max_radius = config[2]
+        else:
+            max_radius = 1
+        
+        self.x_min_ = int(-len(current_grid[0]) / 2) + int(max_radius)
+        self.x_max_ = int(len(current_grid[0]) / 2) - int(max_radius)
+
         if scale is not None:
-            self.y_min_ = int(0.3 / scale) + 2
+            self.y_min_ = int(0.30 / scale) + int(max_radius) + 1
         else:
             self.y_min_ = 0
+        self.y_max_ = len(current_grid) - int(max_radius)
 
-        self.y_max_ = len(current_grid)
-        self.swept_manager1 = swept_volume1
-        self.swept_manager2 = swept_volume2
+        self.swept_volume1 = swept_volume1
+        self.swept_volume2 = swept_volume2
         self.obj_mesh = obj_mesh
         self.scale = scale
         self.final_obj_mesh = None
 
-        if self.obj_mesh is not None:
-            self.is_goal_config_swept()
+        self.is_goal_config_swept()
 
         self.distance_lookup_ = defaultdict(list)
-        for t in range(-len(self.grid_) + 1, len(self.grid_)):
-            for k in range(-len(self.grid_[0]) + 1, len(self.grid_[0])):
+        for t in range(-len(self.grid_) + 1, len(self.grid_), 5):
+            for k in range(-len(self.grid_[0]) + 1, len(self.grid_[0]), 5):
                 distance = round((t)**2 + (k)**2, 3)
                 # if abs(distance) <= 0.0001:
                 #     continue 
@@ -286,7 +301,7 @@ class Tree_Node():
         else:
             angle = math.pi/2
 
-        width = np.sqrt(dy**2 + dx**2) + 1
+        width = np.sqrt(dy**2 + dx**2) + int(self.radius)
         
         center_point = [self.robot_[0] + np.cos(angle)*width/2.0, self.robot_[1] + np.sin(angle)*width/2.0]
         v2_start = np.array(center_point)
@@ -297,19 +312,35 @@ class Tree_Node():
                                              center_point[1] + np.cos(angle)*self.robot_width_])
 
         #bottom left point, width, height, rotation degree, normal1_start, normal1_end, normal2_start, normal2_end
-        return [(self.robot_[0] + self.robot_width_*np.sin(angle), self.robot_[1] - self.robot_width_*np.cos(angle)), np.sqrt(dy**2 + dx**2)+1, self.robot_width_*2, np.degrees(angle), v2_start, v2_end, v3_start, v3_end]
+        return [(self.robot_[0] + self.robot_width_*np.sin(angle), self.robot_[1] - self.robot_width_*np.cos(angle)), np.sqrt(dy**2 + dx**2) + self.radius, self.robot_width_*2, np.degrees(angle), v2_start, v2_end, v3_start, v3_end]
 
+    def get_collision_tunnel_unknown(self, tunnel):
+        _, width, height, _, v2_start, v2_end, v3_start, v3_end = tunnel
+        v2 = v2_end - v2_start
+        v2 = v2 / np.linalg.norm(v2)
+        v3 = v3_end - v3_start
+        v3 = v3 / np.linalg.norm(v3)
 
-    def collision_tunnel_static(self, tunnel):
+        collision_points = []
+        for point in self.potential_centers:
+            test_vector = point - v2_start
+            proj_v2 = np.dot(v2, test_vector)
+            proj_v3 = np.dot(v3, test_vector)
+
+            if -width/2.0 < proj_v2 < width/2.0 and \
+               -height/2.0 < proj_v3 < height/2.0: 
+                collision_points.append(point)
+
+        # self.tunnel_and_normal_visualizer([tunnel])
+        return collision_points
+
+    def collision_tunnel_static(self, tunnel, no_unknown=False):
         _, width, height, angle_degree, v2_start, v2_end, v3_start, v3_end = tunnel
-        angle = np.radians(angle_degree)
         
         v2 = v2_end - v2_start
         v2 = v2 / np.linalg.norm(v2)
         v3 = v3_end - v3_start
         v3 = v3 / np.linalg.norm(v3)
-        
-        collision_items = set()
         
         if np.dot(v2, v3) > 1e-6:
             print('tunnel axes calculation fails\n')
@@ -323,20 +354,20 @@ class Tree_Node():
         
             if -width/2.0 - 1.0 < proj_v2 < width/2.0 + 1.0 and \
                  -height/2.0 - 1.0 < proj_v3 < height/2.0 + 1.0: 
-                # print("true")
                 return True
             
-        # print("false")
+        if no_unknown:
+            return False
+            
+        for point in self.valid_area:
+            test_vector = point - v2_start
+            proj_v2 = np.dot(v2, test_vector)
+            proj_v3 = np.dot(v3, test_vector)
 
-        # #the goal of current MCTS objective
-        # cx, cy, radius, color = self.goal_config_[0]
-        # test_vector = np.array([cx, cy]) - v2_start
-        # proj_v2 = np.dot(v2, test_vector)
-        # proj_v3 = np.dot(v3, test_vector)
-        
-        # if -width/2.0 - 1.0 < proj_v2 < width/2.0 + 1.0 and \
-        #      -height/2.0 - 1.0 < proj_v3 < height/2.0 + 1.0: 
-        #     return True
+            if -width/2.0 < proj_v2 < width/2.0 and \
+               -height/2.0 < proj_v3 < height/2.0: 
+                # self.tunnel_and_normal_visualizer([tunnel])
+                return True
             
         return False
 
@@ -360,8 +391,8 @@ class Tree_Node():
         proj_v2 = np.dot(v2, test_vector)
         proj_v3 = np.dot(v3, test_vector)
 
-        if -width/2.0 - 1.0 < proj_v2 < width/2.0 + 1.0 and \
-             -height/2.0 - 1.0 < proj_v3 < height/2.0 + 1.0: 
+        if -width/2.0 - self.radius < proj_v2 < width/2.0 + self.radius and \
+             -height/2.0 - self.radius < proj_v3 < height/2.0 + self.radius: 
             return True
             
         return False
@@ -398,8 +429,8 @@ class Tree_Node():
             proj_v2 = np.dot(v2, test_vector)
             proj_v3 = np.dot(v3, test_vector)
 
-            if -width/2.0 - 1.0 < proj_v2 < width/2.0 + 1.0 and \
-               -height/2.0 - 1.0 < proj_v3 < height/2.0 + 1.0: 
+            if -width/2.0 - self.radius < proj_v2 < width/2.0 + self.radius and \
+               -height/2.0 - self.radius < proj_v3 < height/2.0 + self.radius: 
                 collision_items.add(i)
             
         return list(collision_items)
@@ -426,8 +457,8 @@ class Tree_Node():
             proj_v2 = np.dot(v2, test_vector)
             proj_v3 = np.dot(v3, test_vector)
 
-            if -width/2.0 - 1.0 < proj_v2 < width/2.0 + 1.0 and \
-               -height/2.0 - 1.0 < proj_v3 < height/2.0 + 1.0: 
+            if -width/2.0 - self.radius < proj_v2 < width/2.0 + self.radius and \
+               -height/2.0 - self.radius < proj_v3 < height/2.0 + self.radius: 
                 collision_items.add(i)
             
         return list(collision_items)
@@ -450,27 +481,30 @@ class Tree_Node():
         proj_v2 = np.dot(v2, test_vector)
         proj_v3 = np.dot(v3, test_vector)
 
-        if -width/2.0 - 1.0 < proj_v2 < width/2.0 + 1.0 and \
-             -height/2.0 - 1.0 < proj_v3 < height/2.0 + 1.0: 
+        if -width/2.0 - self.radius < proj_v2 < width/2.0 + self.radius and \
+             -height/2.0 - self.radius < proj_v3 < height/2.0 + self.radius: 
             return True
         else:
             return False
 
 
-    def tunnel_and_normal_visualizer(self, tunnel_list = None, object_in_collision = None, true_color = False, animation = False):
+    def tunnel_and_normal_visualizer(self, tunnel_list = None, object_in_collision = None, true_color = False, animation = False, unknown_show = False):
         object_in_collision = self.check_collision_w_swept()
 
-        region_x, region_y = [], []
-        for i in range(len(self.grid_)):
-            for j in range(len(self.grid_[0])):
-                region_x.append(i)
-                region_y.append(j)
         if animation == False:
-            plt.figure(figsize = (len(self.grid_[0]), len(self.grid_)))
-        plt.scatter(region_x, region_y)
+            if self.scale == 0.01:
+                plt.figure(figsize = (len(self.grid_[0])/5, len(self.grid_)/5))
+            else:
+                plt.figure(figsize = (len(self.grid_[0]), len(self.grid_)))
+
+            plt.axis((0, len(self.grid_[0]), 0, len(self.grid_)))
+            # plt.figure(figsize = (len(self.grid_[0]), len(self.grid_)))
+
+
         for cx, cy, radius, color in self.curr_config_:
             temp_circle = mpatches.Circle((cx, cy), radius, color = color)
             plt.gca().add_patch(temp_circle)
+
         for cx, cy, radius, color in self.static_config_:
             if not true_color:
                 temp_circle = mpatches.Circle((cx, cy), radius, color = 'black')
@@ -481,7 +515,7 @@ class Tree_Node():
                 temp_circle = mpatches.Circle((cx, cy), radius, color = color)
                 plt.gca().add_patch(temp_circle)
 
-        robot = mpatches.Rectangle((self.robot_[0] - 0.5, self.robot_[1] - 0.5), 1, 1)
+        robot = mpatches.Rectangle((self.robot_[0] - 0.023 / self.scale, self.robot_[1] - 0.023 / self.scale), self.radius, self.radius)
         plt.gca().add_patch(robot)
 
         tunnel_counter = 0
@@ -497,13 +531,29 @@ class Tree_Node():
 
         if object_in_collision:
             for index in object_in_collision:
-                # if index != 0:
                 cx, cy, radius, color = self.curr_config_[index]
                 temp_square = mpatches.Rectangle((cx - radius, cy - radius), radius*2, radius*2, alpha = 0.3, color = 'black')
                 plt.gca().add_patch(temp_square)
 
+        if unknown_show:
+            if len(self.unknown_area) > 0:
+                plt.scatter(np.array(self.unknown_area)[:, 0], np.array(self.unknown_area)[:, 1], color='black')
+                # for cluster in self.unknown_area:
+                #     plt.scatter(np.array(cluster)[:, 0], np.array(cluster)[:, 1])
+            if len(self.valid_area) > 0:
+                plt.scatter(self.valid_area[:, 0], self.valid_area[:, 1], c='green')
+        
+        else:
+            if len(self.valid_area) > 0:
+                plt.scatter(self.valid_area[:, 0], self.valid_area[:, 1], c='black')
+
+        if len(self.potential_centers) > 0:
+                plt.scatter(self.potential_centers[:, 0], self.potential_centers[:, 1], c='red')
+
+
+
         plt.xlim(-len(self.grid_[0])/2, len(self.grid_[0])/2)
-        plt.ylim(0, len(self.grid_))
+        plt.ylim(0, len(self.grid_) - 1)
         if animation == False:
             plt.show()
         else:
@@ -574,9 +624,9 @@ class Tree_Node():
             # check collision
             req = fcl.CollisionRequest()
             rdata = fcl.CollisionData(request = req)
-            self.swept_manager1.collide(fcl.CollisionObject(temp_m, temp_t), rdata, fcl.defaultCollisionCallback)
+            self.swept_volume1.collide(fcl.CollisionObject(temp_m, temp_t), rdata, fcl.defaultCollisionCallback)
             is_collision1 = rdata.result.is_collision
-            self.swept_manager2.collide(fcl.CollisionObject(temp_m, temp_t), rdata, fcl.defaultCollisionCallback)
+            self.swept_volume2.collide(fcl.CollisionObject(temp_m, temp_t), rdata, fcl.defaultCollisionCallback)
             is_collision2 = rdata.result.is_collision
 
             if is_collision1 or is_collision2:
@@ -616,6 +666,7 @@ class Tree_Node():
     def test_new_region_blocking(self, new_region, obs = None):
         new_region_relocate_tunnel = self.get_tunnel(self.robot_, new_region)
         flag4 = self.collision_tunnel_static(new_region_relocate_tunnel)
+        print('flag4', flag4)
         flag3 = False
 
         if obs:
@@ -665,9 +716,9 @@ class Tree_Node():
         # check collision
         req = fcl.CollisionRequest()
         rdata = fcl.CollisionData(request = req)
-        self.swept_manager1.collide(fcl.CollisionObject(temp_m, temp_t), rdata, fcl.defaultCollisionCallback)
+        self.swept_volume1.collide(fcl.CollisionObject(temp_m, temp_t), rdata, fcl.defaultCollisionCallback)
         is_collision1 = rdata.result.is_collision
-        self.swept_manager2.collide(fcl.CollisionObject(temp_m, temp_t), rdata, fcl.defaultCollisionCallback)
+        self.swept_volume2.collide(fcl.CollisionObject(temp_m, temp_t), rdata, fcl.defaultCollisionCallback)
         is_collision2 = rdata.result.is_collision
 
         return is_collision1 or is_collision2
@@ -676,7 +727,6 @@ class Tree_Node():
         swept_off_flag = False
         if random_obj_flag:
             swept_off_flag = random.choice([True, False])
-            # swept_off_flag = True
             num_feasible_list = []
 
         gx, gy, radius, color = self.curr_config_[index]
@@ -685,14 +735,14 @@ class Tree_Node():
             for ox, oy in offset_list:
                 #change for IROS 2024, add a 2D gaussian offset to change the discrete region proposal
                 #to continuous. The covariance matrix is [[R, 0], [0, R]]
-                temp_x = gx + ox + round(random.gauss(0, 1),2)
-                temp_y = gy + oy + round(random.gauss(0, 1),2)
+                temp_x = gx + ox + round(random.gauss(0, 3),2)
+                temp_y = gy + oy + round(random.gauss(0, 3),2)
 
                 #may delete
                 if self.x_min_ <= gx + ox <= self.x_max_ and self.y_min_ <= gy + oy <= self.y_max_:
                    while (temp_x < self.x_min_ or temp_x > self.x_max_ or temp_y < self.y_min_ or temp_y > self.y_max_):
-                       temp_x = gx + ox + round(random.gauss(0, 1),2)
-                       temp_y = gy + oy + round(random.gauss(0, 1),2)
+                       temp_x = gx + ox + round(random.gauss(0, 3),2)
+                       temp_y = gy + oy + round(random.gauss(0, 3),2)
 
                 ox_rand = temp_x - gx
                 oy_rand = temp_y - gy
@@ -701,7 +751,7 @@ class Tree_Node():
                    (self.y_min_ <= temp_y <= self.y_max_) and \
                     self.dst_region_collision_free(index, [temp_x, temp_y]) and \
                     not self.test_new_region_blocking([temp_x, temp_y], obs) and \
-                    not self.get_new_collision_swept(index, [ox_rand, oy_rand], swept_off_flag):
+                    not self.get_new_collision_swept(index, [ox_rand, oy_rand], random_obj_flag):
 
                     relocate_tunnel = self.get_tunnel(self.robot_, [temp_x, temp_y])
                     collision_object = self.collision_tunnel_object(relocate_tunnel)
@@ -810,6 +860,23 @@ class Tree_Node():
                 if distance < obj_radius + radius + 2:
                     # print("dst_region_collision failed", i)
                     return False
+                
+        for point in self.unknown_area:
+            distance = np.sqrt((proposed_region[0] - point[0])**2 + (proposed_region[1] - point[1])**2)
+            if distance < obj_radius:
+                # print("dst_region_collision failed by unknown area", point, proposed_region, distance)
+                # curr_config = deepcopy(self.curr_config_)
+                # unknown_area = deepcopy(self.unknown_area)
+                # self.unknown_area = np.array([point])
+                # self.curr_config_[index][:2] = proposed_region
+                # print(self.curr_config_)
+                # temp = self.curr_config_[index]
+                # self.curr_config_ = [temp]
+                # # self.tunnel_and_normal_visualizer()
+                # self.curr_config_ = curr_config
+                # self.unknown_area = unknown_area
+                return False
+            
         return True
 
 

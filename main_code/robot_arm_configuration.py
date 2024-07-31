@@ -1581,6 +1581,40 @@ class path_planner():
         else:
             return None
         
+def grasp_generation():
+    test_name = 'sugar_box_grasp'
+    # test_name = 'banana_grasp'
+    # test_name = 'mustard_bottle_grasp'
+
+    grasp_file_path = '../contact_graspnet/results/' + test_name + '.npz'
+    grasp_datas = np.load(grasp_file_path, allow_pickle=True)
+    grasp_score_idx = list(np.argsort(-grasp_datas["scores"].item()[1]))
+
+    cam_file_path = 'test_data/test_scenes/7.29.14.14/test_npy/0.npy'
+    # cam_file_path = 'test_data/test_scenes/7.29.14.7/test_npy/1.npy'
+    # cam_file_path = 'test_data/test_scenes/7.29.13.31/test_npy/0.npy'
+
+    cam_datas = np.load(cam_file_path, allow_pickle=True)
+    cam_rot = cam_datas.item()["cam_rot"]
+    cam_tran = cam_datas.item()["cam_tran"]
+
+    scene_info = [0.56, 0.86000001, 0.1, 0.5]
+    rac = robot_arm_configuration('../assets/urdf/ur5e/meshes/collision/', np.array([0.0, 0, 0]), scene_info) # point_cloud=point_cloud
+
+    generated_grasp = []
+
+    for grasp_idx in range(len(grasp_score_idx)):
+        grasp_mat = grasp_datas["pred_grasps_cam"].item()[1][grasp_idx]
+        offset = [-0.5, 0, 0]
+        target_pos, target_quat = rac.calc_grasp_pos(grasp_mat, cam_rot, cam_tran, offset)
+        generated_grasp.append({"target_pos":target_pos, "target_quat":target_quat})
+
+        # init2grasp_angels = rac.grasp_verify(grasp_mat, cam_rot, cam_tran, offset=[-0.5,0,0])
+
+        # if init2grasp_angels is not None:
+        #     rac.check_collision_models(init2grasp_angels)
+    np.save("../assets/urdf/ycb/004_sugar_box/grasp_dict.npy", generated_grasp)
+        
 def get_matching_mesh(target_pcd, visualize=False):
     asset_root = '../assets/'
     object_common_prefix = "urdf/ycb/"
@@ -2300,7 +2334,6 @@ def check_MCTS(MCTS_root, MCTS_name, file_path, i=None):
     # rac = robot_arm_configuration(file_path, np.array([0.0, 0, 0]), scene_info, target_mesh=target_mesh, obstacles_num=obstacles_num, target_pos=target_pos) # point_cloud=point_cloud
     rac = robot_arm_configuration(file_path, np.array([0.0, 0, 0]), scene_info) # point_cloud=point_cloud
     rac.target_mesh = target_mesh
-    rac.obstacles_num = obstacles_num
     rac.target_pos = target_pos
     rac.obstacles_num = obstacles_num
     rac.obj_mesh = obj_mesh
@@ -2355,24 +2388,23 @@ def check_MCTS(MCTS_root, MCTS_name, file_path, i=None):
     print(curr_config)
 
 
-    # unknown_area = np.load(MCTS_root + "unknown_area.npy", allow_pickle=True)
-    # unknown_area = delete_obj_spots(curr_config, target_pos_MCT, unknown_area, visualize=False)
-    # cluster_list = clustering(unknown_area)
+    unknown_area = np.load(MCTS_root + "unknown_area.npy", allow_pickle=True)
+    unknown_area = delete_obj_spots(curr_config, target_pos_MCT, unknown_area, visualize=False)
+    cluster_list = clustering(unknown_area)
 
     # option 2-----------------------------------------------------------------------------------------------
-    # filtered_cluster = []
-    # valid_area = []
-    # potential_centers = []
-    # for cluster in cluster_list:
-    #     valid_points, valid_center = check_obj_fit(cluster, 5, visualize=False)
-    #     if len(valid_center) > 5:
-    #         filtered_cluster += cluster
-    #         valid_area += valid_points
-    #         potential_centers += valid_center
-
-    # filtered_cluster = np.array(filtered_cluster)
-    # valid_area = np.array(valid_area)
-    # potential_centers = np.array(potential_centers)
+    filtered_cluster = []
+    valid_area = []
+    potential_centers = []
+    for cluster in cluster_list:
+        valid_points, valid_center = check_obj_fit(cluster, 5, visualize=False)
+        if len(valid_center) > 5:
+            filtered_cluster += cluster
+            valid_area += valid_points
+            potential_centers += valid_center
+    filtered_cluster = np.array(filtered_cluster)
+    valid_area = np.array(valid_area)
+    potential_centers = np.array(potential_centers)
 
     # plt.figure(figsize=(20,20))
     # plt.axis([-43,43,0,86])
@@ -2385,16 +2417,16 @@ def check_MCTS(MCTS_root, MCTS_name, file_path, i=None):
     # cluster_angles = cal_cam_angle_for_area(potential_centers, curr_config + [target_pos_MCT], scene_info, visualize=True)
 
 
-    # ML_MCTS_ins = mct.multi_level_MCTS_algo(copy.deepcopy(curr_config), copy.deepcopy(curr_config), scene_info=scene_info,
-    #                                         swept_volume1=swept_volume1, swept_volume2=swept_volume2, obj_mesh=rac.obj_mesh,
-    #                                         target_pos=target_pos_MCT, unknown_area=filtered_cluster, valid_area=valid_area,
-    #                                         potential_centers=potential_centers)
-    
     ML_MCTS_ins = mct.multi_level_MCTS_algo(copy.deepcopy(curr_config), copy.deepcopy(curr_config), scene_info=scene_info,
                                             swept_volume1=swept_volume1, swept_volume2=swept_volume2, obj_mesh=rac.obj_mesh,
-                                            target_pos=target_pos_MCT)
+                                            target_pos=target_pos_MCT, unknown_area=filtered_cluster, valid_area=valid_area,
+                                            potential_centers=potential_centers)
     
-    swept_volume1, _ = rac.get_swept_volume(init2grasp_path, test_name, idx, frame_rate=60, scene_info=scene_info, animation=False, static_vi=True)
+    # ML_MCTS_ins = mct.multi_level_MCTS_algo(copy.deepcopy(curr_config), copy.deepcopy(curr_config), scene_info=scene_info,
+    #                                         swept_volume1=swept_volume1, swept_volume2=swept_volume2, obj_mesh=rac.obj_mesh,
+    #                                         target_pos=target_pos_MCT)
+    
+    # swept_volume1, _ = rac.get_swept_volume(init2grasp_path, test_name, idx, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
 
     ML_MCTS_ins.init_MCTS()
     ML_MCTS_ins.scenario_check()
@@ -2441,42 +2473,6 @@ def check_MCTS(MCTS_root, MCTS_name, file_path, i=None):
     # swept_volume2, _ = rac.get_swept_volume(grasp2init_path, test_name, idx, w_target=w_target, frame_rate=60, scene_info=scene_info, animation=False, static_vi=True)
 
     return ML_MCTS_ins.time_consumption_, ML_MCTS_ins.total_steps_, ML_MCTS_ins.total_length_travelled_, ML_MCTS_ins.total_length_displacement_
-
-
-def grasp_generation():
-    test_name = 'sugar_box_grasp'
-    # test_name = 'banana_grasp'
-    # test_name = 'mustard_bottle_grasp'
-
-    grasp_file_path = '../contact_graspnet/results/' + test_name + '.npz'
-    grasp_datas = np.load(grasp_file_path, allow_pickle=True)
-    grasp_score_idx = list(np.argsort(-grasp_datas["scores"].item()[1]))
-
-    cam_file_path = 'test_data/test_scenes/7.29.14.14/test_npy/0.npy'
-    # cam_file_path = 'test_data/test_scenes/7.29.14.7/test_npy/1.npy'
-    # cam_file_path = 'test_data/test_scenes/7.29.13.31/test_npy/0.npy'
-
-    cam_datas = np.load(cam_file_path, allow_pickle=True)
-    cam_rot = cam_datas.item()["cam_rot"]
-    cam_tran = cam_datas.item()["cam_tran"]
-
-    scene_info = [0.56, 0.86000001, 0.1, 0.5]
-    rac = robot_arm_configuration('../assets/urdf/ur5e/meshes/collision/', np.array([0.0, 0, 0]), scene_info) # point_cloud=point_cloud
-
-    generated_grasp = []
-
-    for grasp_idx in range(len(grasp_score_idx)):
-        grasp_mat = grasp_datas["pred_grasps_cam"].item()[1][grasp_idx]
-        offset = [-0.5, 0, 0]
-        target_pos, target_quat = rac.calc_grasp_pos(grasp_mat, cam_rot, cam_tran, offset)
-        generated_grasp.append({"target_pos":target_pos, "target_quat":target_quat})
-
-        # init2grasp_angels = rac.grasp_verify(grasp_mat, cam_rot, cam_tran, offset=[-0.5,0,0])
-
-        # if init2grasp_angels is not None:
-        #     rac.check_collision_models(init2grasp_angels)
-    np.save("../assets/urdf/ycb/004_sugar_box/grasp_dict.npy", generated_grasp)
-    pdb.set_trace()
 
 if __name__ == '__main__':
     # grasp_generation()
@@ -2537,7 +2533,7 @@ if __name__ == '__main__':
     # mcts_name = "groud_truth_scene.npy"
     mcts_name = "temp_scene.npy"
     
-    # check_MCTS(mcts_root, mcts_name, file_path)
+    check_MCTS(mcts_root, mcts_name, file_path)
 
 
     # scene_list = ["7.17.17.18/",

@@ -1507,14 +1507,24 @@ ML_MCTS_ins = mct.multi_level_MCTS_algo(None, None, scene_info=scene_info, swept
 #active sensing here
 obj_pos_MCTS = {}
 obj_mesh_MCTS = {}
+target_pos = None
+target_mash = None
 obj_pcd = {}
 is_tunnel_covered = False
 is_target_detected = False
 target_template = None
+init2grasp_path = None
+grasp2init_path = None
 while not gym.query_viewer_has_closed(viewer):#///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    if is_target_detected and is_cluster_covered:
+    if is_target_detected and is_tunnel_covered:
         is_plan_success = ML_MCTS_ins.run_mcts()
-        break
+        if is_plan_success:
+            ML_MCTS_ins.global_optimization()
+            ML_MCTS_ins.animate_whole_sequence()
+            break
+
+        need_acquire = False # going back to cluster calculation
+
     if need_acquire:
         if acquire_counter > 500:
             gym.clear_lines(viewer)
@@ -1608,12 +1618,30 @@ while not gym.query_viewer_has_closed(viewer):#/////////////////////////////////
                                 obj_mesh = [verts, face]
 
                                 obj_pos = inv_trans - object_offset[object_index[i-1]]
+
+                                if dist < 3:
+                                    print("idx",i,"mesh added")
+                                    obj_pos_MCTS[i] = obj_pos[0:2].tolist()
+                                    obj_mesh_MCTS[i] = obj_mesh
+
+                                    dy = obj_pos_MCTS[i][1] - obj_pos_list[i-1][1]
+                                    dx = obj_pos_MCTS[i][0] - obj_pos_list[i-1][0]
+                                    print("diff:", np.sqrt(dy**2 + dx**2), "dist", dist)
                             else:
                                 # target obj matching
                                 obj_mesh, obj_pos, dist, obj_name = RC.get_matching_mesh(downpcd, visualize=False)
                                 obj_pos = obj_pos - object_offset[object_index[i-1]]
 
-                                if not is_target_detected:
+                                if dist < 3:
+                                    print("idx",i,"mesh added")
+                                    target_pos = obj_pos[0:2].tolist()
+                                    target_mash = obj_mesh
+
+                                    dy = target_pos[1] - obj_pos_list[i-1][1]
+                                    dx = target_pos[0] - obj_pos_list[i-1][0]
+                                    print("diff:", np.sqrt(dy**2 + dx**2), "dist", dist)
+
+                                if not is_target_detected and dist < 3:
                                     # read grasp data
                                     grasp_file = "/".join(obj_name.split('/')[:5]) + "/grasp_dict.npy"
                                     grasp_data = np.load(grasp_file, allow_pickle=True)
@@ -1625,7 +1653,7 @@ while not gym.query_viewer_has_closed(viewer):#/////////////////////////////////
                                     np.random.shuffle(np.arange(len(grasp_list)))
 
                                     # for grasp_idx in np.random.randint(len(grasp_data), size=10):
-                                    for grasp_idx in grasp_list:
+                                    for grasp_idx in grasp_list[:20]:
                                         target_pos = grasp_data[grasp_idx]['target_pos']
                                         target_quat = grasp_data[grasp_idx]['target_quat']
                                         target_pos[:2] = target_pos[:2] + obj_pos[:2]
@@ -1648,7 +1676,7 @@ while not gym.query_viewer_has_closed(viewer):#/////////////////////////////////
                                             continue
 
                                         swept_volume1_temp, swept_verts1_temp = rac.get_swept_volume(init2grasp_path_temp, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
-                                        swept_volume2_temp, swept_verts2_temp = rac.get_swept_volume(grasp2init_path_temp, w_target=mod_bbox, frame_rate=60, scene_info=scene_info, animation=False, static_vi=True)
+                                        swept_volume2_temp, swept_verts2_temp = rac.get_swept_volume(grasp2init_path_temp, w_target=mod_bbox, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
                                         num_grasp += 1
                                         is_target_detected = True
                                         print("!!!!!!!!!!!!!!!!!!!TRUE", num_grasp, '!!!!!!!!!!!!!!!!!!!!!!!')
@@ -1660,6 +1688,9 @@ while not gym.query_viewer_has_closed(viewer):#/////////////////////////////////
                                             swept_size = len(swept_verts_temp)
                                             ML_MCTS_ins.swept_volume1 = swept_volume1_temp
                                             ML_MCTS_ins.swept_volume2 = swept_volume2_temp
+                                            init2grasp_path = init2grasp_path_temp
+                                            grasp2init_path = grasp2init_path_temp
+                                            
                                             swept_center = swept_center_temp
                                             swept_verts = swept_verts_temp
 
@@ -1670,14 +1701,14 @@ while not gym.query_viewer_has_closed(viewer):#/////////////////////////////////
                             # obj_mesh, obj_pos, dist = RC.get_matching_mesh(downpcd, visualize=False)
                             # obj_pos = obj_pos - object_offset[object_index[i-1]]
                                 
-                            if dist < 3:
-                                print("idx",i,"mesh added")
-                                obj_pos_MCTS[i] = obj_pos[0:2].tolist()
-                                obj_mesh_MCTS[i] = obj_mesh
+                            # if dist < 3:
+                            #     print("idx",i,"mesh added")
+                            #     obj_pos_MCTS[i] = obj_pos[0:2].tolist()
+                            #     obj_mesh_MCTS[i] = obj_mesh
 
-                                dy = obj_pos_MCTS[i][1] - obj_pos_list[i-1][1]
-                                dx = obj_pos_MCTS[i][0] - obj_pos_list[i-1][0]
-                                print("diff:", np.sqrt(dy**2 + dx**2), "dist", dist)
+                            #     dy = obj_pos_MCTS[i][1] - obj_pos_list[i-1][1]
+                            #     dx = obj_pos_MCTS[i][0] - obj_pos_list[i-1][0]
+                            #     print("diff:", np.sqrt(dy**2 + dx**2), "dist", dist)
 
                         _ = scene.register_camera_view(list(new_cam_rotation), list(new_cam_translation), new_depth_image, object_dict)
 
@@ -1737,19 +1768,20 @@ while not gym.query_viewer_has_closed(viewer):#/////////////////////////////////
         while not end_state_collision_free:
             # camera_loc, camera_focus, dof_result = random_sample_guided_selection(sim, envs[-1], test_cam, scene)
             # if coverage_score >=0.96 and len(obj_pos_MCTS) == num_of_objects:
-            if coverage_score >=0.96: # swept volume observed
+            if coverage_score >=0.90: # swept volume observed
                 # get obj pose
                 obj_mesh_MCTS = dict(sorted(obj_mesh_MCTS.items()))
                 obj_pos_MCTS = dict(sorted(obj_pos_MCTS.items()))
 
-                rac.target_mesh = obj_mesh_MCTS[4]
-                target_pos_MCT = obj_pos_MCTS[4]
-                rac.obstacles_num = num_of_objects - 1
-                rac.obj_mesh = list(obj_mesh_MCTS.values())[:num_of_objects - 1]
-                rac.obj_pos_list = list(obj_pos_MCTS.values())[:num_of_objects - 1]
+                rac.target_mesh = target_mash
+                target_pos_MCT = target_pos
+                rac.obj_mesh = list(obj_mesh_MCTS.values())
+                rac.obj_pos_list = list(obj_pos_MCTS.values())
+                rac.obstacles_num = len(rac.obj_pos_list)
 
                 # unobserved area processing
                 curr_config, target_pos_MCT = rac.get_MCT_config(copy.deepcopy(rac.obj_pos_list), copy.deepcopy(rac.obj_mesh), copy.deepcopy(target_pos_MCT), copy.deepcopy(rac.target_mesh))
+                # unknown_area = get_unobserved_area_w_height(scene)
                 unknown_area = get_unobserved_area(scene)
 
                 np.save(new_folder + "unknown_area" + str(sequence_count), unknown_area)
@@ -1761,13 +1793,14 @@ while not gym.query_viewer_has_closed(viewer):#/////////////////////////////////
                 ML_MCTS_ins.curr_config_ = copy.deepcopy(curr_config)
                 ML_MCTS_ins.goal_config_ = copy.deepcopy(curr_config)
                 ML_MCTS_ins.target_pos = copy.deepcopy(target_pos_MCT)
+                ML_MCTS_ins.obj_mesh = rac.obj_mesh
 
                 ML_MCTS_ins.unknown_area = unknown_area
                 ML_MCTS_ins.valid_area = valid_area
                 ML_MCTS_ins.potential_centers = potential_centers
 
-                ML_MCTS_ins.obj_mesh = rac.obj_mesh
 
+                rac.check_collision_models(init2grasp_angels, scene_info=scene_info)
                 ML_MCTS_ins.init_MCTS()
                 ML_MCTS_ins.scenario_check() # terminate scenario if it's not valid
 
@@ -1782,7 +1815,6 @@ while not gym.query_viewer_has_closed(viewer):#/////////////////////////////////
                         is_tunnel_covered = True
                         need_acquire = True
                         break
-
 
                     plt.figure(figsize=(20,20))
                     plt.axis([-43,43,0,86])
@@ -1806,7 +1838,7 @@ while not gym.query_viewer_has_closed(viewer):#/////////////////////////////////
                     
                     cluster_angles = cal_cam_angle_for_area(centers, curr_config + [target_pos_MCT], scene_info, visualize=False)
 
-                else:
+                elif not is_cluster_covered:
                     print("Checking other unknown areas")
                     cluster_list = clustering(unknown_area, visualize=False)
                     filtered_cluster, valid_points, potential_centers = get_filtered_clusters(cluster_list, visualize=False)
@@ -1815,11 +1847,15 @@ while not gym.query_viewer_has_closed(viewer):#/////////////////////////////////
                         print("No unknown areas!!!!!!")
                         is_cluster_covered = True
                         need_acquire = True
-                        break
+                        continue
 
                     # get possilbe cam pose
                     cluster_angles = cal_cam_angle_for_area(potential_centers, curr_config + [target_pos_MCT], scene_info, visualize=True)
-                    
+
+                else:
+                    print("No observation needed")
+                    continue
+
                 # choosing biggest cluster 
                 end_point = cluster_angles['loc'][0]
                 focus_point = cluster_angles['foc'][0]
@@ -1935,8 +1971,8 @@ comp = np.array([gt_save_info])
 name = new_folder + "groud_truth_scene"
 np.save(name, comp)
 
-unknown_area = get_unobserved_area(scene)
-np.save(new_folder + "unknown_area", unknown_area)
+# unknown_area = get_unobserved_area(scene)
+# np.save(new_folder + "unknown_area", unknown_area)
 
 sys.exit(1)
 
