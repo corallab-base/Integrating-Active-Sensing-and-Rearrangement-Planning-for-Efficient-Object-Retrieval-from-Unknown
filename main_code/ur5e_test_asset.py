@@ -202,16 +202,24 @@ def get_best_cam_pose(scene, camera_pose_list):
 def cam_loc_selection_for_clusters(sim, env, test_cam, scene, center, end_point, scene_info):
     camera_pose_list = []
     camera_setting_list = []
-    cam_height = scene_info[3] * 0.80
+    cam_height = scene_info[3] * 0.90
     floor_height = scene_info[2] + 0.01
 
     dist = 0
     while len(camera_pose_list) < 10:
         loc_vec = (end_point - center) / np.linalg.norm(end_point - center) / 100
         cam_loc = end_point + loc_vec * dist
-        dist += 1
 
-        if cam_loc[0] < 0.0: break
+        if cam_loc[0] < 0.0 and len(camera_pose_list) == 0:
+            print("adjusting angle")
+            dist = 0
+            cam_loc = end_point + loc_vec * dist
+            cam_height = cam_height - 0.05
+        elif cam_loc[0] < 0.0:
+            print("breaking")
+            break
+
+        dist += 1
 
         camera_loc = gymapi.Vec3(cam_loc[0], cam_loc[1], cam_height)
         camera_focus = gymapi.Vec3(center[0], center[1], floor_height)
@@ -246,6 +254,7 @@ def cam_loc_selection_for_clusters(sim, env, test_cam, scene, center, end_point,
         if dof_result:
             end_state_collision_free = rac.arm_collision_free(dof_result, plane_obj, object_collision_models, flexible_collision_models)
 
+            print('dist:', dist, 'loc', cam_loc, "collison free", end_state_collision_free, 'len', len(camera_pose_list))
 
             if end_state_collision_free:
                 camera_pose_list.append(camera_pose)
@@ -413,205 +422,19 @@ def get_unobserved_area_w_height(scene):
 
     return unknown_area
 
-def clustering(unknown_area, visualize=False):
-    if len(unknown_area) == 0:
-        return unknown_area
-    point_list = copy.deepcopy(unknown_area)
-    cluster_list = []
-    while True:
-        idx = np.random.randint(len(point_list))
-        point = point_list[idx]
-        point_list = np.delete(point_list, idx, axis=0)
-        cluster = [point.tolist()]
-        for x, y in cluster:
-            check1 = [x+1,y]
-            if not check1 in cluster:
-                idx1 = np.argwhere((point_list == np.array(check1)).all(1))
-                if idx1.size != 0:
-                    cluster.append(check1)
-                    point_list = np.delete(point_list, idx1, axis=0)
+def scale_config(config):
+    for pos in config:
+        for i in range(3):
+            pos[i] = pos[i] * 100
+        temp = pos[0]
+        pos[0] = -pos[1]
+        pos[1] = temp
 
-            check2 = [x-1,y]
-            if not check2 in cluster:
-                idx2 = np.argwhere((point_list == np.array(check2)).all(1))
-                if idx2.size != 0:
-                    cluster.append(check2)
-                    point_list = np.delete(point_list, idx2, axis=0)
+    return config
 
-            check3 = [x,y+1]
-            if not check3 in cluster:
-                idx3 = np.argwhere((point_list == np.array(check3)).all(1))
-                if idx3.size != 0:
-                    cluster.append(check3)
-                    point_list = np.delete(point_list, idx3, axis=0)
-
-            check4 = [x,y-1]
-            if not check4 in cluster:
-                idx4 = np.argwhere((point_list == np.array(check4)).all(1))
-                if idx4.size != 0:
-                    cluster.append(check4)
-                    point_list = np.delete(point_list, idx4, axis=0)
-
-            check5 = [x+1,y+1]
-            if not check5 in cluster:
-                idx5 = np.argwhere((point_list == np.array(check5)).all(1))
-                if idx5.size != 0:
-                    cluster.append(check5)
-                    point_list = np.delete(point_list, idx5, axis=0)
-
-            check6 = [x+1,y-1]
-            if not check6 in cluster:
-                idx6 = np.argwhere((point_list == np.array(check6)).all(1))
-                if idx6.size != 0:
-                    cluster.append(check6)
-                    point_list = np.delete(point_list, idx6, axis=0)
-
-            check7 = [x-1,y+1]
-            if not check7 in cluster:
-                idx7 = np.argwhere((point_list == np.array(check7)).all(1))
-                if idx7.size != 0:
-                    cluster.append(check7)
-                    point_list = np.delete(point_list, idx7, axis=0)
-
-            check8 = [x-1,y-1]
-            if not check8 in cluster:
-                idx8 = np.argwhere((point_list == np.array(check8)).all(1))
-                if idx8.size != 0:
-                    cluster.append(check8)
-                    point_list = np.delete(point_list, idx8, axis=0)
-
-        cluster_list.append(cluster)
-        if point_list.size == 0:
-            break
-
-    if visualize:
-        plt.figure(figsize=(20,20))
-        plt.axis([-43,43,0,86])
-        for cluster in cluster_list:
-            plt.scatter(np.array(cluster)[:,0], np.array(cluster)[:,1])
-        plt.show()
-
-    return cluster_list
-
-def delete_obj_spots(curr_config, target_pos, unknown_area, visualize=False):
-    if len(unknown_area) == 0:
-        return unknown_area
-    
-    pos_list = curr_config + [target_pos]
-    offset_list = []
-    p_list = [[0,i] for i in range(6)]
-    n_list = [[0,-i] for i in range(6)]
-    for degree in range(0, 180, 1):
-        theta = np.radians(degree)
-        cos, sin = np.cos(theta), np.sin(theta)
-        rot = np.array(((cos,-sin), (sin, cos)))
-        for i in range(6):
-            point1 = np.rint(np.dot(rot, p_list[i])).tolist()
-            point2 = np.rint(np.dot(rot, n_list[i])).tolist()
-            if point1 not in offset_list:
-                offset_list.append(point1)
-            if point2 not in offset_list:
-                offset_list.append(point2)
-
-    new_area = copy.deepcopy(unknown_area)
-    for obj in pos_list:
-        obj_pos = np.array([-obj[1], obj[0]]) * 100
-        radius = int(obj[2] * 100)
-        ratio = radius / 5
-        obj_area = np.rint(np.array(offset_list) * ratio + obj_pos)
-        # plt.figure(figsize=(20,20))
-        # plt.axis([-43,43,0,86])
-        # plt.scatter(obj_area[:,0], obj_area[:,1], color='blue')
-        # plt.show()
-
-        for point in obj_area:
-            idx = np.argwhere((new_area == point).all(1))
-            if idx.size != 0:
-                    new_area = np.delete(new_area, idx, axis=0)
-
-    if visualize:
-        plt.figure(figsize=(20,20))
-        plt.axis([-43,43,0,86])
-        plt.scatter(new_area[:,0], new_area[:,1], color='black')
-        plt.show()
-
-    return new_area
-
-def check_obj_fit(cluster, radius, visualize=False):
-    # get possible outter points
-    offset_list = []
-    p_list = [[0,i] for i in range(1, radius+1)]
-    n_list = [[0,-i] for i in range(1, radius+1)]
-    for degree in range(0, 180, 1):
-        theta = np.radians(degree)
-        cos, sin = np.cos(theta), np.sin(theta)
-        rot = np.array(((cos,-sin), (sin, cos)))
-        for i in range(radius):
-            point1 = np.rint(np.dot(rot, p_list[i])).tolist()
-            point2 = np.rint(np.dot(rot, n_list[i])).tolist()
-            if point1 not in offset_list:
-                offset_list.append(point1)
-            if point2 not in offset_list:
-                offset_list.append(point2)
-
-    valid_center = []
-    valid_points = []
-    for center in cluster:
-        is_false = False
-        point = []
-        for offset in offset_list:
-            check_point = [center[0] + offset[0], center[1] + offset[1]]
-
-            if check_point not in cluster:
-                is_false = True
-                break
-            point.append(check_point)
-
-        if is_false:
-            continue
-
-        valid_center.append(center)
-        valid_points += point
-
-    if visualize:
-        plt.figure(figsize=(20,20))
-        plt.axis([-43,43,0,86])
-        plt.scatter(np.array(cluster)[:,0], np.array(cluster)[:,1], color='black')
-        if valid_center:
-            plt.scatter(np.array(valid_points)[:, 0], np.array(valid_points)[:, 1], color='green')
-            plt.scatter(np.array(valid_center)[:, 0], np.array(valid_center)[:, 1], color='red')
-        plt.show()
-
-    return valid_points, valid_center
-
-def get_filtered_clusters(cluster_list, visualize=True):
-    filtered_cluster = []
-    valid_area = []
-    potential_centers = []
-    for cluster in cluster_list:
-        valid_points, valid_center = check_obj_fit(cluster, 5, visualize=False)
-        if len(valid_points) > 5:
-            filtered_cluster += cluster
-            valid_area += valid_points
-            potential_centers += valid_center
-
-    filtered_cluster = np.array(filtered_cluster)
-    valid_area = np.array(valid_area)
-    potential_centers = np.array(potential_centers)
-
-    if visualize:
-        plt.figure(figsize=(20,20))
-        plt.axis([-43,43,0,86])
-        if len(filtered_cluster) > 0:
-            plt.scatter(np.array(filtered_cluster)[:,0], np.array(filtered_cluster)[:,1], color='black')
-            plt.scatter(np.array(valid_area)[:,0], np.array(valid_area)[:,1], color='green')
-            plt.scatter(np.array(potential_centers)[:,0], np.array(potential_centers)[:,1], color='red')
-        plt.show()
-
-    return filtered_cluster, valid_area, potential_centers
 
 def cal_cam_angle_for_area(valid_points, curr_config, scene_info, visualize=False):
-    valid_list = clustering(np.array(valid_points), visualize=False)
+    valid_list, _ = RC.clustering(np.array(valid_points), visualize=False)
     valid_list = sorted(valid_list, key=len, reverse=True)
     left_point =  int(-scene_info[1]/2 * 100)
     right_point = int( scene_info[1]/2 * 100)
@@ -688,16 +511,6 @@ def cal_cam_angle_for_area(valid_points, curr_config, scene_info, visualize=Fals
         plt.show()
 
     return cluster_angles
-
-def scale_config(config):
-    for pos in config:
-        for i in range(3):
-            pos[i] = pos[i] * 100
-        temp = pos[0]
-        pos[0] = -pos[1]
-        pos[1] = temp
-
-    return config
     
 #*************************************************************************************************#
 
@@ -1051,7 +864,7 @@ for i in range(num_of_envs):
         gym.create_actor(envs[-1], upper_cover_asset, upper_cover_pose, "upper_cover" + str(i), 0, 1)
 
     # Choose target & obstacle objects-------------------------------------------------------------------------------
-    num_of_objects = 4
+    num_of_objects = 6
     target_file_idx = 3
 
     # target_file_idx = np.random.choice([1, ])
@@ -1090,7 +903,10 @@ for i in range(num_of_envs):
     objs_manager.setup()
     obstacle_objs = []
     obj_pos_list = []
-    target_pos = [0.5, 0, table_dims.z + 0.08]
+
+    # tx = np.random.uniform(0.35, table_dims.x + 0.2)
+    # ty = np.random.uniform(-table_dims.y/2 + 0.1, table_dims.y/2 - 0.2)
+    gt_target_pos = [np.random.uniform(0.35, table_dims.x + 0.2), np.random.uniform(-table_dims.y/2 + 0.1, table_dims.y/2 - 0.2), table_dims.z + 0.08]
 
     for k in range(num_of_objects):
         object_pose = gymapi.Transform()
@@ -1098,7 +914,7 @@ for i in range(num_of_envs):
 
         # add target obj
         if k == num_of_objects - 1:
-            object_pose.p = gymapi.Vec3(target_pos[0], target_pos[1], target_pos[2])
+            object_pose.p = gymapi.Vec3(gt_target_pos[0], gt_target_pos[1], gt_target_pos[2])
             # object_pose.p = gymapi.Vec3(0.5, 0, 0)
 
             file_path = object_collision_files[object_index[-1]]
@@ -1113,7 +929,7 @@ for i in range(num_of_envs):
             m.beginModel(len(verts), len(tris))
             m.addSubModel(verts, tris)
             m.endModel()
-            t = fcl.Transform(np.array(target_pos))
+            t = fcl.Transform(np.array(gt_target_pos))
             is_collision = False
 
         # random selec obj location
@@ -1149,7 +965,7 @@ for i in range(num_of_envs):
             is_collision = rdata.result.is_collision # update collision status
 
             if not is_collision:
-                    dist = np.sqrt((tx - target_pos[0])**2 + (ty - target_pos[1])**2)
+                    dist = np.sqrt((tx - gt_target_pos[0])**2 + (ty - gt_target_pos[1])**2)
                     if dist <= 0.16:
                         is_collision = True
                         print("target contact recalc")
@@ -1507,23 +1323,135 @@ ML_MCTS_ins = mct.multi_level_MCTS_algo(None, None, scene_info=scene_info, swept
 #active sensing here
 obj_pos_MCTS = {}
 obj_mesh_MCTS = {}
-target_pos = None
-target_mash = None
+target_pos_MCT = None
+target_obj_mash = None
+target_obj_pos = None
 obj_pcd = {}
+
+valid_area_cluster = None
+potential_center_cluster = None
+
 is_tunnel_covered = False
 is_target_detected = False
+is_cluster_covered = False
+
+run_mcts = False
+mcts_out_angle = None
+
 target_template = None
 init2grasp_path = None
 grasp2init_path = None
 while not gym.query_viewer_has_closed(viewer):#///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    if is_target_detected and is_tunnel_covered:
-        is_plan_success = ML_MCTS_ins.run_mcts()
+    if run_mcts and is_target_detected and is_tunnel_covered:
+        print("--------------------PLANNING START------------------------")
+
+        rac.check_collision_models(init2grasp_path[-1], scene_info=scene_info)
+
+        ML_MCTS_ins.curr_config_ = copy.deepcopy(curr_config)
+        ML_MCTS_ins.goal_config_ = copy.deepcopy(curr_config)
+        ML_MCTS_ins.target_pos = copy.deepcopy(target_pos_MCT)
+        ML_MCTS_ins.obj_mesh = rac.obj_mesh
+
+        ML_MCTS_ins.unknown_area = unknown_area
+        ML_MCTS_ins.valid_area = valid_area
+        ML_MCTS_ins.potential_centers = potential_centers
+
+        gt_save_info = {"idx" : 0,
+                        "init2grasp_path" : init2grasp_path,
+                        "grasp2init_path" : grasp2init_path,
+                        "obj_pos_list" : obj_pos_list[:num_of_objects-1],
+                        "obj_mesh" : rac.obj_mesh,
+                        "scene_info" : scene_info,
+                        "w_target" : None,
+                        "test_name" : None,
+                        "target_mesh" : rac.target_mesh,
+                        "obstacles_num" : rac.obstacles_num,
+                        "target_pos" : ML_MCTS_ins.target_pos,
+                        "unknown_area" : ML_MCTS_ins.unknown_area,
+                        "valid_area" : ML_MCTS_ins.valid_area,
+                        "potential_centers" : ML_MCTS_ins.potential_centers}
+
+        save_info = {"idx" : 0,
+                     "init2grasp_path" : init2grasp_path,
+                     "grasp2init_path" : grasp2init_path,
+                     "obj_pos_list" : rac.obj_pos_list,
+                     "obj_mesh" : rac.obj_mesh,
+                     "scene_info" : scene_info,
+                     "w_target" : None,
+                     "test_name" : None,
+                     "target_mesh" : rac.target_mesh,
+                     "obstacles_num" : rac.obstacles_num,
+                     "target_pos" : ML_MCTS_ins.target_pos,
+                     "unknown_area" : ML_MCTS_ins.unknown_area,
+                     "valid_area" : ML_MCTS_ins.valid_area,
+                     "potential_centers" : ML_MCTS_ins.potential_centers}
+
+        is_plan_success, child_node_list = ML_MCTS_ins.run_mcts(30)
         if is_plan_success:
             ML_MCTS_ins.global_optimization()
-            ML_MCTS_ins.animate_whole_sequence()
+            # ML_MCTS_ins.animate_whole_sequence()
+
+            comp = np.array([save_info])
+            name = new_folder + "temp_scene" + str(sequence_count) + "_success"
+            np.save(name, comp)
+
+            comp = np.array([gt_save_info])
+            name = new_folder + "groud_truth_scene" + str(sequence_count) + "_success"
+            np.save(name, comp)
             break
 
+        comp = np.array([save_info])
+        name = new_folder + "temp_scene" + str(sequence_count) + "_failed"
+        np.save(name, comp)
+        
+        comp = np.array([gt_save_info])
+        name = new_folder + "groud_truth_scene" + str(sequence_count) + "_failed"
+        np.save(name, comp)
+
+        max_reward = -sys.maxsize
+        max_node = None
+        for child in child_node_list:
+            if child.reward_ > max_reward:
+                max_reward = child.reward_
+                max_node = child
+
+        collision_check_obj = []
+        swept_check_obj = []
+        swept_obj = max_node.check_collision_w_swept()
+        for obj_idx in swept_obj:
+            tunnel = max_node.get_tunnel(max_node.robot_, max_node.curr_config_[obj_idx][:2])
+            tunnel_collision_obj = max_node.collision_tunnel_object(tunnel)
+            tunnel_collision_obj.remove(obj_idx)
+
+            if tunnel_collision_obj:
+                print(tunnel_collision_obj)
+                collision_check_obj += tunnel_collision_obj
+            else:
+                swept_check_obj.append(obj_idx)
+
+        check_obj = swept_check_obj + sorted(set(collision_check_obj))
+        max_node.tunnel_and_normal_visualizer()
+
+        max_region_idx = None
+        max_region_count = 0
+        for cluster_idx in range(len(valid_area_cluster)):
+            if len(valid_area_cluster[cluster_idx]) < 5:
+                continue
+            temp_valid_area = copy.deepcopy(valid_area_cluster)
+            temp_valid_area.pop(cluster_idx)
+            temp_valid_area = np.array(sum(temp_valid_area, []))
+
+            total_new_region = 0
+            for obj_idx in check_obj:
+                total_new_region += max_node.region_counting(obj_idx, temp_valid_area)
+            
+            if max_region_count < total_new_region:
+                max_region_count = total_new_region
+                max_region_idx = cluster_idx
+
+        mcts_out_angle = RC.cal_cam_angle_for_area(potential_center_cluster[max_region_idx], curr_config + [target_pos_MCT], scene_info, visualize=True)
         need_acquire = False # going back to cluster calculation
+        run_mcts = False
 
     if need_acquire:
         if acquire_counter > 500:
@@ -1634,11 +1562,11 @@ while not gym.query_viewer_has_closed(viewer):#/////////////////////////////////
 
                                 if dist < 3:
                                     print("idx",i,"mesh added")
-                                    target_pos = obj_pos[0:2].tolist()
-                                    target_mash = obj_mesh
+                                    target_obj_pos = obj_pos[0:2].tolist()
+                                    target_obj_mash = obj_mesh
 
-                                    dy = target_pos[1] - obj_pos_list[i-1][1]
-                                    dx = target_pos[0] - obj_pos_list[i-1][0]
+                                    dy = target_obj_pos[1] - obj_pos_list[i-1][1]
+                                    dx = target_obj_pos[0] - obj_pos_list[i-1][0]
                                     print("diff:", np.sqrt(dy**2 + dx**2), "dist", dist)
 
                                 if not is_target_detected and dist < 3:
@@ -1654,22 +1582,22 @@ while not gym.query_viewer_has_closed(viewer):#/////////////////////////////////
 
                                     # for grasp_idx in np.random.randint(len(grasp_data), size=10):
                                     for grasp_idx in grasp_list[:20]:
-                                        target_pos = grasp_data[grasp_idx]['target_pos']
-                                        target_quat = grasp_data[grasp_idx]['target_quat']
-                                        target_pos[:2] = target_pos[:2] + obj_pos[:2]
+                                        target_grasp_pos = grasp_data[grasp_idx]['target_pos']
+                                        target_grasp_quat = grasp_data[grasp_idx]['target_quat']
+                                        target_grasp_pos[:2] = target_grasp_pos[:2] + obj_pos[:2]
 
-                                        init2grasp_angels = rac.grasp_verify(target_pos, target_quat)
-                                        grasp2init_angels = rac.grasp_verify(target_pos + [0,0,0.01], target_quat)
+                                        init2grasp_angels_temp = rac.grasp_verify(target_grasp_pos, target_grasp_quat)
+                                        grasp2init_angels_temp = rac.grasp_verify(target_grasp_pos + [0,0,0.01], target_grasp_quat)
 
-                                        if init2grasp_angels is None or grasp2init_angels is None:
+                                        if init2grasp_angels_temp is None or grasp2init_angels_temp is None:
                                             print("skip imposible grasp")
                                             continue
 
-                                        # rac.check_collision_models(grasp2init_angels, scene_info=scene_info)
+                                        # rac.check_collision_models(grasp2init_angels_temp, scene_info=scene_info)
 
-                                        init2grasp_path_temp = RC.get_path2grasp(rac, init2grasp_angels, scene_info, target_mesh=obj_mesh)
-                                        mod_bbox = rac.modify_grasp_bbox(init2grasp_angels, obj_mesh, visualize=False)
-                                        grasp2init_path_temp = RC.get_path2start(rac, grasp2init_angels, mod_bbox, scene_info)
+                                        init2grasp_path_temp = RC.get_path2grasp(rac, init2grasp_angels_temp, scene_info, target_mesh=obj_mesh)
+                                        mod_bbox = rac.modify_grasp_bbox(init2grasp_angels_temp, obj_mesh, visualize=False)
+                                        grasp2init_path_temp = RC.get_path2start(rac, grasp2init_angels_temp, mod_bbox, scene_info)
 
                                         if init2grasp_path_temp is None or grasp2init_path_temp is None:
                                             print("No path generated")
@@ -1680,7 +1608,6 @@ while not gym.query_viewer_has_closed(viewer):#/////////////////////////////////
                                         num_grasp += 1
                                         is_target_detected = True
                                         print("!!!!!!!!!!!!!!!!!!!TRUE", num_grasp, '!!!!!!!!!!!!!!!!!!!!!!!')
-
 
                                         # compare swept volumes
                                         swept_center_temp, swept_verts_temp = rac.get_swept_center(swept_verts1_temp+swept_verts2_temp, scene_info)
@@ -1696,6 +1623,8 @@ while not gym.query_viewer_has_closed(viewer):#/////////////////////////////////
 
                                         if num_grasp == 5:
                                             break
+                                    print("\n\n!!!!!!!!!!!!!!!!!!!", num_grasp ,'grasp generated!!!!!!!!!!!!!!!!!!!!!!!\n\n')
+                                    
 
                             # # obj matching
                             # obj_mesh, obj_pos, dist = RC.get_matching_mesh(downpcd, visualize=False)
@@ -1767,29 +1696,28 @@ while not gym.query_viewer_has_closed(viewer):#/////////////////////////////////
         end_state_collision_free = False
         while not end_state_collision_free:
             # camera_loc, camera_focus, dof_result = random_sample_guided_selection(sim, envs[-1], test_cam, scene)
-            # if coverage_score >=0.96 and len(obj_pos_MCTS) == num_of_objects:
-            if coverage_score >=0.90: # swept volume observed
+            if coverage_score >=0.85: # swept volume observed
                 # get obj pose
                 obj_mesh_MCTS = dict(sorted(obj_mesh_MCTS.items()))
                 obj_pos_MCTS = dict(sorted(obj_pos_MCTS.items()))
 
-                rac.target_mesh = target_mash
-                target_pos_MCT = target_pos
+                rac.target_mesh = target_obj_mash
                 rac.obj_mesh = list(obj_mesh_MCTS.values())
                 rac.obj_pos_list = list(obj_pos_MCTS.values())
                 rac.obstacles_num = len(rac.obj_pos_list)
 
                 # unobserved area processing
-                curr_config, target_pos_MCT = rac.get_MCT_config(copy.deepcopy(rac.obj_pos_list), copy.deepcopy(rac.obj_mesh), copy.deepcopy(target_pos_MCT), copy.deepcopy(rac.target_mesh))
+                curr_config, target_pos_MCT = rac.get_MCT_config(copy.deepcopy(rac.obj_pos_list), copy.deepcopy(rac.obj_mesh), copy.deepcopy(target_obj_pos), copy.deepcopy(rac.target_mesh))
+                
                 # unknown_area = get_unobserved_area_w_height(scene)
                 unknown_area = get_unobserved_area(scene)
+                unknown_area, potential_center_cluster, valid_area_cluster = RC.process_unknown_area(unknown_area, curr_config, target_pos_MCT, center_num=5)
+                potential_centers = np.array(sum(potential_center_cluster, []))
+                valid_area = np.array(sum(valid_area_cluster, []))
 
                 np.save(new_folder + "unknown_area" + str(sequence_count), unknown_area)
 
-                unknown_area = delete_obj_spots(curr_config, target_pos_MCT, unknown_area, visualize=False)
-                cluster_list = clustering(unknown_area, visualize=False)
-                filtered_cluster, valid_area, potential_centers = get_filtered_clusters(cluster_list, visualize=False)
-
+                # update MCTS values
                 ML_MCTS_ins.curr_config_ = copy.deepcopy(curr_config)
                 ML_MCTS_ins.goal_config_ = copy.deepcopy(curr_config)
                 ML_MCTS_ins.target_pos = copy.deepcopy(target_pos_MCT)
@@ -1799,61 +1727,45 @@ while not gym.query_viewer_has_closed(viewer):#/////////////////////////////////
                 ML_MCTS_ins.valid_area = valid_area
                 ML_MCTS_ins.potential_centers = potential_centers
 
+                # rac.check_collision_models(init2grasp_angels_temp, scene_info=scene_info)
 
-                rac.check_collision_models(init2grasp_angels, scene_info=scene_info)
+                # initialize & check scenario
                 ML_MCTS_ins.init_MCTS()
                 ML_MCTS_ins.scenario_check() # terminate scenario if it's not valid
+
+                ML_MCTS_ins.MCTS_ins.MCTS_tree_.scene_saver(new_folder + 'scene_capture' + str(sequence_count) + '.png')
 
                 if not is_tunnel_covered:
                     print("covering grasp tunnel")
                     obj_idx, centers = ML_MCTS_ins.unknown_tunnel_check()
-                    print("centers", centers)
-                    # pdb.set_trace()
 
                     if not centers:
                         print("Tunnel Covered")
                         is_tunnel_covered = True
-                        need_acquire = True
+                        run_mcts = True
                         break
 
-                    plt.figure(figsize=(20,20))
-                    plt.axis([-43,43,0,86])
-                    tunnel_color = ['b', 'r']
-                    tunnel_counter_ = 0
-                    for j, obj_i in enumerate(obj_idx):
-                        cx, cy, radius, color = ML_MCTS_ins.MCTS_ins.MCTS_tree_.curr_config_[obj_i]
-                        temp_circle = mpatches.Circle((cx, cy), radius, color = color)
-                        plt.gca().add_patch(temp_circle)
-
-                        tunnel = ML_MCTS_ins.MCTS_ins.MCTS_tree_.get_tunnel(ML_MCTS_ins.MCTS_ins.MCTS_tree_.robot_, ML_MCTS_ins.MCTS_ins.MCTS_tree_.curr_config_[obj_i][:2])
-                        start_corner, width, height, angle, v2_start, v2_end, v3_start, v3_end = tunnel
-                        tunnel_shape = mpatches.Rectangle(start_corner, width, height, angle, alpha = 0.5, color = tunnel_color[tunnel_counter_])
-                        plt.gca().add_patch(tunnel_shape)
-                        plt.plot([v2_start[0], v2_end[0]], [v2_start[1], v2_end[1]], color = 'r')
-                        plt.plot([v3_start[0], v3_end[0]], [v3_start[1], v3_end[1]], color = 'r')
-                        tunnel_counter_ += 1
-                    plt.scatter(np.array(centers)[:,0], np.array(centers)[:,1], color='black')
-                    plt.show()
-                    # pdb.set_trace()
-                    
-                    cluster_angles = cal_cam_angle_for_area(centers, curr_config + [target_pos_MCT], scene_info, visualize=False)
+                    cluster_angles = RC.cal_cam_angle_for_area(centers, curr_config + [target_pos_MCT], scene_info, visualize=True)
 
                 elif not is_cluster_covered:
-                    print("Checking other unknown areas")
-                    cluster_list = clustering(unknown_area, visualize=False)
-                    filtered_cluster, valid_points, potential_centers = get_filtered_clusters(cluster_list, visualize=False)
+                    # cluster_list = clustering(unknown_area, visualize=False)
+                    # filtered_cluster, valid_points, potential_centers = get_filtered_clusters(cluster_list, visualize=False)
 
-                    if len(filtered_cluster) == 0:
-                        print("No unknown areas!!!!!!")
+                    if len(ML_MCTS_ins.valid_area) == 0:
+                        print("\nNo unknown areas!!!!!!")
                         is_cluster_covered = True
-                        need_acquire = True
+                        run_mcts = True
                         continue
 
-                    # get possilbe cam pose
-                    cluster_angles = cal_cam_angle_for_area(potential_centers, curr_config + [target_pos_MCT], scene_info, visualize=True)
+                    print("\nChecking suggested unknown_area from MCTS")
+                    cluster_angles = mcts_out_angle
+
+                    # # get possilbe cam pose
+                    # cluster_angles = cal_cam_angle_for_area(potential_centers, curr_config + [target_pos_MCT], scene_info, visualize=False)
 
                 else:
                     print("No observation needed")
+                    run_mcts = True
                     continue
 
                 # choosing biggest cluster 
@@ -1861,19 +1773,17 @@ while not gym.query_viewer_has_closed(viewer):#/////////////////////////////////
                 focus_point = cluster_angles['foc'][0]
                 camera_loc, camera_focus, dof_result = cam_loc_selection_for_clusters(sim, envs[-1], test_cam, scene, focus_point, end_point, scene_info)
                     
-
-            # elif sequence_count > 1:
             elif not is_target_detected: # target is not detected, normal active sensing
                 camera_loc, camera_focus, dof_result = random_sample_guided_selection(sim, envs[-1], test_cam, scene)
             else: # target is detected, covering swept volume
                 if swept_center is not None:
                     focus_point = swept_center
                     swept_center = None
-                else:
+                else: # continue tracking swept volume
                     _, focus_point = swept_coverage_check(scene, swept_verts, rac, scene_info)
+                
                 camera_loc, camera_focus, dof_result = random_sample_swept_volume_selection(sim, envs[-1], test_cam, scene, focus_point)
 
-            print (camera_loc, camera_focus)
             gym.set_camera_location(test_cam, envs[-1], camera_loc, camera_focus)
             target_pos = gym.get_camera_transform(sim, envs[-1], test_cam).p
             target_quat = gym.get_camera_transform(sim, envs[-1], test_cam).r
@@ -1931,12 +1841,14 @@ while not gym.query_viewer_has_closed(viewer):#/////////////////////////////////
     gym.sync_frame_time(sim)
 
 # MCTS/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-rac.target_mesh = obj_mesh_MCTS.pop(num_of_objects)
-target_pos_MCT = obj_pos_MCTS.pop(num_of_objects)
-rac.obstacles_num = num_of_objects - 1
-rac.obj_mesh = list(obj_mesh_MCTS.values())
-rac.obj_pos_list = list(obj_pos_MCTS.values())
+# rac.target_mesh = obj_mesh_MCTS.pop(num_of_objects)
+# target_pos_MCT = obj_pos_MCTS.pop(num_of_objects)
+# rac.obstacles_num = num_of_objects - 1
+# rac.obj_mesh = list(obj_mesh_MCTS.values())
+# rac.obj_pos_list = list(obj_pos_MCTS.values())
 # rac.check_collision_models(init2grasp_path[-1], scene_info=scene_info)
+
+sys.exit(1)
 
 gt_save_info = {"idx" : 0,
              "init2grasp_path" : init2grasp_path,
@@ -1974,7 +1886,7 @@ np.save(name, comp)
 # unknown_area = get_unobserved_area(scene)
 # np.save(new_folder + "unknown_area", unknown_area)
 
-sys.exit(1)
+# sys.exit(1)
 
 cluster_list = clustering(unknown_area)
 curr_config, target_pos_MCT = rac.get_MCT_config(rac.obj_pos_list, rac.obj_mesh, target_pos_MCT, rac.target_mesh)

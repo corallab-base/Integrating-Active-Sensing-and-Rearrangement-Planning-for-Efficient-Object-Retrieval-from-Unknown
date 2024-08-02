@@ -233,9 +233,9 @@ class Tree_Node():
         self.radius = (0.0515 / scale)
         self.object_in_collision_ = None
         self.total_distance_ = total_distance
+        
         self.unknown_area = unknown_area
         self.valid_area = valid_area
-
         self.potential_centers=potential_centers
 
         if unknown_area is not None:
@@ -259,7 +259,7 @@ class Tree_Node():
         self.swept_volume2 = swept_volume2
         self.obj_mesh = obj_mesh
         self.scale = scale
-        self.final_obj_mesh = None
+        # self.final_obj_mesh = None
 
         self.is_goal_config_swept()
 
@@ -486,6 +486,64 @@ class Tree_Node():
             return True
         else:
             return False
+        
+
+    def scene_saver(self, save_path, tunnel_list = None, object_in_collision = None, unknown_show = False):
+        object_in_collision = self.check_collision_w_swept()
+
+        if self.scale == 0.01:
+            plt.figure(figsize = (len(self.grid_[0])/5, len(self.grid_)/5))
+        else:
+            plt.figure(figsize = (len(self.grid_[0]), len(self.grid_)))
+        plt.axis((0, len(self.grid_[0]), 0, len(self.grid_)))
+
+        for cx, cy, radius, color in self.curr_config_:
+            temp_circle = mpatches.Circle((cx, cy), radius, color = color)
+            plt.gca().add_patch(temp_circle)
+
+        for cx, cy, radius, color in self.static_config_:
+            temp_circle = mpatches.Circle((cx, cy), radius, color = 'black')
+            temp_circle_inner = mpatches.Circle((cx, cy), radius*0.7, color =  color)
+            plt.gca().add_patch(temp_circle)
+            plt.gca().add_patch(temp_circle_inner)
+
+        robot = mpatches.Rectangle((self.robot_[0] - 0.023 / self.scale, self.robot_[1] - 0.023 / self.scale), self.radius, self.radius)
+        plt.gca().add_patch(robot)
+
+        tunnel_counter = 0
+        tunnel_color = ['b', 'r']
+
+        if tunnel_list:
+            for start_corner, width, height, angle, v2_start, v2_end, v3_start, v3_end in tunnel_list:
+                tunnel_shape = mpatches.Rectangle(start_corner, width, height, angle, alpha = 0.5, color = tunnel_color[tunnel_counter])
+                plt.gca().add_patch(tunnel_shape)
+                plt.plot([v2_start[0], v2_end[0]], [v2_start[1], v2_end[1]], color = 'r')
+                plt.plot([v3_start[0], v3_end[0]], [v3_start[1], v3_end[1]], color = 'r')
+                tunnel_counter += 1
+
+        if object_in_collision:
+            for index in object_in_collision:
+                cx, cy, radius, color = self.curr_config_[index]
+                temp_square = mpatches.Rectangle((cx - radius, cy - radius), radius*2, radius*2, alpha = 0.3, color = 'black')
+                plt.gca().add_patch(temp_square)
+
+        if len(self.unknown_area) > 0:
+            plt.scatter(np.array(self.unknown_area)[:, 0], np.array(self.unknown_area)[:, 1], color='black')
+            # for cluster in self.unknown_area:
+            #     plt.scatter(np.array(cluster)[:, 0], np.array(cluster)[:, 1])
+        if len(self.valid_area) > 0:
+            plt.scatter(self.valid_area[:, 0], self.valid_area[:, 1], c='green')
+
+        if len(self.potential_centers) > 0:
+                plt.scatter(self.potential_centers[:, 0], self.potential_centers[:, 1], c='red')
+
+        plt.xlim(-len(self.grid_[0])/2, len(self.grid_[0])/2)
+        plt.ylim(0, len(self.grid_) - 1)
+        plt.savefig(save_path)
+
+        plt.clf()
+        plt.cla()
+        plt.close()
 
 
     def tunnel_and_normal_visualizer(self, tunnel_list = None, object_in_collision = None, true_color = False, animation = False, unknown_show = False):
@@ -666,7 +724,6 @@ class Tree_Node():
     def test_new_region_blocking(self, new_region, obs = None):
         new_region_relocate_tunnel = self.get_tunnel(self.robot_, new_region)
         flag4 = self.collision_tunnel_static(new_region_relocate_tunnel)
-        print('flag4', flag4)
         flag3 = False
 
         if obs:
@@ -701,7 +758,7 @@ class Tree_Node():
         # return new_element, len(new_feasible)
         return new_element, len(new_element)
 
-    def get_new_collision_swept(self, idx, transform, skip_flag):
+    def get_new_collision_swept(self, idx, transform, skip_flag=False):
         if skip_flag: return False
 
         g_transform = self.convert2global(transform)
@@ -797,6 +854,49 @@ class Tree_Node():
             random.shuffle(res)
             return res[0:2]
         return res
+    
+
+    def region_counting(self, obj_idx, new_valid_area):
+        og_valid_area = deepcopy(self.valid_area)
+        self.valid_area = new_valid_area
+        
+        gx, gy, radius, color = self.curr_config_[obj_idx]
+        res_counting = 0
+        for distance, offset_list in self.distance_lookup_:
+            for ox, oy in offset_list:
+                #change for IROS 2024, add a 2D gaussian offset to change the discrete region proposal
+                #to continuous. The covariance matrix is [[R, 0], [0, R]]
+                temp_x = gx + ox + round(random.gauss(0, 3),2)
+                temp_y = gy + oy + round(random.gauss(0, 3),2)
+
+                #may delete
+                if self.x_min_ <= gx + ox <= self.x_max_ and self.y_min_ <= gy + oy <= self.y_max_:
+                   while (temp_x < self.x_min_ or temp_x > self.x_max_ or temp_y < self.y_min_ or temp_y > self.y_max_):
+                       temp_x = gx + ox + round(random.gauss(0, 3),2)
+                       temp_y = gy + oy + round(random.gauss(0, 3),2)
+
+                ox_rand = temp_x - gx
+                oy_rand = temp_y - gy
+
+                if (self.x_min_ <= temp_x <= self.x_max_) and \
+                   (self.y_min_ <= temp_y <= self.y_max_) and \
+                    self.dst_region_collision_free(obj_idx, [temp_x, temp_y]) and \
+                    not self.test_new_region_blocking([temp_x, temp_y], None) and \
+                    not self.get_new_collision_swept(obj_idx, [ox_rand, oy_rand]):
+
+                    relocate_tunnel = self.get_tunnel(self.robot_, [temp_x, temp_y])
+                    collision_object = self.collision_tunnel_object(relocate_tunnel)
+
+                    collision_object = [x for x in collision_object if x != obj_idx]
+                    if not collision_object and not self.collision_tunnel_static(relocate_tunnel):
+                        res_counting += 1
+
+
+        print(res_counting)
+        self.tunnel_and_normal_visualizer()
+        self.valid_area = og_valid_area
+        
+        return res_counting
 
     def random_object_selection(self):
         res = []
@@ -861,7 +961,7 @@ class Tree_Node():
                     # print("dst_region_collision failed", i)
                     return False
                 
-        for point in self.unknown_area:
+        for point in self.valid_area:
             distance = np.sqrt((proposed_region[0] - point[0])**2 + (proposed_region[1] - point[1])**2)
             if distance < obj_radius:
                 # print("dst_region_collision failed by unknown area", point, proposed_region, distance)

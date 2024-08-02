@@ -10,7 +10,6 @@ from scipy.spatial.transform import Rotation as R
 from trac_ik_python.trac_ik import IK
 import open3d as o3d
 import cv2
-import pdb
 
 file_dir = os.path.dirname(__file__)
 util_dir = os.path.join(file_dir, '../util')
@@ -27,6 +26,8 @@ from obj_reader import obj_reader
 import MCTS_algo_ICRA as mct
 import time
 import copy
+
+import pdb
 
 def global_coord_converter(coord1, coord2, coord3, offset1, offset2, offset3):
     return (coord1 - offset1, coord3 - offset3, - coord2 + offset2)
@@ -1881,6 +1882,398 @@ def get_rearrange_result(ML_MCTS_ins):
 
     return new_pos, new_obj_mesh
 
+# -------------------------------------------------------------------------------------------------------------------------------------
+
+
+def clustering(unknown_area, visualize=False):
+    point_list = copy.deepcopy(unknown_area)
+    cluster_list = []
+    cluster_list_idx = []
+    while True:
+        idx = np.random.randint(len(point_list))
+        point = point_list[idx]
+        point_list = np.delete(point_list, idx, axis=0)
+        cluster = [point.tolist()]
+
+        og_idx = np.argwhere((unknown_area == np.array(point)).all(1))
+        cluster_idx = [og_idx.tolist()[0][0]]
+
+        for x, y in cluster:
+            check1 = [x+1,y]
+            if not check1 in cluster:
+                idx1 = np.argwhere((point_list == np.array(check1)).all(1))
+                if idx1.size != 0:
+                    og_idx = np.argwhere((unknown_area == np.array(check1)).all(1))
+                    cluster_idx += og_idx.tolist()[0]
+                    cluster.append(check1)
+                    point_list = np.delete(point_list, idx1, axis=0)
+
+            check2 = [x-1,y]
+            if not check2 in cluster:
+                idx2 = np.argwhere((point_list == np.array(check2)).all(1))
+                if idx2.size != 0:
+                    og_idx = np.argwhere((unknown_area == np.array(check2)).all(1))
+                    cluster_idx += og_idx.tolist()[0]
+                    cluster.append(check2)
+                    point_list = np.delete(point_list, idx2, axis=0)
+
+            check3 = [x,y+1]
+            if not check3 in cluster:
+                idx3 = np.argwhere((point_list == np.array(check3)).all(1))
+                if idx3.size != 0:
+                    og_idx = np.argwhere((unknown_area == np.array(check3)).all(1))
+                    cluster_idx += og_idx.tolist()[0]
+                    cluster.append(check3)
+                    point_list = np.delete(point_list, idx3, axis=0)
+
+            check4 = [x,y-1]
+            if not check4 in cluster:
+                idx4 = np.argwhere((point_list == np.array(check4)).all(1))
+                if idx4.size != 0:
+                    og_idx = np.argwhere((unknown_area == np.array(check4)).all(1))
+                    cluster_idx += og_idx.tolist()[0]
+                    cluster.append(check4)
+                    point_list = np.delete(point_list, idx4, axis=0)
+
+            check5 = [x+1,y+1]
+            if not check5 in cluster:
+                idx5 = np.argwhere((point_list == np.array(check5)).all(1))
+                if idx5.size != 0:
+                    og_idx = np.argwhere((unknown_area == np.array(check5)).all(1))
+                    cluster_idx += og_idx.tolist()[0]
+                    cluster.append(check5)
+                    point_list = np.delete(point_list, idx5, axis=0)
+
+            check6 = [x+1,y-1]
+            if not check6 in cluster:
+                idx6 = np.argwhere((point_list == np.array(check6)).all(1))
+                if idx6.size != 0:
+                    og_idx = np.argwhere((unknown_area == np.array(check6)).all(1))
+                    cluster_idx += og_idx.tolist()[0]
+                    cluster.append(check6)
+                    point_list = np.delete(point_list, idx6, axis=0)
+
+            check7 = [x-1,y+1]
+            if not check7 in cluster:
+                idx7 = np.argwhere((point_list == np.array(check7)).all(1))
+                if idx7.size != 0:
+                    og_idx = np.argwhere((unknown_area == np.array(check7)).all(1))
+                    cluster_idx += og_idx.tolist()[0]
+                    cluster.append(check7)
+                    point_list = np.delete(point_list, idx7, axis=0)
+
+            check8 = [x-1,y-1]
+            if not check8 in cluster:
+                idx8 = np.argwhere((point_list == np.array(check8)).all(1))
+                if idx8.size != 0:
+                    og_idx = np.argwhere((unknown_area == np.array(check8)).all(1))
+                    cluster_idx += og_idx.tolist()[0]
+                    cluster.append(check8)
+                    point_list = np.delete(point_list, idx8, axis=0)
+
+        cluster_list.append(cluster)
+        cluster_list_idx.append(cluster_idx)
+        if point_list.size == 0:
+            break
+
+    cluster_list = sorted(cluster_list, key=len, reverse=True)
+    cluster_list_idx = sorted(cluster_list_idx, key=len, reverse=True)
+
+    if visualize:
+        plt.figure(figsize=(20,20))
+        plt.axis([-43,43,0,86])
+        for i in range(len(cluster_list)):
+            # pdb.set_trace()
+            plt.scatter(np.array(cluster_list[i])[:,0], np.array(cluster_list[i])[:,1])
+
+            # new_cluster = unknown_area[cluster_list_idx[i]]
+            # plt.scatter(np.array(new_cluster)[:,0], np.array(new_cluster)[:,1], c='red')
+            # plt.scatter(np.array(cluster_list[i])[:,0], np.array(cluster_list[i])[:,1], c='black')
+        
+        plt.show()
+
+    return cluster_list, cluster_list_idx
+        
+    # for point in np.random.choice(unknown_area):
+
+# def check_area_shape(cluster, min_val):
+#     for degree in range(0, 180, 10):
+#         theta = np.radians(degree)
+#         cos, sin = np.cos(theta), np.sin(theta)
+#         rot = np.array(((cos,-sin), (sin, cos)))
+
+#         new_cluster = np.zeros((len(cluster),2))
+#         for i, point in enumerate(cluster):
+#             new_cluster[i] = np.dot(rot, point)
+
+#         # get bbox of swept
+#         min_x, min_y = sys.maxsize, sys.maxsize
+#         max_x, max_y = -sys.maxsize, -sys.maxsize
+#         for tx, ty in new_cluster:
+#             min_x = min(min_x, tx)
+#             min_y = min(min_y, ty)
+#             max_x = max(max_x, tx)
+#             max_y = max(max_y, ty)
+        
+#         if (max_x - min_x) < min_val or (max_y - min_y) < min_val:
+#             return False
+#     return True
+
+def get_vaild_area(center_list, radius, visualize=False):
+    # get possible outter points
+    offset_list = [[0,0]]
+    p_list = [[0,i] for i in range(1, radius+1)]
+    n_list = [[0,-i] for i in range(1, radius+1)]
+    for degree in range(0, 180, 5):
+        theta = np.radians(degree)
+        cos, sin = np.cos(theta), np.sin(theta)
+        rot = np.array(((cos,-sin), (sin, cos)))
+        for i in range(int(radius)):
+            point1 = np.rint(np.dot(rot, p_list[i])).tolist()
+            point2 = np.rint(np.dot(rot, n_list[i])).tolist()
+            if point1 not in offset_list:
+                offset_list.append(point1)
+            if point2 not in offset_list:
+                offset_list.append(point2)
+
+    # plt.figure(figsize=(20,20))
+    # plt.axis([-10,10,-10,10])
+    # plt.scatter(np.array(offset_list)[:,0], np.array(offset_list)[:,1])
+    # plt.show()
+
+    valid_area = []
+    for center in center_list:
+        for offset in offset_list:
+            check_point = [center[0] + offset[0], center[1] + offset[1]]
+            if check_point not in valid_area:
+                valid_area += check_point
+
+    if visualize:
+        plt.figure(figsize=(20,20))
+        plt.axis([-43,43,0,86])
+        plt.scatter(np.array(center_list)[:,0], np.array(center_list)[:,1], color='red')
+        plt.scatter(np.array(valid_area)[:, 0], np.array(valid_area)[:, 1], color='green')
+        plt.show()
+
+    return valid_area
+
+    
+def check_obj_fit(cluster, radius, visualize=False):
+    # get possible outter points
+    offset_list = []
+    p_list = [[0,i] for i in range(1, radius+1)]
+    n_list = [[0,-i] for i in range(1, radius+1)]
+    for degree in range(0, 180, 1):
+        theta = np.radians(degree)
+        cos, sin = np.cos(theta), np.sin(theta)
+        rot = np.array(((cos,-sin), (sin, cos)))
+        for i in range(radius):
+            point1 = np.rint(np.dot(rot, p_list[i])).tolist()
+            point2 = np.rint(np.dot(rot, n_list[i])).tolist()
+            if point1 not in offset_list:
+                offset_list.append(point1)
+            if point2 not in offset_list:
+                offset_list.append(point2)
+
+    valid_center = []
+    valid_area = []
+    for center in cluster:
+        is_false = False
+        point = []
+        for offset in offset_list:
+            check_point = [center[0] + offset[0], center[1] + offset[1]]
+
+            if check_point not in cluster:
+                is_false = True
+                break
+            point.append(check_point)
+        if is_false:
+            continue
+
+        valid_center.append(center)
+        valid_area.append(point)
+
+    if visualize:
+        plt.figure(figsize=(20,20))
+        plt.axis([-43,43,0,86])
+        plt.scatter(np.array(cluster)[:,0], np.array(cluster)[:,1], color='black')
+        if valid_center:
+            # plt.scatter(np.array(valid_area)[:, 0], np.array(valid_area)[:, 1], color='green')
+            for vaild_points in valid_area:
+                plt.scatter(np.array(vaild_points)[:, 0], np.array(vaild_points)[:, 1], color='green')
+            plt.scatter(np.array(valid_center)[:, 0], np.array(valid_center)[:, 1], color='red')
+        plt.show()
+
+    return valid_area, valid_center
+
+def cal_cam_angle_for_area(valid_points, curr_config, scene_info, visualize=False):
+    left_point =  int(-scene_info[1]/2 * 100)
+    right_point = int( scene_info[1]/2 * 100)
+
+    if visualize:
+        line_list = []
+
+    cluster_angles = {'foc':[], 'loc':[]}
+    center = np.median(valid_points, axis=0)
+
+    max_dist = 0
+    max_line = None
+    no_obj = True
+    for point in np.arange(left_point, right_point + 1, int(scene_info[1] * 100) / 30):
+        vec = ([point, 25] - center)
+
+        is_collision = False
+        dist_list = []
+        for obj in curr_config:
+            obj_pos = [-obj[1] * 100, obj[0] * 100]
+            check_range = np.dot(obj_pos - np.array([point, 25]), -vec/np.linalg.norm(vec))
+            if abs(check_range) > np.linalg.norm(vec):
+                continue
+            no_obj = False
+
+            obj_vec = obj_pos - center
+            radius = obj[2] * 100
+            dist = abs((obj_vec[0] * vec[1] - obj_vec[1] * vec[0]) / np.linalg.norm(vec))
+            if dist <= radius + 1:
+                is_collision = True
+                break
+            dist_list.append(dist)
+
+        if not is_collision:
+            if dist_list:
+                dist_to_wall = abs(left_point - point) if point <= 0 else abs(right_point - point)
+                min_dist = min(dist_list) if min(dist_list) < dist_to_wall else dist_to_wall
+            else:
+                min_dist = abs(left_point - point) if point <= 0 else abs(right_point - point)
+                
+            if min_dist > max_dist:
+                max_dist = min_dist
+                max_line = point
+
+            if visualize:
+                line_list.append([[center[0], point], [center[1], 25]])
+
+    if no_obj:
+        print("no obj")
+        max_line = 0
+
+    cluster_angles["foc"].append(np.array([center[1], -center[0]]) / 100)
+    cluster_angles["loc"].append(np.array([25, -max_line]) / 100)
+        
+    if visualize:
+        plt.figure(figsize=(20,20))
+        plt.axis([-43,43,0,86])
+        plt.scatter(np.array(valid_points)[:,0], np.array(valid_points)[:,1], color='orange')
+
+        for obj in curr_config:
+            obj_pos = [-obj[1] * 100, obj[0] * 100]
+            temp_circle = mpatches.Circle((obj_pos), radius, color = obj[3])
+            plt.gca().add_patch(temp_circle)
+
+        for line in line_list:
+            plt.plot(line[0], line[1], marker='o', color='black')
+
+        for i in range(len(cluster_angles['loc'])):
+            loc = cluster_angles['loc'][i]
+            foc = cluster_angles['foc'][i]
+            plt.plot([loc[0], foc[0]], [loc[1], foc[1]], marker='o', color='red')
+
+        plt.show()
+
+    return cluster_angles
+
+def delete_obj_spots(curr_config, target_pos, unknown_area, visualize=False):
+    pos_list = curr_config + [target_pos]
+    offset_list = [[0,0]]
+    p_list = [[0,i] for i in range(1, 6)]
+    n_list = [[0,-i] for i in range(1, 6)]
+    for degree in range(0, 180, 1):
+        theta = np.radians(degree)
+        cos, sin = np.cos(theta), np.sin(theta)
+        rot = np.array(((cos,-sin), (sin, cos)))
+        for i in range(5):
+            point1 = np.rint(np.dot(rot, p_list[i])).tolist()
+            point2 = np.rint(np.dot(rot, n_list[i])).tolist()
+            if point1 not in offset_list:
+                offset_list.append(point1)
+            if point2 not in offset_list:
+                offset_list.append(point2)
+
+    new_area = copy.deepcopy(unknown_area)
+    for obj in pos_list:
+        obj_pos = np.array([-obj[1], obj[0]]) * 100
+        radius = int(obj[2] * 100)
+        ratio = radius / 5
+        obj_area = np.rint(np.array(offset_list) * ratio + obj_pos)
+        # plt.figure(figsize=(20,20))
+        # plt.axis([-43,43,0,86])
+        # plt.scatter(obj_area[:,0], obj_area[:,1], color='blue')
+        # plt.show()
+
+        for point in obj_area:
+            idx = np.argwhere((new_area == point).all(1))
+            if idx.size != 0:
+                    new_area = np.delete(new_area, idx, axis=0)
+
+    if visualize:
+        plt.figure(figsize=(20,20))
+        plt.axis([-43,43,0,86])
+        plt.scatter(new_area[:,0], new_area[:,1], color='black')
+        plt.show()
+
+    return new_area
+
+def process_unknown_area(unknown_area, curr_config, target_pos, center_num = 5, visualize=False):
+    if len(unknown_area) <= center_num:
+        return [], []
+    
+    unknown_area = delete_obj_spots(curr_config, target_pos, unknown_area, visualize=False)
+    cluster_list, _ = clustering(unknown_area)
+
+    # get potential_centers
+    potential_center_cluster = []
+    valid_area_cluster = []
+    for cluster in cluster_list:
+        centered_valid_area, centers = check_obj_fit(cluster, 5, visualize=False)
+        if len(centers) == 0:
+            continue
+
+        clustered_centers, clustered_center_idx = clustering(np.array(centers), visualize=False)
+        
+        # get valid_area
+        valid_points = []
+        for cluster_idx in range(len(clustered_centers)):
+            if len(clustered_centers[cluster_idx]) < center_num:
+                continue
+
+            center_idx = sorted(set(clustered_center_idx[cluster_idx]))
+            centers = clustered_centers[cluster_idx]
+            valid_points = np.array(centered_valid_area)[center_idx]
+            valid_points = valid_points.reshape(-1,2)
+
+            potential_center_cluster.append(centers)
+            valid_area_cluster.append(valid_points.tolist())
+            
+            # plt.figure(figsize=(20,20))
+            # plt.axis([-43,43,0,86])
+            # plt.scatter(np.array(valid_area)[:,0], np.array(valid_area)[:,1], color='green')
+            # plt.scatter(np.array(centers)[:,0], np.array(centers)[:,1], color='red')
+            # plt.show()
+
+    if visualize:
+        potential_centers = np.array(sum(potential_center_cluster, []))
+        valid_area = np.array(sum(valid_area_cluster, []))
+        plt.figure(figsize=(20,20))
+        plt.axis([-43,43,0,86])
+        plt.scatter(np.array(unknown_area)[:,0], np.array(unknown_area)[:,1], color='black')
+        plt.scatter(np.array(valid_area)[:,0], np.array(valid_area)[:,1], color='green')
+        plt.scatter(np.array(potential_centers)[:,0], np.array(potential_centers)[:,1], color='red')
+        plt.show()
+
+    return unknown_area, potential_center_cluster, valid_area_cluster
+
+# ------------------------------------------------------------------------------------------------------------------------------------------
+
 def grasp_path_check(file_path, test_data_root, grasp_root, test_name, scene_info= None, grasp_check= False, obstacles_num=None):
     # get file name
     color_img_file_path = test_data_root + 'test_image/' + test_name + '.png'
@@ -2037,281 +2430,7 @@ def grasp_path_check(file_path, test_data_root, grasp_root, test_name, scene_inf
     return
     # return mesh_time_list, bbox_time_list
 
-
-def clustering(unknown_area, visualize=False):
-    point_list = copy.deepcopy(unknown_area)
-    cluster_list = []
-    while True:
-        idx = np.random.randint(len(point_list))
-        point = point_list[idx]
-        point_list = np.delete(point_list, idx, axis=0)
-        cluster = [point.tolist()]
-        for x, y in cluster:
-            check1 = [x+1,y]
-            if not check1 in cluster:
-                idx1 = np.argwhere((point_list == np.array(check1)).all(1))
-                if idx1.size != 0:
-                    cluster.append(check1)
-                    point_list = np.delete(point_list, idx1, axis=0)
-
-            check2 = [x-1,y]
-            if not check2 in cluster:
-                idx2 = np.argwhere((point_list == np.array(check2)).all(1))
-                if idx2.size != 0:
-                    cluster.append(check2)
-                    point_list = np.delete(point_list, idx2, axis=0)
-
-            check3 = [x,y+1]
-            if not check3 in cluster:
-                idx3 = np.argwhere((point_list == np.array(check3)).all(1))
-                if idx3.size != 0:
-                    cluster.append(check3)
-                    point_list = np.delete(point_list, idx3, axis=0)
-
-            check4 = [x,y-1]
-            if not check4 in cluster:
-                idx4 = np.argwhere((point_list == np.array(check4)).all(1))
-                if idx4.size != 0:
-                    cluster.append(check4)
-                    point_list = np.delete(point_list, idx4, axis=0)
-
-            check5 = [x+1,y+1]
-            if not check5 in cluster:
-                idx5 = np.argwhere((point_list == np.array(check5)).all(1))
-                if idx5.size != 0:
-                    cluster.append(check5)
-                    point_list = np.delete(point_list, idx5, axis=0)
-
-            check6 = [x+1,y-1]
-            if not check6 in cluster:
-                idx6 = np.argwhere((point_list == np.array(check6)).all(1))
-                if idx6.size != 0:
-                    cluster.append(check6)
-                    point_list = np.delete(point_list, idx6, axis=0)
-
-            check7 = [x-1,y+1]
-            if not check7 in cluster:
-                idx7 = np.argwhere((point_list == np.array(check7)).all(1))
-                if idx7.size != 0:
-                    cluster.append(check7)
-                    point_list = np.delete(point_list, idx7, axis=0)
-
-            check8 = [x-1,y-1]
-            if not check8 in cluster:
-                idx8 = np.argwhere((point_list == np.array(check8)).all(1))
-                if idx8.size != 0:
-                    cluster.append(check8)
-                    point_list = np.delete(point_list, idx8, axis=0)
-
-        cluster_list.append(cluster)
-        if point_list.size == 0:
-            break
-
-    if visualize:
-        plt.figure(figsize=(20,20))
-        plt.axis([-43,43,0,86])
-        for cluster in cluster_list:
-            plt.scatter(np.array(cluster)[:,0], np.array(cluster)[:,1])
-        plt.show()
-
-    return cluster_list
-        
-    # for point in np.random.choice(unknown_area):
-
-# def check_area_shape(cluster, min_val):
-#     for degree in range(0, 180, 10):
-#         theta = np.radians(degree)
-#         cos, sin = np.cos(theta), np.sin(theta)
-#         rot = np.array(((cos,-sin), (sin, cos)))
-
-#         new_cluster = np.zeros((len(cluster),2))
-#         for i, point in enumerate(cluster):
-#             new_cluster[i] = np.dot(rot, point)
-
-#         # get bbox of swept
-#         min_x, min_y = sys.maxsize, sys.maxsize
-#         max_x, max_y = -sys.maxsize, -sys.maxsize
-#         for tx, ty in new_cluster:
-#             min_x = min(min_x, tx)
-#             min_y = min(min_y, ty)
-#             max_x = max(max_x, tx)
-#             max_y = max(max_y, ty)
-        
-#         if (max_x - min_x) < min_val or (max_y - min_y) < min_val:
-#             return False
-#     return True
-    
-def check_obj_fit(cluster, radius, visualize=False):
-    # get possible outter points
-    offset_list = []
-    p_list = [[0,i] for i in range(1, radius+1)]
-    n_list = [[0,-i] for i in range(1, radius+1)]
-    for degree in range(0, 180, 1):
-        theta = np.radians(degree)
-        cos, sin = np.cos(theta), np.sin(theta)
-        rot = np.array(((cos,-sin), (sin, cos)))
-        for i in range(radius):
-            point1 = np.rint(np.dot(rot, p_list[i])).tolist()
-            point2 = np.rint(np.dot(rot, n_list[i])).tolist()
-            if point1 not in offset_list:
-                offset_list.append(point1)
-            if point2 not in offset_list:
-                offset_list.append(point2)
-
-    valid_center = []
-    valid_points = []
-    for center in cluster:
-        is_false = False
-        point = []
-        for offset in offset_list:
-            check_point = [center[0] + offset[0], center[1] + offset[1]]
-
-            if check_point not in cluster:
-                is_false = True
-                break
-
-            point.append(check_point)
-
-
-        if is_false:
-            continue
-
-        valid_center.append(center)
-        valid_points += point
-
-    if visualize:
-        plt.figure(figsize=(20,20))
-        plt.axis([-43,43,0,86])
-        plt.scatter(np.array(cluster)[:,0], np.array(cluster)[:,1], color='black')
-        if valid_center:
-            plt.scatter(np.array(valid_points)[:, 0], np.array(valid_points)[:, 1], color='green')
-            plt.scatter(np.array(valid_center)[:, 0], np.array(valid_center)[:, 1], color='red')
-        plt.show()
-
-    return valid_points, valid_center
-
-def cal_cam_angle_for_area(valid_points, curr_config, scene_info, visualize=False):
-    valid_list = clustering(np.array(valid_points), visualize=False)
-    valid_list = sorted(valid_list, key=len, reverse=True)
-    left_point =  int(-scene_info[1]/2 * 100)
-    right_point = int( scene_info[1]/2 * 100)
-
-
-    if visualize:
-        line_list = []
-
-    cluster_angles = {'foc':[], 'loc':[]}
-    for cluster in valid_list:
-        center = np.median(cluster, axis=0)
-
-        max_dist = 0
-        max_line = None
-        no_obj = True
-        for point in np.arange(left_point, right_point + 1, int(scene_info[1] * 100) / 30):
-            vec = ([point, 25] - center)
-
-            is_collision = False
-            dist_list = []
-            for obj in curr_config:
-                obj_pos = [-obj[1] * 100, obj[0] * 100]
-                check_range = np.dot(obj_pos - np.array([point, 25]), -vec/np.linalg.norm(vec))
-                if abs(check_range) > np.linalg.norm(vec):
-                    continue
-                no_obj = False
-
-                obj_vec = obj_pos - center
-                radius = obj[2] * 100
-                dist = abs((obj_vec[0] * vec[1] - obj_vec[1] * vec[0]) / np.linalg.norm(vec))
-                if dist <= radius + 1:
-                    is_collision = True
-                    break
-                dist_list.append(dist)
-
-            if not is_collision:
-                if dist_list:
-                    dist_to_wall = abs(left_point - point) if point <= 0 else abs(right_point - point)
-                    min_dist = min(dist_list) if min(dist_list) < dist_to_wall else dist_to_wall
-                else:
-                    min_dist = abs(left_point - point) if point <= 0 else abs(right_point - point)
-                    
-                if min_dist > max_dist:
-                    max_dist = min_dist
-                    max_line = point
-
-                if visualize:
-                    line_list.append([[center[0], point], [center[1], 25]])
-
-        if no_obj:
-            print("no obj")
-            max_line = 0
-
-        cluster_angles["foc"].append(center)
-        cluster_angles["loc"].append([max_line, 25])
-        
-    if visualize:
-        plt.figure(figsize=(20,20))
-        plt.axis([-43,43,0,86])
-        for cluster in valid_list:
-            plt.scatter(np.array(cluster)[:,0], np.array(cluster)[:,1], color='orange')
-        for obj in curr_config:
-            obj_pos = [-obj[1] * 100, obj[0] * 100]
-            temp_circle = mpatches.Circle((obj_pos), radius, color = obj[3])
-            plt.gca().add_patch(temp_circle)
-
-        for line in line_list:
-            plt.plot(line[0], line[1], marker='o', color='black')
-
-        for i in range(len(cluster_angles['loc'])):
-            loc = cluster_angles['loc'][i]
-            foc = cluster_angles['foc'][i]
-            plt.plot([loc[0], foc[0]], [loc[1], foc[1]], marker='o', color='red')
-
-        plt.show()
-
-    return cluster_angles
-
-def delete_obj_spots(curr_config, target_pos, unknown_area, visualize=False):
-    pos_list = curr_config + [target_pos]
-    offset_list = []
-    p_list = [[0,i] for i in range(1, 6)]
-    n_list = [[0,-i] for i in range(1, 6)]
-    for degree in range(0, 180, 1):
-        theta = np.radians(degree)
-        cos, sin = np.cos(theta), np.sin(theta)
-        rot = np.array(((cos,-sin), (sin, cos)))
-        for i in range(5):
-            point1 = np.rint(np.dot(rot, p_list[i])).tolist()
-            point2 = np.rint(np.dot(rot, n_list[i])).tolist()
-            if point1 not in offset_list:
-                offset_list.append(point1)
-            if point2 not in offset_list:
-                offset_list.append(point2)
-
-    new_area = copy.deepcopy(unknown_area)
-    for obj in pos_list:
-        obj_pos = np.array([-obj[1], obj[0]]) * 100
-        radius = int(obj[2] * 100)
-        ratio = radius / 5
-        obj_area = np.rint(np.array(offset_list) * ratio + obj_pos)
-        # plt.figure(figsize=(20,20))
-        # plt.axis([-43,43,0,86])
-        # plt.scatter(obj_area[:,0], obj_area[:,1], color='blue')
-        # plt.show()
-
-        for point in obj_area:
-            idx = np.argwhere((new_area == point).all(1))
-            if idx.size != 0:
-                    new_area = np.delete(new_area, idx, axis=0)
-
-    if visualize:
-        plt.figure(figsize=(20,20))
-        plt.axis([-43,43,0,86])
-        plt.scatter(new_area[:,0], new_area[:,1], color='black')
-        plt.show()
-
-    return new_area
-
-def check_MCTS(MCTS_root, MCTS_name, file_path, i=None):
+def check_MCTS(MCTS_root, MCTS_name, file_path):
     MCTS_path = MCTS_root + MCTS_name
     data = np.load(MCTS_path, allow_pickle=True)
     init2grasp_path = data[0]["init2grasp_path"]
@@ -2327,14 +2446,16 @@ def check_MCTS(MCTS_root, MCTS_name, file_path, i=None):
     obstacles_num = data[0]["obstacles_num"]
     target_pos = data[0]["target_pos"]
 
+    unknown_area = data[0]["unknown_area"]
+    valid_area = data[0]["valid_area"]
+    potential_centers = data[0]["potential_centers"]
+
     # obstacles_num = 4
     # scene_info = [0.70, 1.1000001, 0.1, 0.5]
-
 
     # rac = robot_arm_configuration(file_path, np.array([0.0, 0, 0]), scene_info, target_mesh=target_mesh, obstacles_num=obstacles_num, target_pos=target_pos) # point_cloud=point_cloud
     rac = robot_arm_configuration(file_path, np.array([0.0, 0, 0]), scene_info) # point_cloud=point_cloud
     rac.target_mesh = target_mesh
-    rac.target_pos = target_pos
     rac.obstacles_num = obstacles_num
     rac.obj_mesh = obj_mesh
     rac.obj_pos_list = obj_pos_list
@@ -2346,7 +2467,7 @@ def check_MCTS(MCTS_root, MCTS_name, file_path, i=None):
     # calculate swept volume with bounding box
     swept_volume1, swept_verts1 = rac.get_swept_volume(init2grasp_path, test_name, idx, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False, with_scene=True)
     swept_volume2, swept_verts2 = rac.get_swept_volume(grasp2init_path, test_name, idx, w_target=w_target, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False, with_scene=True)
-    swept_center, swept_verts = rac.get_swept_center(swept_verts1+swept_verts2, scene_info)
+    # swept_center, swept_verts = rac.get_swept_center(swept_verts1+swept_verts2, scene_info)
 
     # rac.check_collision_models(init2grasp_path[-1], scene_info=scene_info)
 
@@ -2385,42 +2506,33 @@ def check_MCTS(MCTS_root, MCTS_name, file_path, i=None):
     curr_config, target_pos_MCT = rac.get_MCT_config(rac.obj_pos_list, rac.obj_mesh, target_pos, target_mesh)
     # pdb.set_trace()
     # curr_config.append(swept_center + [0.05, 'black'])
+    target_pos_MCT = target_pos
     print(curr_config)
 
 
-    unknown_area = np.load(MCTS_root + "unknown_area.npy", allow_pickle=True)
-    unknown_area = delete_obj_spots(curr_config, target_pos_MCT, unknown_area, visualize=False)
-    cluster_list = clustering(unknown_area)
+    # unknown_area = np.load(MCTS_root + "unknown_area.npy", allow_pickle=True)
+    # unknown_area = delete_obj_spots(curr_config, target_pos_MCT, unknown_area, visualize=False)
+    unknown_area, potential_center_cluster, valid_area_cluster = process_unknown_area(unknown_area, curr_config, target_pos_MCT, center_num=5, visualize=False)
+    potential_centers = np.array(sum(potential_center_cluster, []))
+    valid_area = np.array(sum(valid_area_cluster, []))
 
-    # option 2-----------------------------------------------------------------------------------------------
-    filtered_cluster = []
-    valid_area = []
-    potential_centers = []
-    for cluster in cluster_list:
-        valid_points, valid_center = check_obj_fit(cluster, 5, visualize=False)
-        if len(valid_center) > 5:
-            filtered_cluster += cluster
-            valid_area += valid_points
-            potential_centers += valid_center
-    filtered_cluster = np.array(filtered_cluster)
-    valid_area = np.array(valid_area)
-    potential_centers = np.array(potential_centers)
-
-    # plt.figure(figsize=(20,20))
-    # plt.axis([-43,43,0,86])
-    # plt.scatter(np.array(filtered_cluster)[:,0], np.array(filtered_cluster)[:,1], color='black')
-    # plt.scatter(np.array(valid_area)[:,0], np.array(valid_area)[:,1], color='green')
-    # plt.scatter(np.array(potential_centers)[:,0], np.array(potential_centers)[:,1], color='red')
-    # plt.show()
     # --------------------------------------------------------------------------------------------------------
-
-    # cluster_angles = cal_cam_angle_for_area(potential_centers, curr_config + [target_pos_MCT], scene_info, visualize=True)
-
-
     ML_MCTS_ins = mct.multi_level_MCTS_algo(copy.deepcopy(curr_config), copy.deepcopy(curr_config), scene_info=scene_info,
                                             swept_volume1=swept_volume1, swept_volume2=swept_volume2, obj_mesh=rac.obj_mesh,
-                                            target_pos=target_pos_MCT, unknown_area=filtered_cluster, valid_area=valid_area,
+                                            target_pos=target_pos_MCT, unknown_area=unknown_area, valid_area=valid_area,
                                             potential_centers=potential_centers)
+    # ML_MCTS_ins.init_MCTS()
+
+
+    # obj_idx, centers = ML_MCTS_ins.unknown_tunnel_check()
+    # cluster_angles = cal_cam_angle_for_area(centers, curr_config + [target_pos_MCT], scene_info, visualize=True)
+    # end_point = cluster_angles['loc'][0]
+    # focus_point = cluster_angles['foc'][0]
+    # pdb.set_trace()
+    # camera_loc, camera_focus, dof_result = ur5.cam_loc_selection_for_clusters(sim, envs[-1], test_cam, scene, focus_point, end_point, scene_info)
+
+
+
     
     # ML_MCTS_ins = mct.multi_level_MCTS_algo(copy.deepcopy(curr_config), copy.deepcopy(curr_config), scene_info=scene_info,
     #                                         swept_volume1=swept_volume1, swept_volume2=swept_volume2, obj_mesh=rac.obj_mesh,
@@ -2429,9 +2541,56 @@ def check_MCTS(MCTS_root, MCTS_name, file_path, i=None):
     # swept_volume1, _ = rac.get_swept_volume(init2grasp_path, test_name, idx, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
 
     ML_MCTS_ins.init_MCTS()
+
+    # ML_MCTS_ins.MCTS_ins.MCTS_tree_.scene_saver('test.png')
+
     ML_MCTS_ins.scenario_check()
-    is_plan_success = ML_MCTS_ins.run_mcts(30)
+    is_plan_success, child_list = ML_MCTS_ins.run_mcts(10)
     if not is_plan_success:
+        max_reward = -sys.maxsize
+        max_node = None
+        for child in child_list:
+            if child.reward_ > max_reward:
+                max_reward = child.reward_
+                max_node = child
+        pdb.set_trace()
+
+        collision_check_obj = []
+        swept_check_obj = []
+        swept_obj = max_node.check_collision_w_swept()
+        for obj_idx in swept_obj:
+            tunnel = max_node.get_tunnel(max_node.robot_, max_node.curr_config_[obj_idx][:2])
+            tunnel_collision_obj = max_node.collision_tunnel_object(tunnel)
+            tunnel_collision_obj.remove(obj_idx)
+
+            if tunnel_collision_obj:
+                print(tunnel_collision_obj)
+                collision_check_obj += tunnel_collision_obj
+            else:
+                swept_check_obj.append(obj_idx)
+
+        check_obj = swept_check_obj + sorted(set(collision_check_obj))
+        max_node.tunnel_and_normal_visualizer()
+
+        max_region_idx = None
+        max_region_count = 0
+        for cluster_idx in range(len(valid_area_cluster)):
+            if len(valid_area_cluster[cluster_idx]) < 5:
+                continue
+            temp_valid_area = copy.deepcopy(valid_area_cluster)
+            temp_valid_area.pop(cluster_idx)
+            temp_valid_area = np.array(sum(temp_valid_area, []))
+
+            total_new_region = 0
+            for obj_idx in check_obj:
+                total_new_region += max_node.region_counting(obj_idx, temp_valid_area)
+            
+            if max_region_count < total_new_region:
+                max_region_count = total_new_region
+                max_region_idx = cluster_idx
+
+        cluster_angles = cal_cam_angle_for_area(potential_center_cluster[max_region_idx], curr_config + [target_pos_MCT], scene_info, visualize=True)
+
         return
     
     # obj_idx, spots = ML_MCTS_ins.unknown_tunnel_check() # modify to have only center value return
@@ -2525,13 +2684,25 @@ if __name__ == '__main__':
 
     # scene_name = "7.18.10.35/"
     # scene_name = "7.18.10.43/"
-    scene_name = "7.18.10.47/" # good case
+    # scene_name = "7.18.10.47/" # good case
     # scene_name = "7.18.10.53/"
     # scene_name = "7.18.10.56/"
 
+    # After pipline
+    scene_name = "7.31.16.0_unsolve/"
+    mcts_name = "temp_scene2.npy"
+
+    # scene_name = "7.31.16.57_unsolve/"
+    # mcts_name = "temp_scene3.npy"
+
+    scene_name = "8.1.21.13/"
+    mcts_name = "temp_scene2_success.npy"
+
+    scene_name = "8.1.22.50_failed/"
+    mcts_name = "temp_scene2_failed.npy"
+
     mcts_root = data_root + scene_name
     # mcts_name = "groud_truth_scene.npy"
-    mcts_name = "temp_scene.npy"
     
     check_MCTS(mcts_root, mcts_name, file_path)
 
@@ -2586,7 +2757,7 @@ if __name__ == '__main__':
     # mcts_name = "pcd2_grasp_115_obj_num_7_bigS.npy" # no collision
 
     # mcts_name = "pcd2_grasp_101_obj_num_9_bigS.npy" # no collision
-    # mcts_name = "pcd2_grasp_50_obj_num_9_bigS.npy" # not solv
+    mcts_name = "pcd2_grasp_50_obj_num_9_bigS.npy" # not solv
     # mcts_name = "pcd2_grasp_169_obj_num_9_bigS.npy"
     # mcts_name = "pcd2_grasp_54_obj_num_9_bigS.npy"
     # mcts_name = "pcd2_grasp_115_obj_num_9_bigS.npy"
@@ -2612,25 +2783,25 @@ if __name__ == '__main__':
     # mcts_name = "pcd2_grasp_6_obj_num_12_bigS.npy" # depend
     # mcts_name = "pcd2_grasp_80_obj_num_12_bigS.npy" # depend
     # mcts_name = "pcd2_grasp_45_obj_num_12_bigS.npy" # hard unsolve
-    mcts_name = "pcd2_grasp_160_obj_num_12_bigS.npy"
-    # mcts_name = "pcd2_grasp_16_obj_num_12_bigS.npy" # hard 20min
+    # mcts_name = "pcd2_grasp_160_obj_num_12_bigS.npy"
+    # mcts_name = "pcd2_grasp_16_obj_num_12_bigS.npy"
     # mcts_name = "pcd2_grasp_65_obj_num_12_bigS.npy" # no collision
     # mcts_name = "pcd2_grasp_101_obj_num_12_bigS.npy" # depend
     # mcts_name = "pcd2_grasp_169_obj_num_12_bigS.npy"
-    # mcts_name = "pcd2_grasp_115_obj_num_12_bigS.npy" #10min
+    # mcts_name = "pcd2_grasp_115_obj_num_12_bigS.npy"
 
-    # mcts_name = "pcd2_grasp_6_obj_num_13_bigS.npy" # hard
+    mcts_name = "pcd2_grasp_6_obj_num_13_bigS.npy" # hard
     # mcts_name = "pcd2_grasp_80_obj_num_13_bigS.npy" # hard
     # mcts_name = "pcd2_grasp_45_obj_num_13_bigS.npy"
-    # mcts_name = "pcd2_grasp_160_obj_num_13_bigS.npy" # hard
+    # mcts_name = "pcd2_grasp_160_obj_num_13_bigS.npy"
     # mcts_name = "pcd2_grasp_16_obj_num_13_bigS.npy" # depend
     # mcts_name = "pcd2_grasp_65_obj_num_13_bigS.npy" # depend
-    # mcts_name = "pcd2_grasp_101_obj_num_13_bigS.npy" # hard
+    # mcts_name = "pcd2_grasp_101_obj_num_13_bigS.npy"
     # mcts_name = "pcd2_grasp_169_obj_num_13_bigS.npy" # depend
     # mcts_name = "pcd2_grasp_54_obj_num_13_bigS.npy"
     # mcts_name = "pcd2_grasp_115_obj_num_13_bigS.npy" # hard
 
-    check_MCTS(mcts_root, mcts_name, file_path)
+    # check_MCTS(mcts_root, mcts_name, file_path)
         # total_time.append(time_con)
         # total_steps.append(steps)
         # total_length_travelled.append(length_travelled)

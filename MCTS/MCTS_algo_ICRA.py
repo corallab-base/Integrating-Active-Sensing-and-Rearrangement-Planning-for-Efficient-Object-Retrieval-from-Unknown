@@ -54,7 +54,7 @@ class multi_level_MCTS_algo():
     def init_MCTS(self):
         MCTS_ins = MCTS_algo(self.curr_config_, self.goal_config_, self.scene_info, swept_volume1=self.swept_volume1, swept_volume2=self.swept_volume2, obj_mesh=self.obj_mesh, target_pos=self.target_pos, unknown_area=self.unknown_area, valid_area=self.valid_area, potential_centers=self.potential_centers)
         self.MCTS_ins = MCTS_ins
-        MCTS_ins.MCTS_tree_.tunnel_and_normal_visualizer(unknown_show=True)
+        # MCTS_ins.MCTS_tree_.tunnel_and_normal_visualizer(unknown_show=True)
 
     def run_mcts(self, time_limit=None):
         start_time = time.time()
@@ -69,7 +69,8 @@ class multi_level_MCTS_algo():
         if level_steps is None:
             curr_time = time.time()
             print("planning failed. Time consumed", curr_time - start_time)
-            return False
+            children_list = MCTS_ins.get_children_nodes(MCTS_ins.root_)
+            return False, children_list
 
         track_level_steps.append(level_steps)
         total_steps += len(level_steps)
@@ -90,7 +91,7 @@ class multi_level_MCTS_algo():
         self.time_consumption_ = end_time - start_time
         self.total_steps_ = total_steps - len(self.curr_config_) + 1
         print("Time consumption:", self.time_consumption_)
-        return True
+        return True, None
 
     def scenario_check(self):
         if self.is_scenario_checked:
@@ -546,7 +547,7 @@ class multi_level_MCTS_algo():
                 start_steps = math.ceil(distance_start / step_size)
                 delta_x, delta_y = (robot_x - start_x) / start_steps, (robot_y - start_y) / start_steps
 
-                dummy_tree_node = Tree_Node(dummy_curr_config, dummy_goal_config, dummy_grid, dummy_static_config, swept_volume1=self.swept_volume1, swept_volume2=self.swept_volume2, obj_mesh=self.obj_mesh, scale=self.scale, unknown_area=self.unknown_area, valid_area=self.valid_area)
+                dummy_tree_node = Tree_Node(dummy_curr_config, dummy_goal_config, dummy_grid, dummy_static_config, swept_volume1=self.swept_volume1, swept_volume2=self.swept_volume2, obj_mesh=self.obj_mesh, scale=self.scale, unknown_area=self.unknown_area, valid_area=self.valid_area, potential_centers=self.potential_centers)
                 for t in range(start_steps + 1):
                     plt.clf()
                     dummy_tree_node.tunnel_and_normal_visualizer([grasp_tunnel], animation = True)
@@ -626,9 +627,6 @@ class MCTS_algo():
             print("scale")
         else:
             scale = max_radius
-
-        scale = 0.01
-        
 
         # grid_x = int(scene_info[1] / scale) - 2
         # grid_y = int(scene_info[0] / scale + 0.3 / scale)
@@ -719,7 +717,7 @@ class MCTS_algo():
                                 new_curr_config[index] = new_goal_config[index]
                                 move_distance = math.sqrt((curr_config[index][0] - goal_config[index][0])**2 + 
                                                           (curr_config[index][1] - goal_config[index][1])**2)
-                                new_node = Tree_Node(new_curr_config, goal_config, new_grid, new_static_config, selected_leaf_node.total_distance_ + move_distance, swept_volume1=self.swept_volume1, swept_volume2=self.wept_volume2, obj_mesh=self.obj_mesh, scale=self.scale, unknown_area=selected_leaf_node.unknown_area)
+                                new_node = Tree_Node(new_curr_config, goal_config, new_grid, new_static_config, selected_leaf_node.total_distance_ + move_distance, swept_volume1=self.swept_volume1, swept_volume2=self.wept_volume2, obj_mesh=self.obj_mesh, scale=self.scale, unknown_area=selected_leaf_node.unknown_area, valid_area=selected_leaf_node.valid_area, potential_centers=selected_leaf_node.potential_centers)
                                 selected_leaf_node.add_child(new_node)
                                 new_node.set_parent(selected_leaf_node)
                                 if rollout_flag:
@@ -752,7 +750,7 @@ class MCTS_algo():
                                         new_obj_mesh = None
                                         if self.obj_mesh:
                                             new_obj_mesh = self.update_mesh_pos(selected_leaf_node, [gx - curr_config[index][0], gy - curr_config[index][1]], index)
-                                        new_node = Tree_Node(new_curr_config, new_curr_config, new_grid, new_static_config, selected_leaf_node.total_distance_ + move_distance, swept_volume1=self.swept_volume1, swept_volume2=self.swept_volume2, obj_mesh=new_obj_mesh, scale=self.scale, unknown_area=selected_leaf_node.unknown_area)
+                                        new_node = Tree_Node(new_curr_config, new_curr_config, new_grid, new_static_config, selected_leaf_node.total_distance_ + move_distance, swept_volume1=self.swept_volume1, swept_volume2=self.swept_volume2, obj_mesh=new_obj_mesh, scale=self.scale, unknown_area=selected_leaf_node.unknown_area, valid_area=selected_leaf_node.valid_area, potential_centers=selected_leaf_node.potential_centers)
                                         selected_leaf_node.add_child(new_node)
                                         new_node.set_parent(selected_leaf_node)
                                         if rollout_flag: 
@@ -787,7 +785,7 @@ class MCTS_algo():
                                     if self.obj_mesh:
                                         new_obj_mesh = self.update_mesh_pos(selected_leaf_node, [gx - curr_config[index][0], gy - curr_config[index][1]], index)
                                     
-                                    new_node = Tree_Node(new_curr_config, new_curr_config, new_grid, new_static_config, selected_leaf_node.total_distance_ + move_distance, swept_volume1=self.swept_volume1, swept_volume2=self.swept_volume2, obj_mesh=new_obj_mesh, scale=self.scale, unknown_area=selected_leaf_node.unknown_area)
+                                    new_node = Tree_Node(new_curr_config, new_curr_config, new_grid, new_static_config, selected_leaf_node.total_distance_ + move_distance, swept_volume1=self.swept_volume1, swept_volume2=self.swept_volume2, obj_mesh=new_obj_mesh, scale=self.scale, unknown_area=selected_leaf_node.unknown_area, valid_area=selected_leaf_node.valid_area, potential_centers=selected_leaf_node.potential_centers)
                                     selected_leaf_node.add_child(new_node)
                                     new_node.set_parent(selected_leaf_node)
                                     if new_node.end: pdb.set_trace()
@@ -829,7 +827,7 @@ class MCTS_algo():
                                         if self.obj_mesh:
                                             new_obj_mesh = self.update_mesh_pos(selected_leaf_node, [gx - curr_config[new_index][0], gy - curr_config[new_index][1]], new_index)
                                         
-                                        new_node = Tree_Node(new_curr_config, new_curr_config, new_grid, new_static_config, selected_leaf_node.total_distance_ + move_distance, swept_volume1=self.swept_volume1, swept_volume2=self.swept_volume2, obj_mesh=new_obj_mesh, scale=self.scale, unknown_area=selected_leaf_node.unknown_area)
+                                        new_node = Tree_Node(new_curr_config, new_curr_config, new_grid, new_static_config, selected_leaf_node.total_distance_ + move_distance, swept_volume1=self.swept_volume1, swept_volume2=self.swept_volume2, obj_mesh=new_obj_mesh, scale=self.scale, unknown_area=selected_leaf_node.unknown_area, valid_area=selected_leaf_node.valid_area, potential_centers=selected_leaf_node.potential_centers)
                                         selected_leaf_node.add_child(new_node)
                                         new_node.set_parent(selected_leaf_node)
                                         if rollout_flag:
@@ -863,7 +861,7 @@ class MCTS_algo():
             move_distance = math.sqrt((curr_config[0][0] - goal_config[0][0])**2 + \
                                       (curr_config[0][1] - goal_config[0][1])**2)
             new_curr_config[0] = new_goal_config[0]
-            new_node = Tree_Node(new_curr_config, new_curr_config, new_grid, new_static_config, selected_leaf_node.total_distance_ + move_distance, swept_volume1=self.swept_volume1, swept_volume2=self.swept_volume2, obj_mesh=self.obj_mesh, scale=self.scale, unknown_area=selected_leaf_node.unknown_area)
+            new_node = Tree_Node(new_curr_config, new_curr_config, new_grid, new_static_config, selected_leaf_node.total_distance_ + move_distance, swept_volume1=self.swept_volume1, swept_volume2=self.swept_volume2, obj_mesh=self.obj_mesh, scale=self.scale, unknown_area=selected_leaf_node.unknown_area, valid_area=selected_leaf_node.valid_area, potential_centers=selected_leaf_node.potential_centers)
             selected_leaf_node.add_child(new_node)
             new_node.set_parent(selected_leaf_node)
             if new_node.end: pdb.set_trace()
@@ -957,6 +955,16 @@ class MCTS_algo():
         if self.time_limit <= curr_time - self.start_time:
             return True
         return False
+    
+    def get_children_nodes(self, root):
+        if not root.children_:
+            return [root]
+
+        total_child = []
+        for child in root.children_:
+            total_child += self.get_children_nodes(child)
+
+        return total_child
 
     def exec_algo(self):
         final_leaf = None
