@@ -893,7 +893,7 @@ class Tree_Node():
 
 
         print(res_counting)
-        self.tunnel_and_normal_visualizer()
+        # self.tunnel_and_normal_visualizer()
         self.valid_area = og_valid_area
         
         return res_counting

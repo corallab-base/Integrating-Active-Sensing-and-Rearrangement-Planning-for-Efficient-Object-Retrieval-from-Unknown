@@ -2272,6 +2272,14 @@ def process_unknown_area(unknown_area, curr_config, target_pos, center_num = 5, 
 
     return unknown_area, potential_center_cluster, valid_area_cluster
 
+def transfor2global(curr_config):
+    new_config = []
+    for obj in curr_config:
+        new_config.append([obj[1] / 100, -obj[0] / 100, obj[2] / 100, obj[3]])
+
+    return new_config
+
+
 # ------------------------------------------------------------------------------------------------------------------------------------------
 
 def grasp_path_check(file_path, test_data_root, grasp_root, test_name, scene_info= None, grasp_check= False, obstacles_num=None):
@@ -2460,6 +2468,7 @@ def check_MCTS(MCTS_root, MCTS_name, file_path):
     rac.obj_mesh = obj_mesh
     rac.obj_pos_list = obj_pos_list
 
+
     # ['#00fffb', '#ff00dd', '#bf00ff', '#ffae00', '#59ff00', '#FFFF00']
     #    cyan      pink       purple     orange    green       yellow
     #     0         1           2          3         4            5
@@ -2553,7 +2562,6 @@ def check_MCTS(MCTS_root, MCTS_name, file_path):
             if child.reward_ > max_reward:
                 max_reward = child.reward_
                 max_node = child
-        pdb.set_trace()
 
         collision_check_obj = []
         swept_check_obj = []
@@ -2589,7 +2597,8 @@ def check_MCTS(MCTS_root, MCTS_name, file_path):
                 max_region_count = total_new_region
                 max_region_idx = cluster_idx
 
-        cluster_angles = cal_cam_angle_for_area(potential_center_cluster[max_region_idx], curr_config + [target_pos_MCT], scene_info, visualize=True)
+        new_config = transfor2global(max_node.curr_config_)
+        cluster_angles = cal_cam_angle_for_area(potential_center_cluster[max_region_idx], new_config + [target_pos_MCT], scene_info, visualize=True)
 
         return
     
@@ -2700,6 +2709,10 @@ if __name__ == '__main__':
 
     scene_name = "8.1.22.50_failed/"
     mcts_name = "temp_scene2_failed.npy"
+
+    # scene_name = "8.2.16.24_failed/"
+    # mcts_name = "temp_scene2_success.npy"
+    # mcts_name = "groud_truth_scene2_success.npy"
 
     mcts_root = data_root + scene_name
     # mcts_name = "groud_truth_scene.npy"
