@@ -67,7 +67,8 @@ row_num_of_envs = int(math.sqrt(num_of_envs))
 #z_dim [0.05, 0.2]
 #table_dims = gymapi.Vec3(np.random.rand()*0.2 + 0.8, np.random.rand()*0.2 + 1.0,
 #                         np.random.rand()*0.05 + 0.05)
-table_dims = gymapi.Vec3(0.56, 0.86, 0.10)
+# table_dims = gymapi.Vec3(0.56, 0.86, 0.10)
+table_dims = gymapi.Vec3(0.76, 0.96, 0.10)
 piece_width = 0.03
 min_num_of_objects = 15
 max_num_of_objects = 20
@@ -1421,9 +1422,9 @@ if __name__ == '__main__':
                     # unobserved area processing
                     curr_config, target_pos_MCT = rac.get_MCT_config(copy.deepcopy(rac.obj_pos_list), copy.deepcopy(rac.obj_mesh), copy.deepcopy(target_obj_pos), copy.deepcopy(rac.target_mesh))
 
-                    # unknown_area = get_unobserved_area_w_height(scene)!!!!!!!!!!
-                    unknown_area = get_unobserved_area(scene)
-                    np.save(new_folder + "unknown_area" + str(sequence_count), unknown_area)
+                    unknown_area = get_unobserved_area_w_height(scene)
+                    # unknown_area = get_unobserved_area(scene)
+                    np.save(new_folder + "unknown_area_w_height" + str(sequence_count), unknown_area)
 
                     # Process unknown area
                     unknown_area, potential_center_cluster, valid_area_cluster = RC.process_unknown_area(unknown_area, curr_config, target_pos_MCT, center_num=5)
