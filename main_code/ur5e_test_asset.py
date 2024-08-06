@@ -68,7 +68,7 @@ row_num_of_envs = int(math.sqrt(num_of_envs))
 #table_dims = gymapi.Vec3(np.random.rand()*0.2 + 0.8, np.random.rand()*0.2 + 1.0,
 #                         np.random.rand()*0.05 + 0.05)
 # table_dims = gymapi.Vec3(0.56, 0.86, 0.10)
-table_dims = gymapi.Vec3(0.76, 0.96, 0.10)
+table_dims = gymapi.Vec3(0.56, 1.2, 0.10)
 piece_width = 0.03
 min_num_of_objects = 15
 max_num_of_objects = 20
@@ -382,6 +382,21 @@ def swept_coverage_check(scene, swept_verts, rac, scene_info):
     next_center, _ = rac.get_swept_center([new_verts], scene_info)
     return covered / len(swept_verts), next_center
 
+def get_swept_volume_size(main_swept):
+    min_x, min_y, min_z = sys.maxsize, sys.maxsize, sys.maxsize
+    max_x, max_y, max_z = -sys.maxsize, -sys.maxsize, -sys.maxsize
+    for tx, ty, tz in main_swept:
+        min_x = min(min_x, tx)
+        min_y = min(min_y, ty)
+        min_z = min(min_z, tz)
+        max_x = max(max_x, tx)
+        max_y = max(max_y, ty)
+        max_z = max(max_z, tz)
+
+    return max_y - min_y
+    # return max_x - min_x, max_y - min_y, max_z - min_z
+
+
 def get_unobserved_area(scene):
     floor = scene.scene_[:scene.x_limit_, scene.y_left_+1 :(scene.y_left_ + scene.y_limit_-1), scene.g_height_]
     unknown_area = np.argwhere(floor == 0)[:,:2]
@@ -394,18 +409,18 @@ def get_unobserved_area(scene):
     return unknown_area
 
 def get_unobserved_area_w_height(scene):
-    # mesh = o3d.io.read_triangle_mesh(obstacle_files)
-    # verts = np.asarray(mesh.vertices)
-    # min_x, min_y, min_z = sys.maxsize, sys.maxsize, sys.maxsize
-    # max_x, max_y, max_z = -sys.maxsize, -sys.maxsize, -sys.maxsize
-    # for tx, ty, tz in verts:
-    #     min_x = min(min_x, tx)
-    #     min_y = min(min_y, ty)
-    #     min_z = min(min_z, tz)
-    #     max_x = max(max_x, tx)
-    #     max_y = max(max_y, ty)
-    #     max_z = max(max_z, tz)
-    # height = int((max_z - min_z) * 100) + 1 # 15, 0.14119999739341438
+    mesh = o3d.io.read_triangle_mesh(obstacle_files)
+    verts = np.asarray(mesh.vertices)
+    min_x, min_y, min_z = sys.maxsize, sys.maxsize, sys.maxsize
+    max_x, max_y, max_z = -sys.maxsize, -sys.maxsize, -sys.maxsize
+    for tx, ty, tz in verts:
+        min_x = min(min_x, tx)
+        min_y = min(min_y, ty)
+        min_z = min(min_z, tz)
+        max_x = max(max_x, tx)
+        max_y = max(max_y, ty)
+        max_z = max(max_z, tz)
+    height = int((max_z - min_z) * 100) + 1 # 15, 0.14119999739341438
     
     floor = scene.scene_[:scene.x_limit_, scene.y_left_+1 :(scene.y_left_ + scene.y_limit_-1), scene.g_height_: scene.g_height_ + 15]
 
@@ -1108,6 +1123,10 @@ if __name__ == '__main__':
     # init MCTS
     ML_MCTS_ins = mct.multi_level_MCTS_algo(None, None, scene_info=scene_info, swept_volume1=None, swept_volume2=None, obj_mesh=rac.obj_mesh)
 
+    # update_rac_val(rac, target_obj_mash, obj_mesh_MCTS, obj_pos_MCTS)
+    # update_MCTS_val(ML_MCTS_ins, curr_config, target_pos_MCT, rac.obj_mesh, unknown_area, valid_area, potential_centers)
+
+
     #active sensing here
     obj_pos_MCTS = {}
     obj_mesh_MCTS = {}
@@ -1250,26 +1269,31 @@ if __name__ == '__main__':
 
                                 # find matching object mesh file
                                 downpcd = obj_pcd[i].voxel_down_sample(voxel_size=0.005) # downsampe pcd
+                                # downpcd = obj_pcd[i]
 
                                 if i != num_of_objects:
                                     # obstacle object matching
-                                    mesh = o3d.io.read_triangle_mesh(obstacle_files)
-                                    mesh.compute_vertex_normals()
-                                    source_pcd = mesh.sample_points_uniformly(number_of_points=20000)
-                                    dist, obj_trans = RC.pcd_matching(downpcd, source_pcd, False)
+                                    # mesh = o3d.io.read_triangle_mesh(obstacle_files)
+                                    # mesh.compute_vertex_normals()
+                                    # source_pcd = mesh.sample_points_uniformly(number_of_points=20000)
+                                    # dist, obj_trans = RC.pcd_matching(downpcd, source_pcd, False)
 
-                                    # calc inverse transform 
-                                    inv_rot = obj_trans[:3,:3].T
-                                    inv_trans = -inv_rot @ obj_trans[:3, 3]
-                                    inv_rot = R.from_matrix(inv_rot.copy())
+                                    # # calc inverse transform 
+                                    # inv_rot = obj_trans[:3,:3].T
+                                    # inv_trans = -inv_rot @ obj_trans[:3, 3]
+                                    # inv_rot = R.from_matrix(inv_rot.copy())
 
-                                    # make object model
-                                    verts_no_rotations = np.asarray(mesh.vertices)
-                                    face = np.asarray(mesh.triangles)
-                                    verts = inv_rot.apply(verts_no_rotations) + inv_trans
-                                    obj_mesh = [verts, face]
+                                    # # make object model
+                                    # verts_no_rotations = np.asarray(mesh.vertices)
+                                    # face = np.asarray(mesh.triangles)
+                                    # verts = inv_rot.apply(verts_no_rotations) + inv_trans
+                                    # obj_mesh = [verts, face]
 
-                                    obj_pos = inv_trans - object_offset[object_index[i-1]]
+                                    # obj_pos = inv_trans - object_offset[object_index[i-1]]
+                                    print("obj", i)
+                                    print("GT", GT_OBJ_POS_LIST[i-1])
+                                    obj_mesh, obj_pos, dist, obj_name = RC.get_matching_mesh(downpcd, visualize=True)
+                                    obj_pos = obj_pos - object_offset[object_index[i-1]]
 
                                     if dist < 3:
                                         print("idx",i,"mesh added")
@@ -1281,7 +1305,8 @@ if __name__ == '__main__':
                                         print("diff:", np.sqrt(dy**2 + dx**2), "dist", dist)
                                 else:
                                     # target obj matching
-                                    obj_mesh, obj_pos, dist, obj_name = RC.get_matching_mesh(downpcd, visualize=False)
+                                    print("target", i)
+                                    obj_mesh, obj_pos, dist, obj_name = RC.get_matching_mesh(downpcd, visualize=True)
                                     obj_pos = obj_pos - object_offset[object_index[i-1]]
 
                                     if dist < 3:
@@ -1316,9 +1341,9 @@ if __name__ == '__main__':
                                                 print("skip imposible grasp")
                                                 continue
 
-                                            init2grasp_path_temp = RC.get_path2grasp(rac, init2grasp_angels_temp, scene_info, target_mesh=obj_mesh)
+                                            init2grasp_path_temp = RC.get_path2grasp(rac, init2grasp_angels_temp, scene_info, target_mesh=obj_mesh, time_limit=30)
                                             mod_bbox = rac.modify_grasp_bbox(init2grasp_angels_temp, obj_mesh, visualize=False)
-                                            grasp2init_path_temp = RC.get_path2start(rac, grasp2init_angels_temp, mod_bbox, scene_info)
+                                            grasp2init_path_temp = RC.get_path2start(rac, grasp2init_angels_temp, mod_bbox, scene_info, time_limit=30)
 
                                             if init2grasp_path_temp is None or grasp2init_path_temp is None:
                                                 print("No path generated\n")
@@ -1331,8 +1356,9 @@ if __name__ == '__main__':
 
                                             # compare swept volumes
                                             swept_center_temp, swept_verts_temp = rac.get_swept_center(swept_verts1_temp+swept_verts2_temp, scene_info)
-                                            if len(swept_verts_temp) < swept_size:
-                                                swept_size = len(swept_verts_temp)
+                                            temp_swept_size = get_swept_volume_size(swept_verts_temp)
+                                            if temp_swept_size < swept_size:
+                                                swept_size = temp_swept_size
                                                 ML_MCTS_ins.swept_volume1 = swept_volume1_temp
                                                 ML_MCTS_ins.swept_volume2 = swept_volume2_temp
                                                 init2grasp_path = init2grasp_path_temp

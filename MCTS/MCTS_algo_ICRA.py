@@ -54,7 +54,7 @@ class multi_level_MCTS_algo():
     def init_MCTS(self):
         MCTS_ins = MCTS_algo(self.curr_config_, self.goal_config_, self.scene_info, swept_volume1=self.swept_volume1, swept_volume2=self.swept_volume2, obj_mesh=self.obj_mesh, target_pos=self.target_pos, unknown_area=self.unknown_area, valid_area=self.valid_area, potential_centers=self.potential_centers)
         self.MCTS_ins = MCTS_ins
-        MCTS_ins.MCTS_tree_.tunnel_and_normal_visualizer(unknown_show=True)
+        # MCTS_ins.MCTS_tree_.tunnel_and_normal_visualizer(unknown_show=True)
 
     def run_mcts(self, time_limit=None):
         start_time = time.time()

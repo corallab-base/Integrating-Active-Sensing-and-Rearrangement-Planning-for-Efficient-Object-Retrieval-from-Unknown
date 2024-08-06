@@ -1454,7 +1454,7 @@ class path_planner():
         self.plane_model_ = plane_model
         self.static_env_models_ = static_env_models
 
-    def plan_all(self, dof_start, dof_result, flex_collision_models):
+    def plan_all(self, dof_start, dof_result, flex_collision_models, time_limit):
 
         self.start_ = ob.State(self.space_)
         self.start_[0] = dof_start[0] 
@@ -1491,7 +1491,7 @@ class path_planner():
         optimizingPlanner.setup()
 
         
-        temp_res = optimizingPlanner.solve(10)
+        temp_res = optimizingPlanner.solve(time_limit)
 
         #print(temp_res.asString())
         if temp_res.asString() == 'Exact solution':
@@ -1626,6 +1626,12 @@ def get_matching_mesh(target_pcd, visualize=False):
             i = line.find('/')
             object_asset_files.append(asset_root + object_common_prefix + line[:i] + '/textured_vhacd.obj')
 
+    # estimate obj position
+    points = np.array(target_pcd.points)
+    pos = np.median(points[:,:2], axis=0)
+    init_transform = np.identity(4)
+    init_transform[:2, 3] = -pos
+
     min_dist = sys.maxsize
     obj_mesh = None
     obj_trans = None
@@ -1634,7 +1640,7 @@ def get_matching_mesh(target_pcd, visualize=False):
         mesh = o3d.io.read_triangle_mesh(asset_file)
         mesh.compute_vertex_normals()
         source_pcd = mesh.sample_points_uniformly(number_of_points=20000)
-        dist, trans = pcd_matching(target_pcd, source_pcd, visualize)
+        dist, trans = pcd_matching(target_pcd, source_pcd, init_transform, visualize)
         # print(asset_file)
         # print(dist)
         if dist < min_dist:
@@ -1657,42 +1663,40 @@ def get_matching_mesh(target_pcd, visualize=False):
 
     return [verts, face], inv_trans, min_dist, obj_name
 
-
-
-def pcd_matching(target_pcd, source_pcd, visualize):
+def pcd_matching(target_pcd, source_pcd, init_transform, visualize):
+    # threshold = 0.8
     # threshold = 0.6
-    threshold = 0.8
+    threshold = 0.3
+
+    # draw_registration_result(target_pcd, source_pcd, init_transform)
 
     reg_p2p = o3d.pipelines.registration.registration_icp(
-        target_pcd, source_pcd, threshold, np.identity(4),
+        target_pcd, source_pcd, threshold, init_transform,
         o3d.pipelines.registration.TransformationEstimationPointToPoint(),
-        o3d.pipelines.registration.ICPConvergenceCriteria(max_iteration=9999))
-
-    # if visualize:
-    #     draw_registration_result(target_pcd, source_pcd, reg_p2p.transformation)
+        o3d.pipelines.registration.ICPConvergenceCriteria(max_iteration=999999))
 
     target_pcd_trans = copy.deepcopy(target_pcd)
     target_pcd_trans = target_pcd_trans.transform(reg_p2p.transformation)
 
-    if visualize:
-        draw_registration_result(target_pcd_trans, source_pcd, np.identity(4))
-
-    # # calc inverse transform 
-    # inv_rot = reg_p2p.transformation[:3,:3].T
-    # inv_trans = -inv_rot @ reg_p2p.transformation[:3, 3]
-    # inv_rot = R.from_matrix(inv_rot.copy())
-
-    # test_trans = np.zeros((4,4))
-    # # pdb.set_trace()
-    # test_trans[:3,:3] = inv_rot.as_matrix()
-    # test_trans[:3, 3] = inv_trans
-    # test_trans[3, 3] = 1.0
-
-    # source_pcd_trans = copy.deepcopy(source_pcd)
-    # source_pcd_trans = source_pcd_trans.transform(test_trans)
-
     # if visualize:
-    #     draw_registration_result(target_pcd, source_pcd_trans, np.identity(4))
+    #     draw_registration_result(target_pcd_trans, source_pcd, np.identity(4))
+
+    # calc inverse transform 
+    inv_rot = reg_p2p.transformation[:3,:3].T
+    inv_trans = -inv_rot @ reg_p2p.transformation[:3, 3]
+    inv_rot = R.from_matrix(inv_rot.copy())
+
+    test_trans = np.zeros((4,4))
+    # pdb.set_trace()
+    test_trans[:3,:3] = inv_rot.as_matrix()
+    test_trans[:3, 3] = inv_trans
+    test_trans[3, 3] = 1.0
+
+    source_pcd_trans = copy.deepcopy(source_pcd)
+    source_pcd_trans = source_pcd_trans.transform(test_trans)
+
+    if visualize:
+        draw_registration_result(target_pcd, source_pcd_trans, np.identity(4))
 
     dist = target_pcd_trans.compute_point_cloud_distance(source_pcd)
     dist_sum = np.asarray(dist).sum()
@@ -1808,7 +1812,7 @@ def create_static_collision_model(scene_info, pcd_mesh, obj_mesh):
 
     return return_list
 
-def get_path2grasp(rac, dof_result, scene_info, pcd_mesh=None, target_mesh=None):
+def get_path2grasp(rac, dof_result, scene_info, pcd_mesh=None, target_mesh=None, time_limit=10):
     plane_normal = np.array([0,0,1.0])
     col_plane = fcl.Plane(plane_normal, 0)
     plane_obj = fcl.CollisionObject(col_plane, fcl.Transform())
@@ -1821,11 +1825,11 @@ def get_path2grasp(rac, dof_result, scene_info, pcd_mesh=None, target_mesh=None)
     pp = path_planner(rac, plane_obj, static_env_models)
 
     ur5e_start_dof = [0, -math.pi/2, 0, -math.pi/2, 0, 0]
-    path = pp.plan_all(ur5e_start_dof, dof_result, static_env_models)
+    path = pp.plan_all(ur5e_start_dof, dof_result, static_env_models, time_limit)
 
     return path
 
-def get_path2start(rac, dof_result, mod_grip, scene_info):
+def get_path2start(rac, dof_result, mod_grip, scene_info, time_limit=10):
     # add modified grasp to fcl
     vertices, faces = mod_grip
     mod_fcl_gripper = fcl.BVHModel()
@@ -1847,7 +1851,7 @@ def get_path2start(rac, dof_result, mod_grip, scene_info):
     pp = path_planner(rac, plane_obj, static_env_models)
 
     ur5e_start_dof = [0, -math.pi/2, 0, -math.pi/2, 0, 0]
-    path = pp.plan_all(dof_result, ur5e_start_dof, static_env_models)
+    path = pp.plan_all(dof_result, ur5e_start_dof, static_env_models, time_limit)
 
     rac.fcl_models_[8] = temp_fcl
 
