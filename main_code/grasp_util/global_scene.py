@@ -23,6 +23,8 @@ class global_scene:
         self.g_height_ = round(ground_height / 0.01)
         self.y_left_ = int((self.dim_y_ - self.y_limit_)/2)
 
+        self.num_observation = 0
+
         self.offset_ = offset
         self.scene_ = np.full((self.dim_x_ * self.dim_y_ * self.dim_z_), -1).reshape(self.dim_x_, self.dim_y_, self.dim_z_, 1)
         for i in range(min(self.x_limit_, self.dim_x_)):
@@ -52,7 +54,7 @@ class global_scene:
         #camera_name = file_prefix + '_camera.npy'
         #with open(scene_name, 'wb') as f:
         #    np.save(f, self.scene_)
-        
+        self.num_observation += 1
 
         for i in range(min(self.x_limit_, self.dim_x_)):
             for j in range(self.y_left_, min(self.y_left_ + self.y_limit_, self.dim_y_)):

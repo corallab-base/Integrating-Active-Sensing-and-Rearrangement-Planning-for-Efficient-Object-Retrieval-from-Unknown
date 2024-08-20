@@ -215,8 +215,8 @@ def smart_LMP_motion(source_treenode, target_treenode):
     
 #**************************************************************************************************
 
-class Tree_Node_OG():
-    def __init__(self, current_config, goal_config, current_grid, static_config = [], total_distance = 0, robot= [10.0, -2.0], swept_volume1=None, swept_volume2=None, obj_mesh=None, scale=None, target_pos=[], unknown_area=[], valid_area=[], potential_centers=[]):
+class Tree_Node_base2():
+    def __init__(self, current_config, goal_config, current_grid, static_config = [], total_distance = 0, robot= [10.0, -2.0], swept_volume1=None, swept_volume2=None, obj_mesh=None, scale=None, target_pos=[], unknown_area=[], valid_area=[], potential_centers=[], invalid_list=[], valid_list=[]):
         self.reward_ = 0.0
         self.visited_ = 0.0
         self.parent_ = None
@@ -233,10 +233,18 @@ class Tree_Node_OG():
         self.radius = (0.0515 / scale)
         self.object_in_collision_ = None
         self.total_distance_ = total_distance
+
+        self.swept_volume1 = swept_volume1
+        self.swept_volume2 = swept_volume2
+        self.obj_mesh = obj_mesh
+        self.scale = scale
         
         self.unknown_area = unknown_area
         self.valid_area = valid_area
-        self.potential_centers=potential_centers
+        self.potential_centers = potential_centers
+        self.invalid_list = deepcopy(invalid_list)
+        self.valid_list = deepcopy(valid_list)
+        self.invalid_dict = self.get_invalid_dict()
 
         if unknown_area is not None:
             max_radius = -sys.maxsize
@@ -259,19 +267,18 @@ class Tree_Node_OG():
         self.swept_volume2 = swept_volume2
         self.obj_mesh = obj_mesh
         self.scale = scale
-        # self.final_obj_mesh = None
 
         self.is_goal_config_swept()
 
-        self.distance_lookup_ = defaultdict(list)
-        for t in range(-len(self.grid_) + 1, len(self.grid_), 5):
-            for k in range(-len(self.grid_[0]) + 1, len(self.grid_[0]), 5):
-                distance = round((t)**2 + (k)**2, 3)
-                # if abs(distance) <= 0.0001:
-                #     continue 
-                self.distance_lookup_[distance].append([t, k])
-        self.distance_lookup_ = [list(x) for x in self.distance_lookup_.items()]
-        self.distance_lookup_.sort(key = lambda x: x[0])
+        # self.distance_lookup_ = defaultdict(list)
+        # for t in range(-len(self.grid_) + 1, len(self.grid_), 5):
+        #     for k in range(-len(self.grid_[0]) + 1, len(self.grid_[0]), 5):
+        #         distance = round((t)**2 + (k)**2, 3)
+        #         # if abs(distance) <= 0.0001:
+        #         #     continue 
+        #         self.distance_lookup_[distance].append([t, k])
+        # self.distance_lookup_ = [list(x) for x in self.distance_lookup_.items()]
+        # self.distance_lookup_.sort(key = lambda x: x[0])
 
     def add_reward(self, reward):
         self.reward_ += reward
@@ -333,6 +340,41 @@ class Tree_Node_OG():
 
         # self.tunnel_and_normal_visualizer([tunnel])
         return collision_points
+    
+    def get_invalid_dict(self):
+        invalid_dict = {}
+
+        for spot in deepcopy(self.valid_list):
+            print("invalid_dict")
+            tunnel = self.get_tunnel(self.robot_, spot)
+            is_tunnel_collision = self.collision_tunnel_static(tunnel)
+
+            if is_tunnel_collision:
+                self.valid_list.remove(spot)
+                continue
+                
+            collision_objs = self.collision_tunnel_object(tunnel)
+            # self.tunnel_and_normal_visualizer([tunnel], unknown_show=True) # debug
+
+            if collision_objs:
+                self.valid_list.remove(spot)
+                invalid_dict[str(spot[0]) + ',' + str(spot[1])] = collision_objs
+        print("invalid_dict return")
+        return invalid_dict
+    
+    def get_num_valid_spot(self, pos, obj_idx):
+        og_curr_config = deepcopy(self.curr_config_)
+        self.curr_config_[obj_idx][:2] = pos
+        num_invalid_spot = 0
+        for spot in self.valid_list:
+            tunnel = self.get_tunnel(self.robot_, spot)
+            collision_objs = self.collision_tunnel_object(tunnel)
+            if collision_objs:
+                # self.tunnel_and_normal_visualizer([tunnel])
+                num_invalid_spot += 1
+
+        self.curr_config_ = og_curr_config
+        return num_invalid_spot
 
     def collision_tunnel_static(self, tunnel, no_unknown=False):
         _, width, height, angle_degree, v2_start, v2_end, v3_start, v3_end = tunnel
@@ -379,8 +421,6 @@ class Tree_Node_OG():
         v2 = v2 / np.linalg.norm(v2)
         v3 = v3_end - v3_start
         v3 = v3 / np.linalg.norm(v3)
-
-        collision_items = set()
 
         if np.dot(v2, v3) > 1e-6:
             print('tunnel axes calculation fails\n')
@@ -486,54 +526,6 @@ class Tree_Node_OG():
             return True
         else:
             return False
-        
-
-    def scene_saver(self, save_path):
-        object_in_collision = self.check_collision_w_swept()
-
-        if self.scale == 0.01:
-            plt.figure(figsize = (len(self.grid_[0])/5, len(self.grid_)/5))
-        else:
-            plt.figure(figsize = (len(self.grid_[0]), len(self.grid_)))
-        plt.axis((0, len(self.grid_[0]), 0, len(self.grid_)))
-
-        for cx, cy, radius, color in self.curr_config_:
-            temp_circle = mpatches.Circle((cx, cy), radius, color = color)
-            plt.gca().add_patch(temp_circle)
-
-        for cx, cy, radius, color in self.static_config_:
-            temp_circle = mpatches.Circle((cx, cy), radius, color = 'black')
-            temp_circle_inner = mpatches.Circle((cx, cy), radius*0.7, color =  color)
-            plt.gca().add_patch(temp_circle)
-            plt.gca().add_patch(temp_circle_inner)
-
-        robot = mpatches.Rectangle((self.robot_[0] - 0.023 / self.scale, self.robot_[1] - 0.023 / self.scale), self.radius, self.radius)
-        plt.gca().add_patch(robot)
-
-        if object_in_collision:
-            for index in object_in_collision:
-                cx, cy, radius, color = self.curr_config_[index]
-                temp_square = mpatches.Rectangle((cx - radius, cy - radius), radius*2, radius*2, alpha = 0.3, color = 'black')
-                plt.gca().add_patch(temp_square)
-
-        if len(self.unknown_area) > 0:
-            plt.scatter(np.array(self.unknown_area)[:, 0], np.array(self.unknown_area)[:, 1], color='black')
-            # for cluster in self.unknown_area:
-            #     plt.scatter(np.array(cluster)[:, 0], np.array(cluster)[:, 1])
-        if len(self.valid_area) > 0:
-            plt.scatter(self.valid_area[:, 0], self.valid_area[:, 1], c='green')
-
-        if len(self.potential_centers) > 0:
-                plt.scatter(self.potential_centers[:, 0], self.potential_centers[:, 1], c='red')
-
-        plt.xlim(-len(self.grid_[0])/2, len(self.grid_[0])/2)
-        plt.ylim(0, len(self.grid_) - 1)
-        plt.savefig(save_path)
-
-        # plt.clf()
-        # plt.cla()
-        # plt.close()
-
 
     def tunnel_and_normal_visualizer(self, tunnel_list = None, object_in_collision = None, true_color = False, animation = False, unknown_show = False):
         object_in_collision = self.check_collision_w_swept()
@@ -769,43 +761,33 @@ class Tree_Node_OG():
 
         return is_collision1 or is_collision2
     
-    def propose_new_region(self, index, obs, random_obj_flag=False):
+    def propose_new_region(self, index, random_obj_flag=False):
         gx, gy, radius, color = self.curr_config_[index]
-        res = []
-        for distance, offset_list in self.distance_lookup_:
-            for ox, oy in offset_list:
-                #change for IROS 2024, add a 2D gaussian offset to change the discrete region proposal
-                #to continuous. The covariance matrix is [[R, 0], [0, R]]
-                temp_x = gx + ox + round(random.gauss(0, 3),2)
-                temp_y = gy + oy + round(random.gauss(0, 3),2)
+        min_invalid = sys.maxsize
+        min_invalid_pos = None
+        if not random_obj_flag:
+            # self.valid_list
+            size = 50 if len(self.valid_list) >= 50 else len(self.valid_list)
+            for pos_idx in np.random.randint(len(self.valid_list), size=size):
+                pos = self.valid_list[pos_idx]
+                temp_num_invalid = self.get_num_valid_spot(pos, index)
+                if min_invalid > temp_num_invalid:
+                    min_invalid = temp_num_invalid
+                    min_invalid_pos = pos
+        else:
+            print("random flag on")
+            invalid_dict_list = deepcopy(self.invalid_list)
+            for spot_str, objs in self.invalid_dict.items():
+                if index in objs and len(objs) == 1:
+                    spot_str = spot_str.split(',')
+                    spot = [int(spot_str[0]), int(spot_str[1])]
+                    invalid_dict_list.append(spot)
+            
+            rand_idx = np.random.randint(len(invalid_dict_list))
+            return invalid_dict_list[rand_idx]
 
-                #may delete
-                if self.x_min_ <= gx + ox <= self.x_max_ and self.y_min_ <= gy + oy <= self.y_max_:
-                   while (temp_x < self.x_min_ or temp_x > self.x_max_ or temp_y < self.y_min_ or temp_y > self.y_max_):
-                       temp_x = gx + ox + round(random.gauss(0, 3),2)
-                       temp_y = gy + oy + round(random.gauss(0, 3),2)
 
-                ox_rand = temp_x - gx
-                oy_rand = temp_y - gy
-
-                if (self.x_min_ <= temp_x <= self.x_max_) and \
-                   (self.y_min_ <= temp_y <= self.y_max_) and \
-                    self.dst_region_collision_free(index, [temp_x, temp_y]) and \
-                    not self.test_new_region_blocking([temp_x, temp_y], obs) and \
-                    not self.get_new_collision_swept(index, [ox_rand, oy_rand]):
-
-                    relocate_tunnel = self.get_tunnel(self.robot_, [temp_x, temp_y])
-                    collision_object = self.collision_tunnel_object(relocate_tunnel)
-
-                    collision_object = [x for x in collision_object if x != index]
-                    if not collision_object and not self.collision_tunnel_static(relocate_tunnel):
-                        res.append([temp_x, temp_y])
-                        
-                        if len(res) == 4:
-                            random.shuffle(res)
-                            return res
-        
-        return res
+        return min_invalid_pos
     
 
     def region_counting(self, obj_idx, new_valid_area):
@@ -904,13 +886,14 @@ class Tree_Node_OG():
             for cx, cy, radius, color in self.static_config_:
                 distance = np.sqrt((proposed_region[0] - cx)**2 + (proposed_region[1] - cy)**2)
                 if distance < obj_radius + radius + 2:
+                    print("static failed")
                     return False
         for i in range(len(self.curr_config_)):
             if i != index:
                 cx, cy, radius, color = self.curr_config_[i]
                 distance = np.sqrt((proposed_region[0] - cx)**2 + (proposed_region[1] - cy)**2)
                 if distance < obj_radius + radius + 2:
-                    # print("dst_region_collision failed", i)
+                    print("dst_region_collision failed", i)
                     return False
                 
         for point in self.valid_area:
@@ -931,7 +914,62 @@ class Tree_Node_OG():
             
         return True
     
-    
+    def scene_saver(self, save_path, tunnel_list = None, object_in_collision = None, unknown_show = False):
+        object_in_collision = self.check_collision_w_swept()
+
+        if self.scale == 0.01:
+            plt.figure(figsize = (len(self.grid_[0])/5, len(self.grid_)/5))
+        else:
+            plt.figure(figsize = (len(self.grid_[0]), len(self.grid_)))
+        plt.axis((0, len(self.grid_[0]), 0, len(self.grid_)))
+
+        for cx, cy, radius, color in self.curr_config_:
+            temp_circle = mpatches.Circle((cx, cy), radius, color = color)
+            plt.gca().add_patch(temp_circle)
+
+        for cx, cy, radius, color in self.static_config_:
+            temp_circle = mpatches.Circle((cx, cy), radius, color = 'black')
+            temp_circle_inner = mpatches.Circle((cx, cy), radius*0.7, color =  color)
+            plt.gca().add_patch(temp_circle)
+            plt.gca().add_patch(temp_circle_inner)
+
+        robot = mpatches.Rectangle((self.robot_[0] - 0.023 / self.scale, self.robot_[1] - 0.023 / self.scale), self.radius, self.radius)
+        plt.gca().add_patch(robot)
+
+        tunnel_counter = 0
+        tunnel_color = ['b', 'r']
+
+        if tunnel_list:
+            for start_corner, width, height, angle, v2_start, v2_end, v3_start, v3_end in tunnel_list:
+                tunnel_shape = mpatches.Rectangle(start_corner, width, height, angle, alpha = 0.5, color = tunnel_color[tunnel_counter])
+                plt.gca().add_patch(tunnel_shape)
+                plt.plot([v2_start[0], v2_end[0]], [v2_start[1], v2_end[1]], color = 'r')
+                plt.plot([v3_start[0], v3_end[0]], [v3_start[1], v3_end[1]], color = 'r')
+                tunnel_counter += 1
+
+        if object_in_collision:
+            for index in object_in_collision:
+                cx, cy, radius, color = self.curr_config_[index]
+                temp_square = mpatches.Rectangle((cx - radius, cy - radius), radius*2, radius*2, alpha = 0.3, color = 'black')
+                plt.gca().add_patch(temp_square)
+
+        if len(self.unknown_area) > 0:
+            plt.scatter(np.array(self.unknown_area)[:, 0], np.array(self.unknown_area)[:, 1], color='black')
+            # for cluster in self.unknown_area:
+            #     plt.scatter(np.array(cluster)[:, 0], np.array(cluster)[:, 1])
+        if len(self.valid_area) > 0:
+            plt.scatter(self.valid_area[:, 0], self.valid_area[:, 1], c='green')
+
+        if len(self.potential_centers) > 0:
+                plt.scatter(self.potential_centers[:, 0], self.potential_centers[:, 1], c='red')
+
+        plt.xlim(-len(self.grid_[0])/2, len(self.grid_[0])/2)
+        plt.ylim(0, len(self.grid_) - 1)
+        plt.savefig(save_path)
+
+        # plt.clf()
+        # plt.cla()
+        plt.close()
 
 
 def write_result(new_folder, method, test_index, object_count, time, steps, length, displacement, res_plan):

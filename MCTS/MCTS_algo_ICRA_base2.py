@@ -14,18 +14,19 @@ from collections import defaultdict
 from copy import deepcopy
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
-from rearrangement_planning_util_ICRA import Tree_Node
+from rearrangement_planning_util_ICRA_base2 import Tree_Node_base2
 from rearrangement_planning_util_ICRA import regression_test
 from rearrangement_planning_util_ICRA import write_result
 from rearrangement_planning_util_ICRA import smart_LMP_motion
 from test_case_generator import RP_test_case_generator
 from test_case_generator import test_case_reader
 import fcl
+from obj_reader import obj_reader
 import pdb
 
 
 #main 2D ML-MCTS class that internally calls MCTS class
-class multi_level_MCTS_algo():
+class multi_level_MCTS_algo_base2():
     def __init__(self, curr_config, goal_config, scene_info=None, swept_volume1=None, swept_volume2=None, obj_mesh=None, target_pos=None, unknown_area=[], valid_area=[], potential_centers=[]):
         # init update
         self.curr_config_ = curr_config
@@ -52,9 +53,33 @@ class multi_level_MCTS_algo():
         self.track_level_steps_ = None
 
     def init_MCTS(self):
-        MCTS_ins = MCTS_algo(deepcopy(self.curr_config_), self.goal_config_, self.scene_info, swept_volume1=self.swept_volume1, swept_volume2=self.swept_volume2, obj_mesh=self.obj_mesh, target_pos=self.target_pos, unknown_area=self.unknown_area, valid_area=self.valid_area, potential_centers=self.potential_centers)
+        MCTS_ins = MCTS_algo_base2(self.curr_config_, self.goal_config_, self.scene_info, swept_volume1=self.swept_volume1, swept_volume2=self.swept_volume2, obj_mesh=deepcopy(self.obj_mesh), target_pos=deepcopy(self.target_pos), unknown_area=self.unknown_area, valid_area=self.valid_area, potential_centers=self.potential_centers)
         self.MCTS_ins = MCTS_ins
         # MCTS_ins.MCTS_tree_.tunnel_and_normal_visualizer(unknown_show=True)
+
+    def check_collision_w_swept(self):
+        collision_obj_list = []
+        for obj_idx in range(len(self.obj_mesh)):
+            # read collision mesh
+            temp_verts, temp_tris = self.obj_mesh[obj_idx] # need mesh
+            temp_m = fcl.BVHModel()
+            temp_m.beginModel(len(temp_verts), len(temp_tris))
+            temp_m.addSubModel(temp_verts, temp_tris)
+            temp_m.endModel()
+            temp_t = fcl.Transform()
+
+            # check collision
+            req = fcl.CollisionRequest()
+            rdata = fcl.CollisionData(request = req)
+            self.swept_volume1.collide(fcl.CollisionObject(temp_m, temp_t), rdata, fcl.defaultCollisionCallback)
+            is_collision1 = rdata.result.is_collision
+            self.swept_volume2.collide(fcl.CollisionObject(temp_m, temp_t), rdata, fcl.defaultCollisionCallback)
+            is_collision2 = rdata.result.is_collision
+
+            if is_collision1 or is_collision2:
+                collision_obj_list.append(obj_idx)
+
+        return collision_obj_list
 
     def run_mcts(self, time_limit=None):
         start_time = time.time()
@@ -92,6 +117,13 @@ class multi_level_MCTS_algo():
         self.time_consumption_ = end_time - start_time
         print("Time consumption:", self.time_consumption_)
         return True, self.time_consumption_
+    
+    def get_global_config(self, local_config, scale):
+        new_pos = []
+        for i in range(len(local_config)):
+            new_pos.append([local_config[i][1] * scale, -local_config[i][0] * scale, local_config[i][2] * scale, local_config[i][3]])
+
+        return new_pos
 
     def scenario_check(self):
         if self.is_scenario_checked:
@@ -120,8 +152,8 @@ class multi_level_MCTS_algo():
         for i in swept_collision_obj:
             tunnel = self.MCTS_ins.MCTS_tree_.get_tunnel(self.MCTS_ins.MCTS_tree_.robot_, self.MCTS_ins.MCTS_tree_.curr_config_[i][:2])
             collision_area = self.MCTS_ins.MCTS_tree_.get_collision_tunnel_unknown(tunnel)
+            # self.MCTS_ins.MCTS_tree_.tunnel_and_normal_visualizer([tunnel])
             if collision_area:
-                # self.MCTS_ins.MCTS_tree_.tunnel_and_normal_visualizer([tunnel])
                 tunnel_collision_obj_idx.append(i)
                 tunnel_collision_area += collision_area
     
@@ -460,8 +492,8 @@ class multi_level_MCTS_algo():
                 #start_steps = math.ceil(distance_start / step_size)
                 #delta_x, delta_y = (robot_x - start_x) / start_steps, (robot_y - start_y) / start_steps
 
-                dummy_source_tree_node = Tree_Node(dummy_curr_config, dummy_goal_config, dummy_grid, dummy_static_config)
-                dummy_target_tree_node = Tree_Node(dummy_end_config, dummy_goal_config, dummy_grid, dummy_static_config)
+                dummy_source_tree_node = Tree_Node_base2(dummy_curr_config, dummy_goal_config, dummy_grid, dummy_static_config)
+                dummy_target_tree_node = Tree_Node_base2(dummy_end_config, dummy_goal_config, dummy_grid, dummy_static_config)
 
                 smart_LMP_motion(dummy_source_tree_node, dummy_target_tree_node)
                 #for t in range(start_steps + 1):
@@ -506,7 +538,6 @@ class multi_level_MCTS_algo():
         #         node.valid_points = self.valid_area
         
         for tree_nodes in self.track_level_steps_:
-            # pdb.set_trace()
             plt.clf()
 
             tree_nodes[0].tunnel_and_normal_visualizer(animation = True)
@@ -547,7 +578,7 @@ class multi_level_MCTS_algo():
                 start_steps = math.ceil(distance_start / step_size)
                 delta_x, delta_y = (robot_x - start_x) / start_steps, (robot_y - start_y) / start_steps
 
-                dummy_tree_node = Tree_Node(dummy_curr_config, dummy_goal_config, dummy_grid, dummy_static_config, swept_volume1=self.swept_volume1, swept_volume2=self.swept_volume2, obj_mesh=self.obj_mesh, scale=self.scale, unknown_area=self.unknown_area, valid_area=self.valid_area, potential_centers=self.potential_centers)
+                dummy_tree_node = Tree_Node_base2(dummy_curr_config, dummy_goal_config, dummy_grid, dummy_static_config, swept_volume1=self.swept_volume1, swept_volume2=self.swept_volume2, obj_mesh=self.obj_mesh, scale=self.scale, unknown_area=self.unknown_area, valid_area=self.valid_area, potential_centers=self.potential_centers)
                 for t in range(start_steps + 1):
                     plt.clf()
                     dummy_tree_node.tunnel_and_normal_visualizer([grasp_tunnel], animation = True)
@@ -580,7 +611,7 @@ class multi_level_MCTS_algo():
 
 
 
-class MCTS_algo():
+class MCTS_algo_base2():
     def __init__(self, curr_config, goal_config, scene_info, grid=None, index=0, swept_volume1=None, swept_volume2=None, obj_mesh=None, target_pos=[], unknown_area=[], valid_area=[], potential_centers=[]):
         self.grid_ = grid
         self.scene_info = scene_info
@@ -602,18 +633,20 @@ class MCTS_algo():
 
         self.curr_config_ = curr_config[index:]
         self.goal_config_ = goal_config[index:]
+        self.invalid_list, self.valid_list = self.get_invalid_spots()
 
-        self.MCTS_tree_ = Tree_Node(self.curr_config_, self.goal_config_, self.grid_, self.static_config_, swept_volume1=swept_volume1, swept_volume2=swept_volume2, obj_mesh=obj_mesh, scale=self.scale, target_pos=target_pos, unknown_area=unknown_area, valid_area=valid_area, potential_centers=potential_centers)
+        print('tree')
+        self.MCTS_tree_ = Tree_Node_base2(deepcopy(self.curr_config_), self.goal_config_, self.grid_, self.static_config_, swept_volume1=swept_volume1, swept_volume2=swept_volume2, obj_mesh=obj_mesh, scale=self.scale, target_pos=target_pos, unknown_area=unknown_area, valid_area=valid_area, potential_centers=potential_centers, invalid_list=self.invalid_list, valid_list=self.valid_list)
         self.leaf_ = []
         self.root_ = self.MCTS_tree_
 
-        self.distance_lookup_ = defaultdict(list)
-        for t in range(-len(self.grid_) + 1, len(self.grid_)):
-            for k in range(-len(self.grid_[0]) + 1, len(self.grid_[0])):
-                distance = round((t)**2 + (k)**2, 3)
-                self.distance_lookup_[distance].append([t, k])
-        self.distance_lookup_ = [list(x) for x in self.distance_lookup_.items()]
-        self.distance_lookup_.sort(key = lambda x: x[0])
+        # self.distance_lookup_ = defaultdict(list)
+        # for t in range(-len(self.grid_) + 1, len(self.grid_)):
+        #     for k in range(-len(self.grid_[0]) + 1, len(self.grid_[0])):
+        #         distance = round((t)**2 + (k)**2, 3)
+        #         self.distance_lookup_[distance].append([t, k])
+        # self.distance_lookup_ = [list(x) for x in self.distance_lookup_.items()]
+        # self.distance_lookup_.sort(key = lambda x: x[0])
 
     def scale_grid(self, scene_info, curr_config, cm_scale=False):
         # find max radius
@@ -621,12 +654,8 @@ class MCTS_algo():
         for config in curr_config:
             if max_radius < config[2]:
                 max_radius = config[2]
-    
-        if cm_scale:
-            scale = 0.01
-            print("scale")
-        else:
-            scale = max_radius
+
+        scale = 0.01
 
         # grid_x = int(scene_info[1] / scale) - 2
         # grid_y = int(scene_info[0] / scale + 0.3 / scale)
@@ -640,6 +669,67 @@ class MCTS_algo():
         self.grid_ = np.zeros((grid_y, grid_x))
 
         return scale
+    
+    def check_valid_spot_w_swept(self, pos):
+        asset_root = '../assets/'
+        object_common_prefix = "urdf/ycb/"
+        obj_mesh_list = []
+        with open(asset_root + "urdf/ycb/object_urdf_grasp.txt") as f:
+            for line in f:
+                i = line.find('/')
+                mesh = obj_reader(asset_root + object_common_prefix + line[:i] + '/textured_vhacd.obj')
+                obj_mesh_list.append([mesh.get_vertices(), mesh.get_faces()])
+
+        for i in range(3):
+            pos[i] = pos[i] * self.scale
+            temp = pos[1]
+        pos[1] = -pos[0]
+        pos[0] = temp
+
+        for obj_idx in range(len(obj_mesh_list)):
+            # read collision mesh
+            temp_verts, temp_tris = obj_mesh_list[obj_idx] # need mesh
+            temp_m = fcl.BVHModel()
+            temp_m.beginModel(len(temp_verts), len(temp_tris))
+            temp_m.addSubModel(temp_verts, temp_tris)
+            temp_m.endModel()
+            temp_t = fcl.Transform(pos)
+
+            # check collision
+            req = fcl.CollisionRequest()
+            rdata = fcl.CollisionData(request = req)
+            self.swept_volume1.collide(fcl.CollisionObject(temp_m, temp_t), rdata, fcl.defaultCollisionCallback)
+            is_collision1 = rdata.result.is_collision
+            self.swept_volume2.collide(fcl.CollisionObject(temp_m, temp_t), rdata, fcl.defaultCollisionCallback)
+            is_collision2 = rdata.result.is_collision
+
+            if is_collision1 or is_collision2:
+                return False
+        return True
+
+    def get_invalid_spots(self):
+        max_radius = -sys.maxsize
+        for config in self.curr_config_:
+            if max_radius < config[2]:
+                max_radius = config[2]
+
+        x_min = int(-len(self.grid_[0]) / 2) + int(max_radius)
+        x_max = int(len(self.grid_[0]) / 2) - int(max_radius)
+        y_min = int(0.30 / self.scale) + int(max_radius) + 1
+        y_max = len(self.grid_) - int(max_radius)
+
+        invalid_list = []
+        valid_list = []
+        for y in range(y_min, y_max + 1):
+            print(y)
+            for x in range(x_min, x_max + 1):
+                is_valid_spot = self.check_valid_spot_w_swept([x, y, 0])
+                if not is_valid_spot:
+                    invalid_list.append([x, y])
+                else:
+                    valid_list.append([x, y])
+        print('return')
+        return invalid_list, valid_list
 
     def scale_config(self, config):
         for pos in config:
@@ -649,6 +739,7 @@ class MCTS_algo():
             pos[0] = -pos[1]
             pos[1] = temp
 
+            # print("--------------------------------------------------", config)
         return config
 
     def selection(self):
@@ -672,198 +763,62 @@ class MCTS_algo():
         goal_config = deepcopy(selected_leaf_node.goal_config_)
         grid = selected_leaf_node.grid_
         static_config = selected_leaf_node.static_config_
-        search_depth = 0
 
-        #print(curr_config)
-        #print(goal_config)
+        feasible_obj_list = selected_leaf_node.random_object_selection()
+        collision_list = selected_leaf_node.check_collision_w_swept()
+        feasible_swept_obj = list(set(collision_list) & set(feasible_obj_list))
+        is_new_node_added = False
+        for obj_idx in feasible_swept_obj:
+            is_overrun = self.check_time()
+            if is_overrun:
+                return None
+            
+            new_region = selected_leaf_node.propose_new_region(obj_idx)
+            if new_region is not None:
+                gx, gy = new_region
+                new_curr_config = deepcopy(curr_config)
+                new_grid = deepcopy(grid)
+                new_static_config = deepcopy(static_config)
+                move_distance = math.sqrt((curr_config[obj_idx][0] - gx)**2 + \
+                                              (curr_config[obj_idx][1] - gy)**2)
+                new_curr_config[obj_idx][0] = gx
+                new_curr_config[obj_idx][1] = gy
 
-        # print("--------------------------------------------------------------------")
-        # new_tunnel = selected_leaf_node.get_tunnel(selected_leaf_node.robot_, selected_leaf_node.curr_config_[1])
-        # print("collision", selected_leaf_node.object_in_collision_) 
-        # print("feasible", selected_leaf_node.random_object_selection())
-        # selected_leaf_node.tunnel_and_normal_visualizer([new_tunnel])
-
-        if selected_leaf_node.object_in_collision_:
-            #there are still objects that need to be moved
-            #first try to grasp it
-            random_obj_flag = False
-            current_list = selected_leaf_node.object_in_collision_
-            while True:
+                new_obj_mesh = self.update_mesh_pos(selected_leaf_node, [gx - curr_config[obj_idx][0], gy - curr_config[obj_idx][1]], obj_idx)
+                new_node = Tree_Node_base2(new_curr_config, new_curr_config, new_grid, new_static_config, selected_leaf_node.total_distance_ + move_distance, swept_volume1=self.swept_volume1, swept_volume2=self.swept_volume2, obj_mesh=new_obj_mesh, scale=self.scale, unknown_area=selected_leaf_node.unknown_area, valid_area=selected_leaf_node.valid_area, potential_centers=selected_leaf_node.potential_centers, valid_list=self.valid_list, invalid_list=self.invalid_list)
+                selected_leaf_node.add_child(new_node)
+                is_new_node_added = True
+                new_node.set_parent(selected_leaf_node)
+                new_node.is_goal_config_swept()
+                if rollout_flag: 
+                    return new_node
+        if not is_new_node_added:
+            for obj_idx in feasible_obj_list:
                 is_overrun = self.check_time()
                 if is_overrun:
                     return None
-                
-                new_current_list = set()
-                search_depth += 1
-                for index in current_list:
-                    grasp_tunnel = selected_leaf_node.get_tunnel(selected_leaf_node.robot_, selected_leaf_node.curr_config_[index])
-                    relocate_object = selected_leaf_node.collision_tunnel_object(grasp_tunnel)
-                    relocate_object = [x for x in relocate_object if x != index]
+            
+                new_region = selected_leaf_node.propose_new_region(obj_idx, random_obj_flag=True)
+                if new_region is not None:
+                    gx, gy = new_region
+                    new_curr_config = deepcopy(curr_config)
+                    new_grid = deepcopy(grid)
+                    new_static_config = deepcopy(static_config)
+                    move_distance = math.sqrt((curr_config[obj_idx][0] - gx)**2 + \
+                                                  (curr_config[obj_idx][1] - gy)**2)
+                    new_curr_config[obj_idx][0] = gx
+                    new_curr_config[obj_idx][1] = gy
 
-                    grasp_tunnel = selected_leaf_node.get_tunnel(selected_leaf_node.robot_, selected_leaf_node.goal_config_[index])
-                    if selected_leaf_node.collision_tunnel_static(grasp_tunnel): continue
+                    new_obj_mesh = self.update_mesh_pos(selected_leaf_node, [gx - curr_config[obj_idx][0], gy - curr_config[obj_idx][1]], obj_idx)
+                    new_node = Tree_Node_base2(new_curr_config, new_curr_config, new_grid, new_static_config, selected_leaf_node.total_distance_ + move_distance, swept_volume1=self.swept_volume1, swept_volume2=self.swept_volume2, obj_mesh=new_obj_mesh, scale=self.scale, unknown_area=selected_leaf_node.unknown_area, valid_area=selected_leaf_node.valid_area, potential_centers=selected_leaf_node.potential_centers, valid_list=self.valid_list, invalid_list=self.invalid_list)
+                    selected_leaf_node.add_child(new_node)
+                    is_new_node_added = True
+                    new_node.set_parent(selected_leaf_node)
+                    new_node.is_goal_config_swept()
+                    if rollout_flag: 
+                        return new_node
                     
-                    is_overrun = self.check_time()
-                    if is_overrun:
-                        return None
-
-                    #relocated_object is None, grasp it to another region
-                    if not relocate_object:
-
-                        #first try to place it at goal region
-                        relocate_tunnel = selected_leaf_node.get_tunnel(selected_leaf_node.robot_, selected_leaf_node.goal_config_[index])
-                        collision_object = selected_leaf_node.collision_tunnel_object(relocate_tunnel)
-                        collision_object = [x for x in collision_object if x != index]
-
-                        #this tries to directly place it at goal region
-                        if not collision_object:
-                            #print ('enters no collision')
-                            #create a new tree node
-                            flag = selected_leaf_node.test_new_region_blocking(selected_leaf_node.goal_config_[index])
-                            flag = True
-                            if not flag: # no need in my case
-                                new_curr_config = deepcopy(curr_config)
-                                new_grid = deepcopy(grid)
-                                new_static_config = deepcopy(static_config)
-                                new_curr_config[index] = new_goal_config[index]
-                                move_distance = math.sqrt((curr_config[index][0] - goal_config[index][0])**2 + 
-                                                          (curr_config[index][1] - goal_config[index][1])**2)
-                                new_node = Tree_Node(new_curr_config, goal_config, new_grid, new_static_config, selected_leaf_node.total_distance_ + move_distance, swept_volume1=self.swept_volume1, swept_volume2=self.wept_volume2, obj_mesh=self.obj_mesh, scale=self.scale, unknown_area=selected_leaf_node.unknown_area, valid_area=selected_leaf_node.valid_area, potential_centers=selected_leaf_node.potential_centers)
-                                selected_leaf_node.add_child(new_node)
-                                new_node.set_parent(selected_leaf_node)
-                                if rollout_flag:
-                                    return new_node
-                            else:
-                                #propose two target regions
-                                new_regions = []
-                                # pdb.set_trace()
-                                for upper_index in range(index, -1, -1):
-                                    is_overrun = self.check_time()
-                                    if is_overrun:
-                                        return None
-                                    new_regions = selected_leaf_node.propose_new_region(index, [x for x in range(1, upper_index)], random_obj_flag)
-                                    if new_regions: break
-
-                                if new_regions:
-                                    for gx, gy in new_regions:
-                                        new_curr_config = deepcopy(curr_config)
-                                        new_grid = deepcopy(grid)
-                                        new_static_config = deepcopy(static_config)
-                                        move_distance = math.sqrt((curr_config[index][0] - gx)**2 + \
-                                                                  (curr_config[index][1] - gy)**2)
-                                        new_curr_config[index][0] = gx
-                                        new_curr_config[index][1] = gy
-
-                                        new_obj_mesh = None
-                                        if self.obj_mesh:
-                                            new_obj_mesh = self.update_mesh_pos(selected_leaf_node, [gx - curr_config[index][0], gy - curr_config[index][1]], index)
-                                        new_node = Tree_Node(new_curr_config, new_curr_config, new_grid, new_static_config, selected_leaf_node.total_distance_ + move_distance, swept_volume1=self.swept_volume1, swept_volume2=self.swept_volume2, obj_mesh=new_obj_mesh, scale=self.scale, unknown_area=selected_leaf_node.unknown_area, valid_area=selected_leaf_node.valid_area, potential_centers=selected_leaf_node.potential_centers)
-                                        selected_leaf_node.add_child(new_node)
-                                        new_node.set_parent(selected_leaf_node)
-                                        if rollout_flag: 
-                                            return new_node
-
-                        else:
-                            # no need in my case
-                            new_regions = []
-                            for upper_index in range(index, -1, -1):
-                                is_overrun = self.check_time()
-                                if is_overrun:
-                                    return None
-                                new_regions = selected_leaf_node.propose_new_region(index, [x for x in range(1, upper_index)], random_obj_flag)
-                                if new_regions: break
-    
-                            if new_regions:
-                                for gx, gy in new_regions:
-                                    #print (gx, gy)
-                                    new_curr_config = deepcopy(curr_config)
-                                    new_grid = deepcopy(grid)
-                                    new_static_config = deepcopy(static_config)
-                                    move_distance = math.sqrt((curr_config[index][0] - gx)**2 + \
-                                                              (curr_config[index][1] - gy)**2)
-                                    new_curr_config[index][0] = gx
-                                    new_curr_config[index][1] = gy
-
-                                    new_obj_mesh = None
-                                    if self.obj_mesh:
-                                        new_obj_mesh = self.update_mesh_pos(selected_leaf_node, [gx - curr_config[index][0], gy - curr_config[index][1]], index)
-                                    
-                                    new_node = Tree_Node(new_curr_config, new_curr_config, new_grid, new_static_config, selected_leaf_node.total_distance_ + move_distance, swept_volume1=self.swept_volume1, swept_volume2=self.swept_volume2, obj_mesh=new_obj_mesh, scale=self.scale, unknown_area=selected_leaf_node.unknown_area, valid_area=selected_leaf_node.valid_area, potential_centers=selected_leaf_node.potential_centers)
-                                    selected_leaf_node.add_child(new_node)
-                                    new_node.set_parent(selected_leaf_node)
-                                    if new_node.end: pdb.set_trace()
-                                    new_tunnel = new_node.get_tunnel(new_node.robot_, new_node.curr_config_[index])
-                                    if rollout_flag: 
-                                        return new_node
-                            
-                    else:
-                        #some object block the path to grasp the object
-                        for new_index in relocate_object:
-
-                            temp_grasp_tunnel = selected_leaf_node.get_tunnel(selected_leaf_node.robot_, selected_leaf_node.curr_config_[new_index])
-                            temp_relocate_object = selected_leaf_node.collision_tunnel_object(temp_grasp_tunnel)
-                            temp_relocate_object = [x for x in temp_relocate_object if x != new_index]
-                            if not temp_relocate_object:
-                                new_regions = []
-                                for upper_index in range(new_index, -1, -1):
-                                    is_overrun = self.check_time()
-                                    if is_overrun:
-                                        return None
-                                    new_regions = selected_leaf_node.propose_new_region(new_index, [index] + [x for x in range(1, upper_index)], random_obj_flag)
-                                    if new_regions: break
-                                
-                                if new_regions:
-                                    for gx, gy in new_regions:
-                                        new_curr_config = deepcopy(curr_config)
-                                        # new_goal_config = deepcopy(goal_config)
-                                        new_grid = deepcopy(grid)
-                                        new_static_config = deepcopy(static_config)
-                                        move_distance = math.sqrt((curr_config[new_index][0] - gx)**2 + \
-                                                              (curr_config[new_index][1] - gy)**2)
-                                        new_curr_config[new_index][0] = gx
-                                        new_curr_config[new_index][1] = gy
-
-                                        new_obj_mesh = None
-                                        if self.obj_mesh:
-                                            new_obj_mesh = self.update_mesh_pos(selected_leaf_node, [gx - curr_config[new_index][0], gy - curr_config[new_index][1]], new_index)
-                                        
-                                        new_node = Tree_Node(new_curr_config, new_curr_config, new_grid, new_static_config, selected_leaf_node.total_distance_ + move_distance, swept_volume1=self.swept_volume1, swept_volume2=self.swept_volume2, obj_mesh=new_obj_mesh, scale=self.scale, unknown_area=selected_leaf_node.unknown_area, valid_area=selected_leaf_node.valid_area, potential_centers=selected_leaf_node.potential_centers)
-                                        selected_leaf_node.add_child(new_node)
-                                        new_node.set_parent(selected_leaf_node)
-                                        if rollout_flag:
-                                            return new_node
-                                
-                            else:
-                                new_current_list.add(new_index)
-                if len(selected_leaf_node.children_):
-                    break
-                else:
-                    current_list = list(new_current_list)
-                    if search_depth == 4:
-                        break
-                    if search_depth >= 2:
-                        current_list = selected_leaf_node.random_object_selection()
-                        random_obj_flag = True
-
-        else:
-            new_curr_config = deepcopy(curr_config)
-            new_goal_config = deepcopy(goal_config)
-            new_grid = deepcopy(grid)
-            new_static_config = deepcopy(static_config)
-            move_distance = math.sqrt((curr_config[0][0] - goal_config[0][0])**2 + \
-                                      (curr_config[0][1] - goal_config[0][1])**2)
-            new_curr_config[0] = new_goal_config[0]
-            new_node = Tree_Node(new_curr_config, new_curr_config, new_grid, new_static_config, selected_leaf_node.total_distance_ + move_distance, swept_volume1=self.swept_volume1, swept_volume2=self.swept_volume2, obj_mesh=self.obj_mesh, scale=self.scale, unknown_area=selected_leaf_node.unknown_area, valid_area=selected_leaf_node.valid_area, potential_centers=selected_leaf_node.potential_centers)
-            selected_leaf_node.add_child(new_node)
-            new_node.set_parent(selected_leaf_node)
-            if rollout_flag:
-                return new_node
-
-        if selected_leaf_node.children_:
-            return selected_leaf_node.children_[0]
-        else:
-            print("return None")
-            return None
+        return selected_leaf_node.children_
         
     def check_collision_w_swept(self, obj_mesh):
         collision_obj_list = []
@@ -901,8 +856,8 @@ class MCTS_algo():
         for i in range(len(verts)):
                 verts[i] += trans
 
-        old_collision = self.check_collision_w_swept(node.obj_mesh)
-        new_collision = self.check_collision_w_swept(new_obj_mesh)
+        # old_collision = self.check_collision_w_swept(node.obj_mesh)
+        # new_collision = self.check_collision_w_swept(new_obj_mesh)
         # print("OLD:", old_collision, "idx", idx)
         # print("NEW:", new_collision, "idx", idx)
         # problem = False
@@ -917,21 +872,23 @@ class MCTS_algo():
         if not rollout_leaf_node:
             return 10000
         #little bit smarter here instead of random
-        if rollout_leaf_node.is_goal_config_swept():
+        if rollout_leaf_node.is_goal_config():
             #print ('rollout finished\n')
-            return rollout_leaf_node.total_distance_
+            num_new_elements = -1 if [item for item in rollout_leaf_node.end_collision_objs if item not in rollout_leaf_node.init_collision_objs] else 0
+            reward = 1 - num_new_elements + 0.01 * rollout_leaf_node.open_space_count()
+            return reward
         else:
             new_node = self.expansion(rollout_leaf_node, True)
             if new_node:
                 reward = self.rollout(new_node)
                 return reward
             else:
-                return 10000
+                return -10000
 
     def backup(self, reward, rollout_leaf_node):
         start = rollout_leaf_node
         while start:
-            start.reward_ += -1*reward
+            start.reward_ += reward
             start.visited_ += 1.0
             start = start.parent_
 
@@ -941,7 +898,6 @@ class MCTS_algo():
         curr_time = time.time()
         if self.time_limit <= curr_time - self.start_time:
             return True
-        # print("time", curr_time - self.start_time)
         return False
     
     def get_children_nodes(self, root):
@@ -955,31 +911,51 @@ class MCTS_algo():
         return total_child
 
     def exec_algo(self):
-        final_leaf = None
+        tree_list = [self.MCTS_tree_]
+        solved_tree_list = []
+
         while True:
+            if not tree_list:
+                break
+
             is_overrun = self.check_time()
             if is_overrun:
                 return None
-
-            selected_leaf_node = self.selection()
-            if selected_leaf_node.is_goal_config_swept() and not selected_leaf_node.object_in_collision_:
-                final_leaf = selected_leaf_node
-                break
-            rollout_leaf_node = None
-            if selected_leaf_node.visited_ != 0.0 or selected_leaf_node == self.root_:
-                rollout_leaf_node = self.expansion(selected_leaf_node)
+            
+            if tree_list[0].is_goal_config_swept():
+                solved_tree_list.append(tree_list.pop(0))
+                continue
             else:
-                rollout_leaf_node = selected_leaf_node
-            if rollout_leaf_node:
-                reward = self.rollout(rollout_leaf_node)
-                self.backup(reward, rollout_leaf_node)
-                rollout_leaf_node.children_ = []
-            else:
-                reward = 10000
-                self.backup(reward, selected_leaf_node)
+                min_dist_node = tree_list[0]
 
+            print("expansion start")
+            new_nodes = self.expansion(min_dist_node)
+            if new_nodes is not None and new_nodes:
+                print(tree_list)
+                for new_node in new_nodes:
+                    for idx, tree in enumerate(tree_list):
+                        if tree.total_distance_ < new_node.total_distance_ and idx + 1 != len(tree_list):
+                            continue
+                        elif idx + 1 == len(tree_list):
+                            tree_list.append(new_node)
+                        else:
+                            tree_list.insert(idx, new_node)
+
+                pdb.set_trace()
+
+                tree_list.remove(min_dist_node)
+
+            if new_nodes is None and self.check_time:
+                return None
+        
         #traverse the tree
-        tree_nodes = final_leaf.traverse_tree()
+        final_node = None
+        min_distance = sys.maxsize
+        for node in tree_list:
+                if min_distance > node.total_distance_:
+                    min_distance = node.total_distance_
+                    final_node = node
+        tree_nodes = final_node.traverse_tree()
         return tree_nodes
 
 

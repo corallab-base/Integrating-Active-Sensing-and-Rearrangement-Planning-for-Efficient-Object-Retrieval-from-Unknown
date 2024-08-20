@@ -29,6 +29,9 @@ import pdb
 import robot_arm_configuration as RC
 
 import MCTS_algo_ICRA as mct
+import MCTS_algo_ICRA_OG as mct_OG
+import MCTS_algo_ICRA_base1 as mct_base1
+
 from rearrangement_planning_util_ICRA import write_result
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
@@ -55,6 +58,7 @@ from grasp_util.global_scene import global_scene
 from grasp_util.pc_extractor_grasp import pc_extractor_grasp
 
 from runner import feed_forward
+from test_module.camera_view import camera
 #from object_selection_learning.runner import feed_forward
 
 #define parameters
@@ -71,19 +75,27 @@ row_num_of_envs = int(math.sqrt(num_of_envs))
 #                         np.random.rand()*0.05 + 0.05)
 # table_dims = gymapi.Vec3(0.56, 0.86, 0.10)
 # table_dims = gymapi.Vec3(0.76, 1.16, 0.10)
-table_dims = gymapi.Vec3(0.86, 1.16, 0.10)
+
+table_dims = gymapi.Vec3(np.random.uniform(0.7, 0.9), np.random.uniform(1, 1.2), 0.10)
 # max -> 1.0, 1.2
 # For testing X: 0.7 + 0~0.2    Y: 1 + 0~0.2 
 piece_width = 0.03
+# min_num_of_objects = 15
+# max_num_of_objects = 20
 max_scaling_factor = 0
 fall_height = table_dims.z
 max_drawer_height = 0.5
-min_drawer_height = 0.5
+min_drawer_height = 0.4
 ADD_COVER = True
 
 TARGET_OBJ_INDEX = [3, 5]
 OBSTACLE_OBJ_INDEX = [0, 2]
 MIN_RADIUS = 0.03471716871486391
+
+MIN_NUM_OBSTACLES = 5
+MAX_NUM_OBSTACLES = 8
+NUM_OF_OBJECTS = np.random.randint(MIN_NUM_OBSTACLES + 1, MAX_NUM_OBSTACLES + 1)
+
 #*************************************************************************************************#
 
 #helper functions
@@ -207,7 +219,32 @@ def get_best_cam_pose(scene, camera_pose_list):
     print (f'best score is : {best_score}')
     return best_index
 
-def cam_loc_selection_for_clusters(sim, env, test_cam, scene, center, end_point, scene_info):
+def get_best_cam_pose_point_check(camera_pose_list, points):
+    best_score = - sys.maxsize
+    best_index = None
+    for t in range(len(camera_pose_list)):
+        pose_candidate = camera_pose_list[t]
+        cam = camera(pose_candidate[4:], pose_candidate[:4])
+        cam.build()
+        
+        in_cam = 0
+        for point in points:
+            if len(point) == 3:
+                target_location = point
+            else:
+                target_location = [point[0]/100, point[1]/100, 0.05]
+
+            flag, depth, location = cam.inside_frame(target_location)
+            if flag:
+                in_cam += 1
+
+        if best_score < in_cam:
+            best_score = in_cam
+            best_index = t
+    
+    return best_index
+
+def cam_loc_selection_for_clusters(sim, env, test_cam, center, end_points, scene_info, points):
     camera_pose_list = []
     camera_setting_list = []
     cam_height = scene_info[3] * 0.90
@@ -215,65 +252,61 @@ def cam_loc_selection_for_clusters(sim, env, test_cam, scene, center, end_point,
 
     dist = 0
     while len(camera_pose_list) < 10:
-        loc_vec = (end_point - center) / np.linalg.norm(end_point - center) / 100
-        cam_loc = end_point + loc_vec * dist
-
-        if cam_loc[0] < 0.0 and len(camera_pose_list) == 0:
-            print("adjusting angle")
-            dist = 0
+        for end_point in end_points:
+            loc_vec = (end_point - center) / np.linalg.norm(end_point - center) / 100
             cam_loc = end_point + loc_vec * dist
-            cam_height = cam_height - 0.05
-        elif cam_loc[0] < 0.0:
-            print("breaking")
+
+            camera_loc = gymapi.Vec3(cam_loc[0], cam_loc[1], cam_height)
+            camera_focus = gymapi.Vec3(center[0], center[1], floor_height)
+            gym.set_camera_location(test_cam, env, 
+                                    camera_loc, 
+                                    camera_focus)
+            target_pos = gym.get_camera_transform(sim, env, test_cam).p
+            target_quat = gym.get_camera_transform(sim, env, test_cam).r
+            camera_pose = np.array([target_quat.x, target_quat.y, target_quat.z, target_quat.w,
+                                    target_pos.x, target_pos.y, target_pos.z])
+
+            r_rot = R.from_quat([target_quat.x, target_quat.y, target_quat.z, target_quat.w])
+            cam_offset_vector = np.array([0.11, 0, 0.08])
+            rot_cam_offset_vector = r_rot.apply(cam_offset_vector)
+            converted_coord = global_coord_converter(target_pos.x - rot_cam_offset_vector[0],
+                                                     target_pos.y - rot_cam_offset_vector[1],
+                                                     target_pos.z - rot_cam_offset_vector[2], 
+                                                     ur5e_pose.p.x, 
+                                                     ur5e_pose.p.y,
+                                                     ur5e_pose.p.z)
+            converted_quat = quaternion_multiply(gymapi.Quat(-math.sqrt(2)/2, 0, 0, math.sqrt(2)/2), target_quat)
+
+            seed_state = [0.0]*ik_solver2.number_of_joints
+            dof_result = ik_solver2.get_ik(seed_state, 
+                                           converted_coord[0],
+                                           converted_coord[1],
+                                           converted_coord[2],
+                                           converted_quat.x, 
+                                           converted_quat.y,
+                                           converted_quat.z,
+                                           converted_quat.w)
+
+            print('dist:', dist, 'loc', cam_loc + [cam_height], "dof result", True if dof_result else False, 'len', len(camera_pose_list))
+
+            if dof_result:
+                end_state_collision_free = rac.arm_collision_free(dof_result, plane_obj, object_collision_models, flexible_collision_models)
+
+                if end_state_collision_free:
+                    camera_pose_list.append(camera_pose)
+                    camera_setting_list.append([camera_loc, camera_focus, dof_result])
+
+        if cam_loc[0] < 0.05:
             break
+        elif len(camera_pose_list) < 5:
+            dist += 1
 
-        dist += 1
-
-        camera_loc = gymapi.Vec3(cam_loc[0], cam_loc[1], cam_height)
-        camera_focus = gymapi.Vec3(center[0], center[1], floor_height)
-        gym.set_camera_location(test_cam, env, 
-                                camera_loc, 
-                                camera_focus)
-        target_pos = gym.get_camera_transform(sim, env, test_cam).p
-        target_quat = gym.get_camera_transform(sim, env, test_cam).r
-        camera_pose = np.array([target_quat.x, target_quat.y, target_quat.z, target_quat.w,
-                                target_pos.x, target_pos.y, target_pos.z])
-
-        r_rot = R.from_quat([target_quat.x, target_quat.y, target_quat.z, target_quat.w])
-        cam_offset_vector = np.array([0.11, 0, 0.08])
-        rot_cam_offset_vector = r_rot.apply(cam_offset_vector)
-        converted_coord = global_coord_converter(target_pos.x - rot_cam_offset_vector[0],
-                                                 target_pos.y - rot_cam_offset_vector[1],
-                                                 target_pos.z - rot_cam_offset_vector[2], 
-                                                 ur5e_pose.p.x, 
-                                                 ur5e_pose.p.y,
-                                                 ur5e_pose.p.z)
-        converted_quat = quaternion_multiply(gymapi.Quat(-math.sqrt(2)/2, 0, 0, math.sqrt(2)/2), target_quat)
-
-        seed_state = [0.0]*ik_solver2.number_of_joints
-        dof_result = ik_solver2.get_ik(seed_state, 
-                                       converted_coord[0],
-                                       converted_coord[1],
-                                       converted_coord[2],
-                                       converted_quat.x, 
-                                       converted_quat.y,
-                                       converted_quat.z,
-                                       converted_quat.w)
-        
-        print('dist:', dist, 'loc', cam_loc + [cam_height], "dof result", True if dof_result else False, 'len', len(camera_pose_list))
-        
-        if dof_result:
-            end_state_collision_free = rac.arm_collision_free(dof_result, plane_obj, object_collision_models, flexible_collision_models)
-
-            if end_state_collision_free:
-                camera_pose_list.append(camera_pose)
-                camera_setting_list.append([camera_loc, camera_focus, dof_result])
-         
-    best_cam_pose_index = get_best_cam_pose(scene, camera_pose_list)
+    print("cluster")
+    best_cam_pose_index = get_best_cam_pose_point_check(camera_pose_list, points)
     return camera_setting_list[best_cam_pose_index][0], camera_setting_list[best_cam_pose_index][1], camera_setting_list[best_cam_pose_index][2]
 
 
-def random_sample_swept_volume_selection(sim, env, test_cam, scene, swept_center):
+def random_sample_swept_volume_selection(sim, env, test_cam, scene, swept_center, swept_points):
     camera_pose_list = []
     camera_setting_list = []
     while len(camera_pose_list) < 50:
@@ -316,8 +349,8 @@ def random_sample_swept_volume_selection(sim, env, test_cam, scene, swept_center
             if end_state_collision_free:
                 camera_pose_list.append(camera_pose)
                 camera_setting_list.append([camera_loc, camera_focus, dof_result])
-         
-    best_cam_pose_index = get_best_cam_pose(scene, camera_pose_list)
+    print("swept")
+    best_cam_pose_index = get_best_cam_pose_point_check(camera_pose_list, swept_points)
     return camera_setting_list[best_cam_pose_index][0], camera_setting_list[best_cam_pose_index][1], camera_setting_list[best_cam_pose_index][2]
 
 
@@ -370,7 +403,7 @@ def random_sample_guided_selection(sim, env, test_cam, scene):
     best_cam_pose_index = get_best_cam_pose(scene, camera_pose_list)
     return camera_setting_list[best_cam_pose_index][0], camera_setting_list[best_cam_pose_index][1], camera_setting_list[best_cam_pose_index][2]
 
-def swept_coverage_check(scene, swept_verts, rac, scene_info):
+def swept_coverage_check(scene, swept_verts, rac, scene_info, max_height):
     covered = 0
     new_verts = []
     for i, verts in enumerate(swept_verts):
@@ -386,7 +419,7 @@ def swept_coverage_check(scene, swept_verts, rac, scene_info):
         else:
             new_verts.append(verts)
 
-    next_center, _ = rac.get_swept_center([new_verts], scene_info)
+    next_center, _ = rac.get_swept_center([new_verts], scene_info, max_height)
     return covered / len(swept_verts), next_center
 
 def get_swept_volume_size(main_swept):
@@ -415,9 +448,29 @@ def get_unobserved_area(scene):
     unknown_area[:, 1] = temp[:, 0]
     return unknown_area
 
-def get_unobserved_area_w_height(scene, asset_root, object_asset_files, OBJ_FILE_IDX_LIST):
+def get_max_height(asset_root, object_asset_files, OBJ_FILE_IDX_LIST):
+    max_height = -sys.maxsize
+    for i in range(len(OBJ_FILE_IDX_LIST) - 1):
+        obj_name = object_asset_files[OBJ_FILE_IDX_LIST[i]]
+        obj_name = asset_root + "/".join(obj_name.split('/')[:3]) + "/textured_vhacd.obj"
+    
+        mesh = o3d.io.read_triangle_mesh(obj_name)
+        verts = np.asarray(mesh.vertices)
+        min_z = sys.maxsize
+        max_z = -sys.maxsize
+        for tx, ty, tz in verts:
+            min_z = min(min_z, tz)
+            max_z = max(max_z, tz)
+        height = int((max_z - min_z) * 100)
+
+        if max_height < height:
+            max_height = height
+    
+    return max_height + 1
+
+def get_min_height(asset_root, object_asset_files, OBJ_FILE_IDX_LIST):
     min_height = sys.maxsize
-    for i in range(len(OBJ_FILE_IDX_LIST)):
+    for i in range(len(OBJ_FILE_IDX_LIST) - 1):
         obj_name = object_asset_files[OBJ_FILE_IDX_LIST[i]]
         obj_name = asset_root + "/".join(obj_name.split('/')[:3]) + "/textured_vhacd.obj"
     
@@ -433,6 +486,10 @@ def get_unobserved_area_w_height(scene, asset_root, object_asset_files, OBJ_FILE
         if min_height > height:
             min_height = height
     
+    return min_height
+
+def get_unobserved_area_w_height(scene, asset_root, object_asset_files, OBJ_FILE_IDX_LIST):
+    min_height = get_min_height(asset_root, object_asset_files, OBJ_FILE_IDX_LIST)
     floor = scene.scene_[:scene.x_limit_, scene.y_left_+1 :(scene.y_left_ + scene.y_limit_-1), scene.g_height_: scene.g_height_ + min_height]
 
     unknown_layer = set(map(tuple, np.argwhere(floor[:,:,0] == 0)[:,:2]))
@@ -542,7 +599,7 @@ def cal_cam_angle_for_area(valid_points, curr_config, scene_info, visualize=Fals
 
 def save_scene(init2grasp_path, grasp2init_path, obj_pos_list, gt_obj_pos_list, NUM_OF_OBJECTS, scene_info,
                target_mesh, obj_mesh, target_pos, gt_target_pos, obstacles_num, w_target,
-               unknown_area, valid_area, potential_centers, MCTS_result=None):
+               unknown_area, valid_area, potential_centers, method, MCTS_result=None):
     gt_save_info = {"idx" : 0,
                     "init2grasp_path" : init2grasp_path,
                     "grasp2init_path" : grasp2init_path,
@@ -579,11 +636,11 @@ def save_scene(init2grasp_path, grasp2init_path, obj_pos_list, gt_obj_pos_list, 
     if MCTS_result is None:
         end = "None"
 
-    name = new_folder + "temp_scene" + str(sequence_count) + end
+    name = new_folder + method + "temp_scene" + str(sequence_count) + end
     np.save(name, comp)
 
     comp = np.array([gt_save_info])
-    name = new_folder + "groud_truth_scene" + str(sequence_count) + end
+    name = new_folder + method + "groud_truth_scene" + str(sequence_count) + end
     np.save(name, comp)
 
 def update_MCTS_val(ML_MCTS_ins, curr_config, target_pos_MCT, obj_mesh, unknown_area, valid_area, potential_centers):
@@ -921,7 +978,6 @@ if __name__ == '__main__':
             gym.create_actor(envs[-1], upper_cover_asset, upper_cover_pose, "upper_cover" + str(i), 0, 1)
 
         # Choose target & obstacle objects-------------------------------------------------------------------------------
-        NUM_OF_OBJECTS = 2
         # target_file_idx = 3
         # OBJ_FILE_IDX_LIST = np.array([0] * (NUM_OF_OBJECTS-1) + [target_file_idx])
 
@@ -944,7 +1000,7 @@ if __name__ == '__main__':
         objs_manager.setup()
         obstacle_objs = []
         GT_OBJ_POS_LIST = []
-        GT_TARGET_POS = [np.random.uniform(0.35, table_dims.x + 0.2),
+        GT_TARGET_POS = [np.random.uniform(0.20 + table_dims.x/2, table_dims.x),
                          np.random.uniform(-table_dims.y/2 + 0.1, table_dims.y/2 - 0.2),
                          table_dims.z + 0.08]
 
@@ -957,7 +1013,6 @@ if __name__ == '__main__':
                 object_pose.p = gymapi.Vec3(GT_TARGET_POS[0], GT_TARGET_POS[1], GT_TARGET_POS[2])
 
                 file_path = object_collision_files[OBJ_FILE_IDX_LIST[-1]]
-                pdb.set_trace()
                 collision_mesh = obj_reader(asset_root + file_path)
                 collision_mesh.set_scale(object_scaling_factor[-1])
                 collision_mesh.add_offset(object_offset[OBJ_FILE_IDX_LIST[-1]])
@@ -1126,27 +1181,36 @@ if __name__ == '__main__':
     acquire_counter = 0
     need_acquire = False
     object_dict = {}
+
     scene = global_scene(1.0, 1.2, 0.85, np.array([0.3, -0.6, 0.05]), table_dims.x, table_dims.y - 0.04, drawer_height, table_dims.z - 0.05)
+    scene_OG = global_scene(1.0, 1.2, 0.85, np.array([0.3, -0.6, 0.05]), table_dims.x, table_dims.y - 0.04, drawer_height, table_dims.z - 0.05)
+    scene_base1 = global_scene(1.0, 1.2, 0.85, np.array([0.3, -0.6, 0.05]), table_dims.x, table_dims.y - 0.04, drawer_height, table_dims.z - 0.05)
+
 
     saved_scene_vertices = None
     saved_scene_faces = None
 
     # creating new folder
     curr_time = time.localtime()
-    new_folder = 'test_data/test_scenes/' + str(curr_time[1]) + '.' + str(curr_time[2]) + '.' + str(curr_time[3]) + '.' + str(curr_time[4]) + '/'
+    new_folder = 'test_data/test_multi/' + str(curr_time[1]) + '.' + str(curr_time[2]) + '.' + str(curr_time[3]) + '.' + str(curr_time[4]) + '/'
     os.makedirs(new_folder + 'test_image/')
     os.makedirs(new_folder + 'test_seg_image/')
     os.makedirs(new_folder + 'test_depth_image/')
     os.makedirs(new_folder + 'test_npy/')
-    os.makedirs(new_folder + 'test_results_bound/MCT*')
-
+    os.makedirs(new_folder + 'test_results_hybrid/MCTS*')
+    os.makedirs(new_folder + 'test_results_hybrid/MCTS_OG')
+    os.makedirs(new_folder + 'test_results_hybrid/BASE1')
+    os.makedirs(new_folder + 'test_results_single/MCTS*')
+    os.makedirs(new_folder + 'test_results_single/MCTS_OG')
+    os.makedirs(new_folder + 'test_results_single/BASE1')
 
     # init MCTS
     ML_MCTS_ins = mct.multi_level_MCTS_algo(None, None, scene_info=scene_info, swept_volume1=None, swept_volume2=None, obj_mesh=rac.obj_mesh)
+    ML_MCTS_ins_OG = mct_OG.multi_level_MCTS_algo_OG(None, None, scene_info=scene_info, swept_volume1=None, swept_volume2=None, obj_mesh=rac.obj_mesh)
+    ML_MCTS_ins_base1 = mct_base1.multi_level_MCTS_algo_base1(None, None, scene_info=scene_info, swept_volume1=None, swept_volume2=None, obj_mesh=rac.obj_mesh)
 
     # update_rac_val(rac, target_obj_mesh, obj_mesh_MCTS, obj_pos_MCTS)
     # update_MCTS_val(ML_MCTS_ins, curr_config, target_pos_MCT, rac.obj_mesh, unknown_area, valid_area, potential_centers)
-
 
     #active sensing here
     obj_pos_MCTS = {}
@@ -1155,91 +1219,317 @@ if __name__ == '__main__':
     target_obj_mesh = None
     target_obj_pos = None
     obj_pcd = {}
+    MAX_HEIGHT = get_max_height(asset_root, object_asset_files, OBJ_FILE_IDX_LIST)
+
 
     valid_area_cluster = None
     potential_center_cluster = None
 
     is_tunnel_covered = False
     is_target_detected = False
-    is_cluster_covered = False
+
+    is_cluster_covered_mcts = False
+    is_cluster_covered_mcts_og = False
+    is_cluster_covered_base1 = False
+
+    is_plan_done_mcts = False
+    is_plan_done_mcts_og = False
+    is_plan_done_base1 = False
+
+    is_faild_mcts = False
+    is_faild_mcts_og = False
+    is_faild_base1 = False
 
     run_mcts = False
+    run_mcts_og = False
+    run_base1 = False
+
     mcts_out_angle = None
+    mcts_og_out_angle = None
+    base1_out_angle = None
+
+    is_mct_needs_view = True
+    is_mct_og_needs_view = True
+    is_base1_needs_view = True
 
     target_template = None
     init2grasp_path = None
     grasp2init_path = None
     while not gym.query_viewer_has_closed(viewer):
-        if run_mcts and is_target_detected and is_tunnel_covered and not need_acquire:
-            print("--------------------PLANNING START------------------------")
-            # rac.check_collision_models(init2grasp_path[-1], scene_info=scene_info)
-            # update_MCTS_val(ML_MCTS_ins, curr_config, target_pos_MCT, rac.obj_mesh, unknown_area, valid_area, potential_centers)
+        if sequence_count >= 5 and not is_target_detected:
+            print("--------------------------Detection Failed-----------------------------")
+            break
+        if is_plan_done_mcts and is_plan_done_base1 and is_plan_done_mcts_og: break
+        if (run_mcts and run_mcts_og and run_base1) and is_target_detected and is_tunnel_covered and not need_acquire:
+            need_acquire = False
+            is_mct_needs_view = False
+            is_mct_og_needs_view = False
+            is_base1_needs_view = False
 
-            is_plan_success, child_node_list = ML_MCTS_ins.run_mcts(30)
+            if not is_plan_done_mcts and run_mcts:
+                print("--------------------MCTS* PLANNING START------------------------")
+                is_plan_success_mcts, child_node_list = ML_MCTS_ins.run_mcts(30)
 
-            save_scene(init2grasp_path, grasp2init_path, rac.obj_pos_list, GT_OBJ_POS_LIST, NUM_OF_OBJECTS, scene_info,
-                       rac.target_mesh, rac.obj_mesh, target_obj_pos, GT_TARGET_POS, rac.obstacles_num, W_TARGET,
-                       ML_MCTS_ins.unknown_area, ML_MCTS_ins.valid_area, ML_MCTS_ins.potential_centers, is_plan_success)
+                save_scene(init2grasp_path, grasp2init_path, rac.obj_pos_list, GT_OBJ_POS_LIST, NUM_OF_OBJECTS, scene_info,
+                           rac.target_mesh, rac.obj_mesh, target_obj_pos, GT_TARGET_POS, rac.obstacles_num, W_TARGET,
+                           ML_MCTS_ins.unknown_area, ML_MCTS_ins.valid_area, ML_MCTS_ins.potential_centers, "test_results_hybrid/MCTS*/", is_plan_success_mcts)
 
-            if is_plan_success:
-                ML_MCTS_ins.global_optimization()
-                # ML_MCTS_ins.animate_whole_sequence()
-                res_plan = ML_MCTS_ins.save_planning_results()
-                write_result(new_folder, 'MCTS*', sequence_count, len(curr_config), ML_MCTS_ins.time_consumption_, ML_MCTS_ins.total_steps_, ML_MCTS_ins.calculate_total_length_travelled_ICRA(), ML_MCTS_ins.calculate_total_length_displacement_ICRA(), res_plan)
-                ML_MCTS_ins.track_level_steps_[0][0].scene_saver(new_folder + 'test_results_bound/MCTS*/start_layout.png')
-                ML_MCTS_ins.track_level_steps_[-1][-1].scene_saver(new_folder + 'test_results_bound/MCTS*/final_layout.png')
-                break
+                if is_plan_success_mcts:
+                    print("!!!!!!!!!!!!!!MCTS* planning Success!!!!!!!!!!!!!!!!!!!!!")
+                    is_mct_needs_view = False
+                    is_plan_done_mcts = True
+                    run_mcts = True
+                    mcts_out_angle = None
+                    is_faild_mcts = False
+                    ML_MCTS_ins.global_optimization()
+                    # ML_MCTS_ins.animate_whole_sequence()
 
-            if is_cluster_covered:
-                print("!!!!!!!!!!!!!!Planning Faild without unobserved area!!!!!!!!!!!!!!!!!!!!!")
-                break
-
-            max_reward = -sys.maxsize
-            max_node = None
-            for child in child_node_list:
-                if child.reward_ > max_reward:
-                    max_reward = child.reward_
-                    max_node = child
-
-            collision_check_obj = []
-            swept_check_obj = []
-            swept_obj = max_node.check_collision_w_swept()
-            for obj_idx in swept_obj:
-                tunnel = max_node.get_tunnel(max_node.robot_, max_node.curr_config_[obj_idx][:2])
-                tunnel_collision_obj = max_node.collision_tunnel_object(tunnel)
-                tunnel_collision_obj.remove(obj_idx)
-
-                if tunnel_collision_obj:
-                    print(tunnel_collision_obj)
-                    collision_check_obj += tunnel_collision_obj
+                    res_plan = ML_MCTS_ins.save_planning_results()
+                    num_collision_obj_ = len(ML_MCTS_ins.track_level_steps_[0][0].check_collision_w_swept())
+                    write_result(new_folder + "test_results_hybrid/", 'MCTS*', scene.num_observation, len(curr_config), ML_MCTS_ins.time_consumption_, ML_MCTS_ins.total_steps_, ML_MCTS_ins.calculate_total_length_travelled(), ML_MCTS_ins.calculate_total_length_displacement(), num_collision_obj_, res_plan)
+                    ML_MCTS_ins.track_level_steps_[0][0].scene_saver(new_folder + 'test_results_hybrid/MCTS*/start_layout.png')
+                    ML_MCTS_ins.track_level_steps_[-1][-1].scene_saver(new_folder + 'test_results_hybrid/MCTS*/final_layout.png')
                 else:
-                    swept_check_obj.append(obj_idx)
+                    if len(potential_center_cluster) == 0:
+                        print("!!!!!!!!!!!!!!Planning Faild without unobserved area!!!!!!!!!!!!!!!!!!!!!")
+                        is_cluster_covered_mcts = True
+                        is_mct_needs_view = False
+                        is_plan_done_mcts = True
+                        run_mcts = True
+                        mcts_out_angle = None
+                        is_faild_mcts = False
+                    
+                    else:
+                        is_faild_mcts = True
+                        max_reward = -sys.maxsize
+                        min_num_collision = sys.maxsize
+                        max_node = None
+                        for child in child_node_list:
+                            if len(child.check_collision_w_swept()) < min_num_collision:
+                                max_node = child
+                                max_reward = child.reward_
+                            elif len(child.check_collision_w_swept()) == min_num_collision:
+                                if child.reward_ > max_reward:
+                                    max_reward = child.reward_
+                                    max_node = child
 
-            check_obj = swept_check_obj + sorted(set(collision_check_obj))
-            max_node.tunnel_and_normal_visualizer()
+                        collision_check_obj = []
+                        swept_check_obj = []
+                        swept_obj = max_node.check_collision_w_swept()
+                        for obj_idx in swept_obj:
+                            tunnel = max_node.get_tunnel(max_node.robot_, max_node.curr_config_[obj_idx][:2])
+                            tunnel_collision_obj = max_node.collision_tunnel_object(tunnel)
+                            tunnel_collision_obj.remove(obj_idx)
 
-            max_region_idx = None
-            max_region_count = 0
-            for cluster_idx in range(len(valid_area_cluster)):
-                if len(valid_area_cluster[cluster_idx]) < 5:
-                    continue
-                temp_valid_area = copy.deepcopy(valid_area_cluster)
-                temp_valid_area.pop(cluster_idx)
-                temp_valid_area = np.array(sum(temp_valid_area, []))
+                            if tunnel_collision_obj:
+                                print(tunnel_collision_obj)
+                                collision_check_obj += tunnel_collision_obj
+                            else:
+                                swept_check_obj.append(obj_idx)
 
-                total_new_region = 0
-                for obj_idx in check_obj:
-                    total_new_region += max_node.region_counting(obj_idx, temp_valid_area)
-                
-                if max_region_count < total_new_region:
-                    max_region_count = total_new_region
-                    max_region_idx = cluster_idx
+                        check_obj = swept_check_obj + sorted(set(collision_check_obj))
+                        # max_node.tunnel_and_normal_visualizer()
 
-            new_config = RC.transfor2global(max_node.curr_config_)
-            pdb.set_trace()
-            mcts_out_angle = RC.cal_cam_angle_for_area(potential_center_cluster[max_region_idx], new_config + [target_pos_MCT], scene_info, visualize=True)
-            need_acquire = False # going back to cluster calculation
-            run_mcts = False
+                        max_region_idx = None
+                        max_region_count = 0
+                        for cluster_idx in range(len(valid_area_cluster)):
+                            if len(valid_area_cluster[cluster_idx]) < 5:
+                                continue
+                            temp_valid_area = copy.deepcopy(valid_area_cluster)
+                            temp_valid_area.pop(cluster_idx)
+                            temp_valid_area = np.array(sum(temp_valid_area, []))
+
+                            total_new_region = 0
+                            for obj_idx in check_obj:
+                                total_new_region += max_node.region_counting(obj_idx, temp_valid_area)
+
+                            if max_region_count < total_new_region:
+                                max_region_count = total_new_region
+                                max_region_idx = cluster_idx
+
+                        new_config = RC.transfor2global(max_node.curr_config_)
+                        mcts_out_angle = RC.cal_cam_angle_for_area(potential_center_cluster[max_region_idx], ML_MCTS_ins.curr_config_ + [target_pos_MCT], scene_info, visualize=False)
+                        # mcts_out_angle = RC.cal_cam_angle_for_area(potential_center_cluster[max_region_idx], new_config + [target_pos_MCT], scene_info, visualize=False)
+                        mcts_selected_cluster = potential_center_cluster[max_region_idx]
+                        run_mcts = False
+
+            if not is_plan_done_mcts_og and run_mcts_og:
+                print("--------------------MCTS OG PLANNING START------------------------")
+                is_plan_success_mcts_og, child_node_list = ML_MCTS_ins_OG.run_mcts(5)
+
+                save_scene(init2grasp_path, grasp2init_path, rac.obj_pos_list, GT_OBJ_POS_LIST, NUM_OF_OBJECTS, scene_info,
+                           rac.target_mesh, rac.obj_mesh, target_obj_pos, GT_TARGET_POS, rac.obstacles_num, W_TARGET,
+                           ML_MCTS_ins_OG.unknown_area, ML_MCTS_ins_OG.valid_area, ML_MCTS_ins_OG.potential_centers, "test_results_hybrid/MCTS_OG/", is_plan_success_mcts_og)
+
+                if is_plan_success_mcts_og:
+                    print("!!!!!!!!!!!!!!MCTS OG planning Success!!!!!!!!!!!!!!!!!!!!!")
+                    is_mct_og_needs_view = False
+                    is_plan_done_mcts_og = True
+                    run_mcts_og = True
+                    mcts_og_out_angle = None
+                    is_faild_mcts_og = False
+                    ML_MCTS_ins_OG.global_optimization()
+                    # ML_MCTS_ins_OG.animate_whole_sequence()
+
+                    res_plan = ML_MCTS_ins_OG.save_planning_results()
+                    num_collision_obj_ = len(ML_MCTS_ins_OG.track_level_steps_[0][0].check_collision_w_swept())
+                    write_result(new_folder + "test_results_hybrid/", 'MCTS_OG', scene_OG.num_observation, len(curr_config), ML_MCTS_ins_OG.time_consumption_, ML_MCTS_ins_OG.total_steps_, ML_MCTS_ins_OG.calculate_total_length_travelled(), ML_MCTS_ins_OG.calculate_total_length_displacement(), num_collision_obj_, res_plan)
+                    ML_MCTS_ins_OG.track_level_steps_[0][0].scene_saver(new_folder + 'test_results_hybrid/MCTS_OG/start_layout.png')
+                    ML_MCTS_ins_OG.track_level_steps_[-1][-1].scene_saver(new_folder + 'test_results_hybrid/MCTS_OG/final_layout.png')
+                else:
+                    if len(potential_center_cluster_OG) == 0:
+                        print("!!!!!!!!!!!!!!Planning Faild without unobserved area!!!!!!!!!!!!!!!!!!!!!")
+                        is_cluster_covered_mcts_og = True
+                        is_mct_og_needs_view = False
+                        is_plan_done_mcts_og = True
+                        run_mcts_og = True
+                        mcts_og_out_angle = None
+                        is_faild_mcts_og = False
+
+                    else:
+                        is_faild_mcts_og = True
+                        max_reward = -sys.maxsize
+                        min_num_collision = sys.maxsize
+                        max_node = None
+                        for child in child_node_list:
+                            if len(child.check_collision_w_swept()) < min_num_collision:
+                                max_node = child
+                                max_reward = child.reward_
+                            elif len(child.check_collision_w_swept()) == min_num_collision:
+                                if child.reward_ > max_reward:
+                                    max_reward = child.reward_
+                                    max_node = child
+
+                        collision_check_obj = []
+                        swept_check_obj = []
+                        swept_obj = max_node.check_collision_w_swept()
+                        for obj_idx in swept_obj:
+                            tunnel = max_node.get_tunnel(max_node.robot_, max_node.curr_config_[obj_idx][:2])
+                            tunnel_collision_obj = max_node.collision_tunnel_object(tunnel)
+                            tunnel_collision_obj.remove(obj_idx)
+    
+                            if tunnel_collision_obj:
+                                print(tunnel_collision_obj)
+                                collision_check_obj += tunnel_collision_obj
+                            else:
+                                swept_check_obj.append(obj_idx)
+    
+                        check_obj = swept_check_obj + sorted(set(collision_check_obj))
+                        # max_node.tunnel_and_normal_visualizer()
+    
+                        max_region_idx = None
+                        max_region_count = 0
+                        for cluster_idx in range(len(valid_area_cluster)):
+                            if len(valid_area_cluster[cluster_idx]) < 5:
+                                continue
+                            temp_valid_area = copy.deepcopy(valid_area_cluster)
+                            temp_valid_area.pop(cluster_idx)
+                            temp_valid_area = np.array(sum(temp_valid_area, []))
+    
+                            total_new_region = 0
+                            for obj_idx in check_obj:
+                                total_new_region += max_node.region_counting(obj_idx, temp_valid_area)
+    
+                            if max_region_count < total_new_region:
+                                max_region_count = total_new_region
+                                max_region_idx = cluster_idx
+                        new_config = RC.transfor2global(max_node.curr_config_)
+                        pdb.set_trace() # check node_list and make sure the config is ogirinal config and makesure target_pos_MCT is in global!!!!!!!!1
+
+                        mcts_og_out_angle = RC.cal_cam_angle_for_area(potential_center_cluster_OG[max_region_idx], ML_MCTS_ins_OG.curr_config_ + [target_pos_MCT], scene_info, visualize=False)
+                        # mcts_og_out_angle = RC.cal_cam_angle_for_area(potential_center_cluster_OG[max_region_idx], new_config + [target_pos_MCT], scene_info, visualize=False)
+                        mcts_og_selected_cluster = potential_center_cluster_OG[max_region_idx]
+                        run_mcts_og = False
+
+            if not is_plan_done_base1 and run_base1:
+                print("--------------------BASE1 PLANNING START------------------------")
+                is_plan_success_base1, child_node_list = ML_MCTS_ins_base1.run_mcts(30)
+
+                save_scene(init2grasp_path, grasp2init_path, rac.obj_pos_list, GT_OBJ_POS_LIST, NUM_OF_OBJECTS, scene_info,
+                           rac.target_mesh, rac.obj_mesh, target_obj_pos, GT_TARGET_POS, rac.obstacles_num, W_TARGET,
+                           ML_MCTS_ins_base1.unknown_area, ML_MCTS_ins_base1.valid_area, ML_MCTS_ins_base1.potential_centers, "test_results_hybrid/BASE1/", is_plan_success_base1)
+
+                if is_plan_success_base1:
+                    print("!!!!!!!!!!!!!!BASE1 planning Success!!!!!!!!!!!!!!!!!!!!!")
+
+                    is_base1_needs_view = False
+                    is_plan_done_base1 = True
+                    run_base1 = True
+                    base1_out_angle = None
+                    is_faild_base1 = False
+                    # ML_MCTS_ins_base1.animate_whole_sequence()
+
+                    res_plan = ML_MCTS_ins_base1.save_planning_results()
+                    num_collision_obj_ = len(ML_MCTS_ins_base1.track_level_steps_[0][0].check_collision_w_swept())
+                    write_result(new_folder + "test_results_hybrid/", 'BASE1', scene_base1.num_observation, len(curr_config), ML_MCTS_ins_base1.time_consumption_, ML_MCTS_ins_base1.total_steps_, ML_MCTS_ins_base1.total_length_travelled_, ML_MCTS_ins_base1.total_length_displacement_, num_collision_obj_, res_plan)
+                    ML_MCTS_ins_base1.track_level_steps_[0][0].scene_saver(new_folder + 'test_results_hybrid/BASE1/start_layout.png')
+                    ML_MCTS_ins_base1.track_level_steps_[-1][-1].scene_saver(new_folder + 'test_results_hybrid/BASE1/final_layout.png')
+                else:
+                    if len(potential_center_cluster_base1) == 0:
+                        print("!!!!!!!!!!!!!!Planning Faild without unobserved area!!!!!!!!!!!!!!!!!!!!!")
+                        is_cluster_covered_base1 = True
+                        is_base1_needs_view = False
+                        is_plan_done_base1 = True
+                        run_base1 = True
+                        base1_out_angle = None
+                        is_faild_base1 = False
+
+                    else:
+                        is_faild_base1 = True
+                        max_reward = -sys.maxsize
+                        min_num_collision = sys.maxsize
+                        max_node = None
+                        for child in child_node_list:
+                            if len(child.check_collision_w_swept()) < min_num_collision:
+                                max_node = child
+                                max_reward = child.reward_
+                            elif len(child.check_collision_w_swept()) == min_num_collision:
+                                if child.reward_ > max_reward:
+                                    max_reward = child.reward_
+                                    max_node = child
+
+                        collision_check_obj = []
+                        swept_check_obj = []
+                        swept_obj = max_node.check_collision_w_swept()
+                        for obj_idx in swept_obj:
+                            tunnel = max_node.get_tunnel(max_node.robot_, max_node.curr_config_[obj_idx][:2])
+                            tunnel_collision_obj = max_node.collision_tunnel_object(tunnel)
+                            tunnel_collision_obj.remove(obj_idx)
+
+                            if tunnel_collision_obj:
+                                print(tunnel_collision_obj)
+                                collision_check_obj += tunnel_collision_obj
+                            else:
+                                swept_check_obj.append(obj_idx)
+
+                        check_obj = swept_check_obj + sorted(set(collision_check_obj))
+                        # max_node.tunnel_and_normal_visualizer()
+
+                        max_region_idx = None
+                        max_region_count = 0
+                        for cluster_idx in range(len(valid_area_cluster)):
+                            if len(valid_area_cluster[cluster_idx]) < 5:
+                                continue
+                            temp_valid_area = copy.deepcopy(valid_area_cluster)
+                            temp_valid_area.pop(cluster_idx)
+                            temp_valid_area = np.array(sum(temp_valid_area, []))
+
+                            total_new_region = 0
+                            for obj_idx in check_obj:
+                                total_new_region += max_node.region_counting(obj_idx, temp_valid_area)
+
+                            if max_region_count < total_new_region:
+                                max_region_count = total_new_region
+                                max_region_idx = cluster_idx
+
+                        new_config = RC.transfor2global(max_node.curr_config_)
+                        base1_out_angle = RC.cal_cam_angle_for_area(potential_center_cluster_base1[max_region_idx], new_config + [target_pos_MCT], scene_info, visualize=False)
+                        base1_selected_cluster = potential_center_cluster_OG[max_region_idx]
+                        run_base1 = False
+
+            if is_plan_done_mcts and is_plan_done_base1 and is_plan_done_mcts_og: 
+                print("!!!!!!!!ALL PLAN SUCCESSED!!!!!!!!!!!")
+                break
 
         if need_acquire:
             if acquire_counter > 500:
@@ -1255,9 +1545,9 @@ if __name__ == '__main__':
                             [0, 891.51236121, 352.77],
                             [0, 0, 1]])
 
-                        color_img_saved = write_to_image(color_image, new_folder + 'test_image/' + str(sequence_count) + '.png')
-                        write_to_seg_image(seg_image, new_folder + 'test_seg_image/' + str(sequence_count) + '.png')
-                        write_to_depth_image(depth_image, new_folder + 'test_depth_image/' + str(sequence_count) + '.png')
+                        color_img_saved = write_to_image(color_image, new_folder + 'test_image/hybrid_' + str(sequence_count) + '.png')
+                        write_to_seg_image(seg_image, new_folder + 'test_seg_image/hybrid_' + str(sequence_count) + '.png')
+                        write_to_depth_image(depth_image, new_folder + 'test_depth_image/hybrid_' + str(sequence_count) + '.png')
         
                         temp_cam = body_cam_handles[q] 
                         cam_rotation = gym.get_camera_transform(sim, envs[-1], temp_cam).r
@@ -1274,8 +1564,6 @@ if __name__ == '__main__':
                                                         cam_translation.y,
                                                         cam_translation.z])
                         
-                        write_for_contact_grasp(color_img_saved, seg_image, -depth_image, K, new_cam_rotation, new_cam_translation, new_folder + 'test_npy/' + str(sequence_count)+'.npy')
-
                         dist1 = np.linalg.norm(final_rotation - new_cam_rotation)
                         dist3 = np.linalg.norm(final_rotation - new_cam_rotation*-1)
                         dist2 = np.linalg.norm(final_translation - new_cam_translation)
@@ -1299,28 +1587,10 @@ if __name__ == '__main__':
 
                                 # find matching object mesh file
                                 downpcd = obj_pcd[i].voxel_down_sample(voxel_size=0.005) # downsampe pcd
-                                # downpcd = obj_pcd[i]
 
                                 if i != NUM_OF_OBJECTS:
                                     # obstacle object matching
-                                    # mesh = o3d.io.read_triangle_mesh(obstacle_files)
-                                    # mesh.compute_vertex_normals()
-                                    # source_pcd = mesh.sample_points_uniformly(number_of_points=20000)
-                                    # dist, obj_trans = RC.pcd_matching(downpcd, source_pcd, False)
-
-                                    # # calc inverse transform 
-                                    # inv_rot = obj_trans[:3,:3].T
-                                    # inv_trans = -inv_rot @ obj_trans[:3, 3]
-                                    # inv_rot = R.from_matrix(inv_rot.copy())
-
-                                    # # make object model
-                                    # verts_no_rotations = np.asarray(mesh.vertices)
-                                    # face = np.asarray(mesh.triangles)
-                                    # verts = inv_rot.apply(verts_no_rotations) + inv_trans
-                                    # obj_mesh = [verts, face]
-
-                                    # obj_pos = inv_trans - object_offset[OBJ_FILE_IDX_LIST[i-1]]
-                                    obstacle_obj_mesh, obj_pos, dist, obj_name = RC.get_matching_mesh(downpcd, OBJ_FILE_IDX_LIST, visualize=True)
+                                    obstacle_obj_mesh, obj_pos, dist, obj_name = RC.get_matching_mesh(downpcd, OBSTACLE_OBJ_INDEX, visualize=False)
                                     obj_pos = obj_pos - object_offset[OBJ_FILE_IDX_LIST[i-1]]
 
                                     if dist < 3:
@@ -1330,7 +1600,7 @@ if __name__ == '__main__':
 
                                         dy = obj_pos_MCTS[i][1] - GT_OBJ_POS_LIST[i-1][1]
                                         dx = obj_pos_MCTS[i][0] - GT_OBJ_POS_LIST[i-1][0]
-                                        print("diff:", np.sqrt(dy**2 + dx**2), "dist", dist)
+                                        print("diff:", np.sqrt(dy**2 + dx**2), "dist", dist, '\n')
                                 else:
                                     # target obj matching
                                     temp_target_obj_mesh, temp_target_obj_pos, dist, obj_name = RC.get_matching_mesh(downpcd, TARGET_OBJ_INDEX, visualize=False)
@@ -1382,7 +1652,7 @@ if __name__ == '__main__':
                                             is_target_detected = True
 
                                             # compare swept volumes
-                                            swept_center_temp, swept_verts_temp = rac.get_swept_center(swept_verts1_temp+swept_verts2_temp, scene_info)
+                                            swept_center_temp, swept_verts_temp = rac.get_swept_center(swept_verts1_temp+swept_verts2_temp, scene_info, MAX_HEIGHT)
                                             temp_swept_size = get_swept_volume_size(swept_verts_temp)
                                             if temp_swept_size < swept_size:
                                                 swept_size = temp_swept_size
@@ -1398,23 +1668,15 @@ if __name__ == '__main__':
                                                 break
                                         print("\n!!!!!!!!!!!!!!!!!!!", num_grasp ,'grasp generated!!!!!!!!!!!!!!!!!!!!!!!\n')
 
-                                # # obj matching
-                                # obj_mesh, obj_pos, dist = RC.get_matching_mesh(downpcd, visualize=False)
-                                # obj_pos = obj_pos - object_offset[OBJ_FILE_IDX_LIST[i-1]]
-                                    
-                                # if dist < 3:
-                                #     print("idx",i,"mesh added")
-                                #     obj_pos_MCTS[i] = obj_pos[0:2].tolist()
-                                #     obj_mesh_MCTS[i] = obj_mesh
-
-                                #     dy = obj_pos_MCTS[i][1] - GT_OBJ_POS_LIST[i-1][1]
-                                #     dx = obj_pos_MCTS[i][0] - GT_OBJ_POS_LIST[i-1][0]
-                                #     print("diff:", np.sqrt(dy**2 + dx**2), "dist", dist)
-
-                            _ = scene.register_camera_view(list(new_cam_rotation), list(new_cam_translation), new_depth_image, object_dict)
+                            if is_mct_needs_view:
+                                _ = scene.register_camera_view(list(new_cam_rotation), list(new_cam_translation), new_depth_image, object_dict)
+                            if is_mct_og_needs_view:
+                                _ = scene_OG.register_camera_view(list(new_cam_rotation), list(new_cam_translation), new_depth_image, object_dict)
+                            if is_base1_needs_view:
+                                _ = scene_base1.register_camera_view(list(new_cam_rotation), list(new_cam_translation), new_depth_image, object_dict)
 
                             if is_target_detected:
-                                coverage_score, _ = swept_coverage_check(scene, swept_verts, rac, scene_info)
+                                coverage_score, _ = swept_coverage_check(scene, copy.deepcopy(swept_verts), rac, scene_info, MAX_HEIGHT)
                                 print("----- Swept volume covered", coverage_score, '-----')
                                 
                                 # get obj pose
@@ -1426,28 +1688,51 @@ if __name__ == '__main__':
                                 curr_config, target_pos_MCT = rac.get_MCT_config(copy.deepcopy(rac.obj_pos_list), copy.deepcopy(rac.obj_mesh), copy.deepcopy(target_obj_pos), copy.deepcopy(rac.target_mesh))
 
                                 unknown_area = get_unobserved_area_w_height(scene, asset_root, object_asset_files, OBJ_FILE_IDX_LIST)
-                                # unknown_area = get_unobserved_area(scene)
-                                np.save(new_folder + "unknown_area_w_height" + str(sequence_count), unknown_area)
+                                unknown_area_OG = get_unobserved_area_w_height(scene_OG, asset_root, object_asset_files, OBJ_FILE_IDX_LIST)
+                                unknown_area_base1 = get_unobserved_area_w_height(scene_base1, asset_root, object_asset_files, OBJ_FILE_IDX_LIST)
 
                                 # Process unknown area
                                 unknown_area, potential_center_cluster, valid_area_cluster = RC.process_unknown_area(unknown_area, curr_config, target_pos_MCT, MIN_RADIUS * 100, valid_center_num=5)
                                 potential_centers = np.array(sum(potential_center_cluster, []))
                                 valid_area = np.array(sum(valid_area_cluster, []))
 
-                                # initialize & check scenario
-                                update_MCTS_val(ML_MCTS_ins, curr_config, target_pos_MCT, rac.obj_mesh, unknown_area, valid_area, potential_centers)
-                                ML_MCTS_ins.init_MCTS()
-                                ML_MCTS_ins.scenario_check() # terminate scenario if it's not valid
+                                unknown_area_OG, potential_center_cluster_OG, valid_area_cluster_OG = RC.process_unknown_area(unknown_area_OG, curr_config, target_pos_MCT, MIN_RADIUS * 100, valid_center_num=5)
+                                potential_centers_OG = np.array(sum(potential_center_cluster_OG, []))
+                                valid_area_OG = np.array(sum(valid_area_cluster_OG, []))
 
+                                unknown_area_base1, potential_center_cluster_base1, valid_area_cluster_base1 = RC.process_unknown_area(unknown_area_base1, curr_config, target_pos_MCT, MIN_RADIUS * 100, valid_center_num=5)
+                                potential_centers_base1 = np.array(sum(potential_center_cluster_base1, []))
+                                valid_area_base1 = np.array(sum(valid_area_cluster_base1, []))
+
+                                # initialize & check scenario
+                                ML_MCTS_ins_OG.swept_volume1 = ML_MCTS_ins.swept_volume1
+                                ML_MCTS_ins_OG.swept_volume2 = ML_MCTS_ins.swept_volume2
+                                ML_MCTS_ins_base1.swept_volume1 = ML_MCTS_ins.swept_volume1
+                                ML_MCTS_ins_base1.swept_volume2 = ML_MCTS_ins.swept_volume2
+                                update_MCTS_val(ML_MCTS_ins, curr_config, target_pos_MCT, rac.obj_mesh, unknown_area, valid_area, potential_centers)
+                                update_MCTS_val(ML_MCTS_ins_OG, curr_config, target_pos_MCT, rac.obj_mesh, unknown_area_OG, valid_area_OG, potential_centers_OG)
+                                update_MCTS_val(ML_MCTS_ins_base1, curr_config, target_pos_MCT, rac.obj_mesh, unknown_area_base1, valid_area_base1, potential_centers_base1)
+
+                                ML_MCTS_ins.init_MCTS()
+                                ML_MCTS_ins_OG.init_MCTS()
+                                ML_MCTS_ins_base1.init_MCTS()
+
+                                ML_MCTS_ins.scenario_check() # terminate scenario if it's not valid
                                 # scene save
-                                ML_MCTS_ins.MCTS_ins.MCTS_tree_.scene_saver(new_folder + 'scene_capture' + str(sequence_count) + '.png')
-                                save_scene(init2grasp_path, grasp2init_path, rac.obj_pos_list, GT_OBJ_POS_LIST, NUM_OF_OBJECTS, scene_info,
-                                   rac.target_mesh, rac.obj_mesh, target_obj_pos, GT_TARGET_POS, rac.obstacles_num, W_TARGET,
-                                   ML_MCTS_ins.unknown_area, ML_MCTS_ins.valid_area, ML_MCTS_ins.potential_centers)
+                                if is_mct_needs_view:
+                                    is_faild_mcts = False
+                                    ML_MCTS_ins.MCTS_ins.MCTS_tree_.scene_saver(new_folder + 'test_results_hybrid/MCTS*/scene_capture' + str(scene.num_observation) + '.png')
+                                if is_mct_og_needs_view:
+                                    is_faild_mcts_og = False
+                                    ML_MCTS_ins_OG.MCTS_ins.MCTS_tree_.scene_saver(new_folder + 'test_results_hybrid/MCTS_OG/scene_capture' + str(scene_OG.num_observation) + '.png')
+                                if is_base1_needs_view:
+                                    is_faild_base1 = False
+                                    ML_MCTS_ins_base1.MCTS_ins.MCTS_tree_.scene_saver(new_folder + 'test_results_hybrid/BASE1/scene_capture' + str(scene_base1.num_observation) + '.png')
 
                             sequence_count += 1
 
-                need_acquire = False
+                if not is_faild_mcts and not is_faild_mcts_og and not is_faild_base1:
+                    need_acquire = False
                 acquire_counter = 0
             else:
                 acquire_counter += 1
@@ -1491,12 +1776,11 @@ if __name__ == '__main__':
 
                     flexible_collision_models.append(fcl.CollisionObject(m))
 
-            # print ('finish adding flexible collision model')
-
             end_state_collision_free = False
             while not end_state_collision_free:
                 # camera_loc, camera_focus, dof_result = random_sample_guided_selection(sim, envs[-1], test_cam, scene)
-                if coverage_score >=0.85: # swept volume observed
+                if coverage_score >=0.95: # swept volume observed
+                    cluster_to_view = None
                     if not is_tunnel_covered:
                         obj_idx, collision_points = ML_MCTS_ins.unknown_tunnel_check()
 
@@ -1504,6 +1788,8 @@ if __name__ == '__main__':
                             print("\n----- Tunnel Covered -----")
                             is_tunnel_covered = True
                             run_mcts = True
+                            run_mcts_og = True
+                            run_base1 = True
                             break
                         
                         print("\n----- covering grasp tunnel -----")
@@ -1516,29 +1802,60 @@ if __name__ == '__main__':
                             print("ERROR!!!!!!!!!!!!!!!!!!!!!!")
                             pdb.set_trace()
 
+                        cluster_to_view = check_cluster
                         cluster_angles = RC.cal_cam_angle_for_area(check_cluster, curr_config + [target_pos_MCT], scene_info, visualize=False)
 
-                    elif not is_cluster_covered:
-                        run_mcts = True
-                        if len(ML_MCTS_ins.valid_area) == 0:
-                            print("\n----- No unknown areas -----")
-                            is_cluster_covered = True
-                            continue
-
-                        print("\n----- Checking suggested unknown_area from MCTS -----")
-                        cluster_angles = mcts_out_angle
-
-                        # # get possilbe cam pose
-                        # cluster_angles = cal_cam_angle_for_area(potential_centers, curr_config + [target_pos_MCT], scene_info, visualize=False)
                     else:
-                        print("\n----- No observation needed -----")
-                        run_mcts = True
-                        continue
+                        if mcts_out_angle is not None and is_faild_mcts:
+                            run_mcts = True
+                            if len(ML_MCTS_ins.valid_area) == 0:
+                                print("\n----- No unknown areas for MCTS* -----")
+                                is_cluster_covered_mcts = True
+                                is_mct_needs_view = False
+                                is_plan_success_mcts = True
+
+                            print("\n----- Checking suggested unknown_area from MCTS* -----")
+                            is_mct_needs_view = True
+                            is_mct_og_needs_view = False
+                            is_base1_needs_view = False
+                            cluster_angles = mcts_out_angle
+                            cluster_to_view = mcts_selected_cluster
+
+
+                        elif mcts_og_out_angle is not None and is_faild_mcts_og:
+                            run_mcts_og = True
+                            if len(ML_MCTS_ins_OG.valid_area) == 0:
+                                print("\n----- No unknown areas for MCTS OG -----")
+                                is_cluster_covered_mcts_og = True
+                                is_mct_og_needs_view = False
+                                is_plan_success_mcts_og = True
+
+                            print("\n----- Checking suggested unknown_area from MCTS OG -----")
+                            is_mct_needs_view = False
+                            is_mct_og_needs_view = True
+                            is_base1_needs_view = False
+                            cluster_angles = mcts_og_out_angle
+                            cluster_to_view = mcts_og_selected_cluster
+
+                        elif base1_out_angle is not None and is_faild_base1:
+                            run_base1 = True
+                            if len(ML_MCTS_ins_base1.valid_area) == 0:
+                                print("\n----- No unknown areas for BASE1 -----")
+                                is_cluster_covered_base1 = True
+                                is_base1_needs_view = False
+                                is_plan_success_base1 = True
+
+                            print("\n----- Checking suggested unknown_area from BASE1 -----")
+                            is_mct_needs_view = False
+                            is_mct_og_needs_view = False
+                            is_base1_needs_view = True
+                            cluster_angles = base1_out_angle
+                            cluster_to_view = base1_selected_cluster
 
                     # choosing biggest cluster 
-                    end_point = cluster_angles['loc'][0]
+                    end_points = cluster_angles['loc']
                     focus_point = cluster_angles['foc'][0]
-                    camera_loc, camera_focus, dof_result = cam_loc_selection_for_clusters(sim, envs[-1], test_cam, scene, focus_point, end_point, scene_info)
+                    camera_loc, camera_focus, dof_result = cam_loc_selection_for_clusters(sim, envs[-1], test_cam, focus_point, end_points, scene_info, cluster_to_view)
                         
                 elif not is_target_detected: # target is not detected, normal active sensing
                     camera_loc, camera_focus, dof_result = random_sample_guided_selection(sim, envs[-1], test_cam, scene)
@@ -1548,9 +1865,9 @@ if __name__ == '__main__':
                         focus_point = swept_center
                         swept_center = None
                     else: # continue tracking swept volume
-                        _, focus_point = swept_coverage_check(scene, swept_verts, rac, scene_info)
+                        _, focus_point = swept_coverage_check(scene, copy.deepcopy(swept_verts), rac, scene_info, MAX_HEIGHT)
                     
-                    camera_loc, camera_focus, dof_result = random_sample_swept_volume_selection(sim, envs[-1], test_cam, scene, focus_point)
+                    camera_loc, camera_focus, dof_result = random_sample_swept_volume_selection(sim, envs[-1], test_cam, scene, focus_point, swept_verts)
 
                 gym.set_camera_location(test_cam, envs[-1], camera_loc, camera_focus)
                 target_pos = gym.get_camera_transform(sim, envs[-1], test_cam).p
@@ -1580,14 +1897,231 @@ if __name__ == '__main__':
         gym.sync_frame_time(sim)
 
 
+    # print('Done')
+    # gym.destroy_viewer(viewer)
+    # gym.destroy_sim(sim)
+
+    rac = RC.robot_arm_configuration(file_path, np.array([ur5e_pose.p.x, ur5e_pose.p.y, ur5e_pose.p.z]), scene_info)
+    sequence_count = 0
+    coverage_score = 0
+    acquire_counter = 0
+    need_acquire = False
+    print("------------------------------------------------- Normal Active sensing starts -------------------------------------------------")
+    scene = global_scene(1.0, 1.2, 0.85, np.array([0.3, -0.6, 0.05]), table_dims.x, table_dims.y - 0.04, drawer_height, table_dims.z - 0.05)
+    while not gym.query_viewer_has_closed(viewer):
+        if coverage_score >= 0.9 or sequence_count >= 10: break
+        if need_acquire:
+            if acquire_counter > 500:
+                gym.clear_lines(viewer)
+                gym.render_all_camera_sensors(sim)
+                for q in body_cam_handles:
+                    color_image = gym.get_camera_image(sim, envs[-1], body_cam_handles[q], gymapi.IMAGE_COLOR)
+                    depth_image = gym.get_camera_image(sim, envs[-1], body_cam_handles[q], gymapi.IMAGE_DEPTH)
+                    seg_image = gym.get_camera_image(sim, envs[-1], body_cam_handles[q], gymapi.IMAGE_SEGMENTATION)
+                    if (q == 0):
+                        K = np.array([[911.445649104, 0, 641.169],
+                             [0, 891.51236121, 352.77],
+                             [0, 0, 1]])
+                        color_img_saved = write_to_image(color_image, new_folder + 'test_image/active_sensing_' + str(sequence_count) + '.png')
+                        write_to_seg_image(seg_image, new_folder + 'test_seg_image/active_sensing_' + str(sequence_count) + '.png')
+                        write_to_depth_image(depth_image, new_folder + 'test_depth_image/active_sensing_' + str(sequence_count) + '.png')
+
+                        temp_cam = body_cam_handles[q] 
+                        cam_rotation = gym.get_camera_transform(sim, envs[-1], temp_cam).r
+                        cam_translation = gym.get_camera_transform(sim, envs[-1], temp_cam).p
+                        new_rgb_image = convert_rgb_image(color_image)
+                        new_seg_image = convert_seg_image(seg_image)
+                        new_depth_image = convert_depth_image(depth_image)
+
+                        new_cam_rotation = np.array([cam_rotation.x,
+                                                     cam_rotation.y,
+                                                     cam_rotation.z,
+                                                     cam_rotation.w])
+                        new_cam_translation = np.array([cam_translation.x,
+                                                        cam_translation.y,
+                                                        cam_translation.z])
+
+                        dist1 = np.linalg.norm(final_rotation - new_cam_rotation)
+                        dist3 = np.linalg.norm(final_rotation - new_cam_rotation*-1)
+                        dist2 = np.linalg.norm(final_translation - new_cam_translation)
+
+                        if (dist1 < 1e-2 or dist3 < 1e-2) and dist2 < 1e-2:
+                            print ('start pc extraction')
+                            pc_extractor_grasp(new_rgb_image, new_depth_image, new_seg_image, new_cam_rotation, new_cam_translation, object_dict, table_dims.z)
+
+                            coverage_score = scene.register_camera_view(list(new_cam_rotation), list(new_cam_translation), new_depth_image, object_dict)
+                            print("------ coverage_score: ", coverage_score, '------')
+
+                            sequence_count += 1
+                need_acquire = False
+                acquire_counter = 0
+            else:
+                acquire_counter += 1
+        else:
+            #add scene surface mesh first
+            flexible_collision_models = []
+
+            scene_mesh = scene.get_surface_collision_mesh()
+            scene_vertices = np.asarray(scene_mesh.vertices)
+            scene_faces = np.asarray(scene_mesh.triangles)
+
+            saved_scene_vertices = copy.deepcopy(scene_vertices)
+            saved_scene_faces = copy.deepcopy(scene_faces)
+
+            all_lines = []
+
+            for v1, v2, v3 in scene_faces:
+                all_lines += list(scene_vertices[v1])
+                all_lines += list(scene_vertices[v2])
+                all_lines += list(scene_vertices[v1])
+                all_lines += list(scene_vertices[v3])
+                all_lines += list(scene_vertices[v2])
+                all_lines += list(scene_vertices[v3])
+
+            gym.add_lines(viewer, envs[-1], len(all_lines)//6, all_lines, [1, 0, 0])
+
+            m = fcl.BVHModel()
+            m.beginModel(len(scene_vertices), len(scene_faces))
+            m.addSubModel(scene_vertices, scene_faces)
+            m.endModel()
+
+            flexible_collision_models.append(fcl.CollisionObject(m))
+
+            print ('There are {0} objects detected\n'.format(len(object_dict)))
+
+            for obj_id, obj_ins in object_dict.items():
+                if obj_id != 0:
+                    object_vertices, object_faces = obj_ins.get_collision_mesh()
+                    m = fcl.BVHModel()
+                    m.beginModel(len(object_vertices), len(object_faces))
+                    m.addSubModel(object_vertices, object_faces)
+                    m.endModel()
+
+                    flexible_collision_models.append(fcl.CollisionObject(m))
+
+            print ('finish adding flexible collision model')
+
+            end_state_collision_free = False
+            while not end_state_collision_free:
+                camera_loc, camera_focus, dof_result = random_sample_guided_selection(sim, envs[-1], test_cam, scene)
+                print (camera_loc, camera_focus)
+                gym.set_camera_location(test_cam, envs[-1], camera_loc, camera_focus)
+                target_pos = gym.get_camera_transform(sim, envs[-1], test_cam).p
+                target_quat = gym.get_camera_transform(sim, envs[-1], test_cam).r
+
+                if dof_result:
+                    end_state_collision_free = rac.arm_collision_free(dof_result, plane_obj, object_collision_models, flexible_collision_models)
+                    if end_state_collision_free:
+                        final_translation = np.array([target_pos.x, target_pos.y, target_pos.z])
+                        final_rotation = np.array([target_quat.x, target_quat.y, target_quat.z, target_quat.w])
+                        gym.set_dof_target_position(envs[-1], spj, dof_result[0])
+                        gym.set_dof_target_position(envs[-1], slj, dof_result[1])
+                        gym.set_dof_target_position(envs[-1], ej,  dof_result[2])
+                        gym.set_dof_target_position(envs[-1], wj1, dof_result[3])
+                        gym.set_dof_target_position(envs[-1], wj2, dof_result[4])
+                        gym.set_dof_target_position(envs[-1], wj3, dof_result[5])
+
+                        need_acquire = True
+        # step the physics
+        gym.simulate(sim)
+        gym.fetch_results(sim, True)
+        
+        # update the viewer
+        gym.step_graphics(sim)
+        gym.draw_viewer(viewer, sim, True)
+        gym.sync_frame_time(sim)
+
+    print("-------- Active Sensing Done --------")
+    # get obj pose
+    obj_mesh_MCTS = dict(sorted(obj_mesh_MCTS.items()))
+    obj_pos_MCTS = dict(sorted(obj_pos_MCTS.items()))
+    update_rac_val(rac, target_obj_mesh, obj_mesh_MCTS, obj_pos_MCTS)
+
+    # unobserved area processing
+    curr_config, target_pos_MCT = rac.get_MCT_config(copy.deepcopy(rac.obj_pos_list), copy.deepcopy(rac.obj_mesh), copy.deepcopy(target_obj_pos), copy.deepcopy(rac.target_mesh))
+
+    # Process unknown area
+    unknown_area = get_unobserved_area_w_height(scene, asset_root, object_asset_files, OBJ_FILE_IDX_LIST)
+    unknown_area, potential_center_cluster, valid_area_cluster = RC.process_unknown_area(unknown_area, curr_config, target_pos_MCT, MIN_RADIUS * 100, valid_center_num=5)
+    potential_centers = np.array(sum(potential_center_cluster, []))
+    valid_area = np.array(sum(valid_area_cluster, []))
+
+    # initialize & check scenario
+    ML_MCTS_ins_OG.swept_volume1 = ML_MCTS_ins.swept_volume1
+    ML_MCTS_ins_OG.swept_volume2 = ML_MCTS_ins.swept_volume2
+    ML_MCTS_ins_base1.swept_volume1 = ML_MCTS_ins.swept_volume1
+    ML_MCTS_ins_base1.swept_volume2 = ML_MCTS_ins.swept_volume2
+    update_MCTS_val(ML_MCTS_ins, curr_config, target_pos_MCT, rac.obj_mesh, unknown_area, valid_area, potential_centers)
+    update_MCTS_val(ML_MCTS_ins_OG, curr_config, target_pos_MCT, rac.obj_mesh, unknown_area, valid_area, potential_centers)
+    update_MCTS_val(ML_MCTS_ins_base1, curr_config, target_pos_MCT, rac.obj_mesh, unknown_area, valid_area, potential_centers)
+
+    ML_MCTS_ins.init_MCTS()
+    ML_MCTS_ins_OG.init_MCTS()
+    ML_MCTS_ins_base1.init_MCTS()
+
+    ML_MCTS_ins.scenario_check() # terminate scenario if it's not valid
+    print("--------------------MCTS* PLANNING START------------------------")
+    is_plan_success_mcts_og, child_node_list = ML_MCTS_ins.run_mcts(300)
+
+    save_scene(init2grasp_path, grasp2init_path, rac.obj_pos_list, GT_OBJ_POS_LIST, NUM_OF_OBJECTS, scene_info,
+               rac.target_mesh, rac.obj_mesh, target_obj_pos, GT_TARGET_POS, rac.obstacles_num, W_TARGET,
+               ML_MCTS_ins.unknown_area, ML_MCTS_ins.valid_area, ML_MCTS_ins.potential_centers, "test_results_single/MCTS*/", is_plan_success_mcts_og)
+
+    if is_plan_success_mcts_og:
+        print("!!!!!!!!!!!!!!MCTS* planning Success!!!!!!!!!!!!!!!!!!!!!")
+        ML_MCTS_ins.global_optimization()
+        # ML_MCTS_ins.animate_whole_sequence()
+
+        res_plan = ML_MCTS_ins.save_planning_results()
+        num_collision_obj_ = len(ML_MCTS_ins.track_level_steps_[0][0].check_collision_w_swept())
+        write_result(new_folder + "test_results_single/", 'MCTS*', scene_OG.num_observation, len(curr_config), ML_MCTS_ins.time_consumption_, ML_MCTS_ins.total_steps_, ML_MCTS_ins.calculate_total_length_travelled(), ML_MCTS_ins.calculate_total_length_displacement(), num_collision_obj_, res_plan)
+        ML_MCTS_ins.track_level_steps_[0][0].scene_saver(new_folder + 'test_results_single/MCTS*/start_layout.png')
+        ML_MCTS_ins.track_level_steps_[-1][-1].scene_saver(new_folder + 'test_results_single/MCTS*/final_layout.png')
+    else:
+        ML_MCTS_ins.MCTS_ins.MCTS_tree_.scene_saver(new_folder + 'test_results_single/MCTS*/Filed_attempt.png')
+
+
+    print("--------------------MCTS OG PLANNING START------------------------")
+    is_plan_success_mcts_og, child_node_list = ML_MCTS_ins_OG.run_mcts(300)
+
+    save_scene(init2grasp_path, grasp2init_path, rac.obj_pos_list, GT_OBJ_POS_LIST, NUM_OF_OBJECTS, scene_info,
+               rac.target_mesh, rac.obj_mesh, target_obj_pos, GT_TARGET_POS, rac.obstacles_num, W_TARGET,
+               ML_MCTS_ins_OG.unknown_area, ML_MCTS_ins_OG.valid_area, ML_MCTS_ins_OG.potential_centers, "test_results_single/MCTS_OG/", is_plan_success_mcts_og)
+
+    if is_plan_success_mcts_og:
+        print("!!!!!!!!!!!!!!MCTS OG planning Success!!!!!!!!!!!!!!!!!!!!!")
+        ML_MCTS_ins_OG.global_optimization()
+        # ML_MCTS_ins_OG.animate_whole_sequence()
+
+        res_plan = ML_MCTS_ins_OG.save_planning_results()
+        num_collision_obj_ = len(ML_MCTS_ins_OG.track_level_steps_[0][0].check_collision_w_swept())
+        write_result(new_folder + "test_results_single/", 'MCTS_OG', scene_OG.num_observation, len(curr_config), ML_MCTS_ins_OG.time_consumption_, ML_MCTS_ins_OG.total_steps_, ML_MCTS_ins_OG.calculate_total_length_travelled(), ML_MCTS_ins_OG.calculate_total_length_displacement(), num_collision_obj_, res_plan)
+        ML_MCTS_ins_OG.track_level_steps_[0][0].scene_saver(new_folder + 'test_results_single/MCTS_OG/start_layout.png')
+        ML_MCTS_ins_OG.track_level_steps_[-1][-1].scene_saver(new_folder + 'test_results_single/MCTS_OG/final_layout.png')
+    else:
+        ML_MCTS_ins_OG.MCTS_ins.MCTS_tree_.scene_saver(new_folder + 'test_results_single/MCTS_OG/Filed_attempt.png')
+
+
+    print("--------------------BASE1 PLANNING START------------------------")
+    is_plan_success_base1, child_node_list = ML_MCTS_ins_base1.run_mcts(300)
+
+    save_scene(init2grasp_path, grasp2init_path, rac.obj_pos_list, GT_OBJ_POS_LIST, NUM_OF_OBJECTS, scene_info,
+               rac.target_mesh, rac.obj_mesh, target_obj_pos, GT_TARGET_POS, rac.obstacles_num, W_TARGET,
+               ML_MCTS_ins_base1.unknown_area, ML_MCTS_ins_base1.valid_area, ML_MCTS_ins_base1.potential_centers, "test_results_single/BASE1/", is_plan_success_base1)
+
+    if is_plan_success_base1:
+        print("!!!!!!!!!!!!!!BASE1 planning Success!!!!!!!!!!!!!!!!!!!!!")
+        # ML_MCTS_ins_base1.animate_whole_sequence()
+
+        res_plan = ML_MCTS_ins_base1.save_planning_results()
+        num_collision_obj_ = len(ML_MCTS_ins_base1.track_level_steps_[0][0].check_collision_w_swept())
+        write_result(new_folder + "test_results_single/", 'BASE1', scene_OG.num_observation, len(curr_config), ML_MCTS_ins_base1.time_consumption_, ML_MCTS_ins_base1.total_steps_, ML_MCTS_ins_base1.calculate_total_length_travelled(), ML_MCTS_ins_base1.calculate_total_length_displacement(), num_collision_obj_, res_plan)
+        ML_MCTS_ins_base1.track_level_steps_[0][0].scene_saver(new_folder + 'test_results_single/BASE1/start_layout.png')
+        ML_MCTS_ins_base1.track_level_steps_[-1][-1].scene_saver(new_folder + 'test_results_single/BASE1/final_layout.png')
+    else:
+        ML_MCTS_ins_base1.MCTS_ins.MCTS_tree_.scene_saver(new_folder + 'test_results_single/BASE1/Filed_attempt.png')
+
     print('Done')
     gym.destroy_viewer(viewer)
     gym.destroy_sim(sim)
     sys.exit(1)
-
-    # MCTS/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    update_rac_val(rac, target_obj_mesh, obj_mesh_MCTS, obj_pos_MCTS)
-    update_MCTS_val(ML_MCTS_ins, curr_config, target_pos_MCT, rac.obj_mesh, unknown_area, valid_area, potential_centers)
-    save_scene(init2grasp_path, grasp2init_path, rac.obj_pos_list, GT_OBJ_POS_LIST, NUM_OF_OBJECTS, scene_info,
-               rac.target_mesh, rac.obj_mesh, target_obj_pos, GT_TARGET_POS, rac.obstacles_num, W_TARGET,
-               ML_MCTS_ins.unknown_area, ML_MCTS_ins.valid_area, ML_MCTS_ins.potential_centers, is_plan_success)

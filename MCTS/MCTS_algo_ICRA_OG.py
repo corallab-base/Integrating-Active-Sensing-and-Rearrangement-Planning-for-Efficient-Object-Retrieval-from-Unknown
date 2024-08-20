@@ -52,7 +52,7 @@ class multi_level_MCTS_algo_OG():
         self.track_level_steps_ = None
 
     def init_MCTS(self):
-        MCTS_ins = MCTS_algo_OG(self.curr_config_, self.goal_config_, self.scene_info, swept_volume1=self.swept_volume1, swept_volume2=self.swept_volume2, obj_mesh=self.obj_mesh, target_pos=self.target_pos, unknown_area=self.unknown_area, valid_area=self.valid_area, potential_centers=self.potential_centers)
+        MCTS_ins = MCTS_algo_OG(deepcopy(self.curr_config_), self.goal_config_, self.scene_info, swept_volume1=self.swept_volume1, swept_volume2=self.swept_volume2, obj_mesh=self.obj_mesh, target_pos=self.target_pos, unknown_area=self.unknown_area, valid_area=self.valid_area, potential_centers=self.potential_centers)
         self.MCTS_ins = MCTS_ins
         # MCTS_ins.MCTS_tree_.tunnel_and_normal_visualizer(unknown_show=True)
 
@@ -82,14 +82,13 @@ class multi_level_MCTS_algo_OG():
         self.scale = MCTS_ins.scale
         self.track_level_steps_ = track_level_steps
 
-        self.total_steps_ = len(self.track_level_steps_[0])
+        self.total_steps_ = len(self.track_level_steps_[0]) - 1
         print("total steps", self.total_steps_)
 
         self.calculate_total_length_displacement()
         self.calculate_total_length_travelled()
 
         self.time_consumption_ = end_time - start_time
-        self.total_steps_ = total_steps - len(self.curr_config_) + 1
         print("Time consumption:", self.time_consumption_)
         return True, self.time_consumption_
 
@@ -696,6 +695,9 @@ class MCTS_algo_OG():
                     grasp_tunnel = selected_leaf_node.get_tunnel(selected_leaf_node.robot_, selected_leaf_node.curr_config_[index])
                     relocate_object = selected_leaf_node.collision_tunnel_object(grasp_tunnel)
                     relocate_object = [x for x in relocate_object if x != index]
+
+                    grasp_tunnel = selected_leaf_node.get_tunnel(selected_leaf_node.robot_, selected_leaf_node.goal_config_[index])
+                    if selected_leaf_node.collision_tunnel_static(grasp_tunnel): continue
                     
                     #relocated_object is None, grasp it to another region
                     if not relocate_object:
@@ -727,6 +729,9 @@ class MCTS_algo_OG():
                                 new_regions = []
                                 # pdb.set_trace()
                                 for upper_index in range(index, -1, -1):
+                                    is_overrun = self.check_time()
+                                    if is_overrun:
+                                        return None
                                     new_regions = selected_leaf_node.propose_new_region(index, [x for x in range(1, upper_index)], random_obj_flag)
                                     if new_regions: break
 
@@ -760,6 +765,9 @@ class MCTS_algo_OG():
                             # no need in my case
                             new_regions = []
                             for upper_index in range(index, -1, -1):
+                                is_overrun = self.check_time()
+                                if is_overrun:
+                                    return None
                                 new_regions = selected_leaf_node.propose_new_region(index, [x for x in range(1, upper_index)], random_obj_flag)
                                 if new_regions: break
     
@@ -802,6 +810,9 @@ class MCTS_algo_OG():
                             if not temp_relocate_object:
                                 new_regions = []
                                 for upper_index in range(new_index, -1, -1):
+                                    is_overrun = self.check_time()
+                                    if is_overrun:
+                                        return None
                                     new_regions = selected_leaf_node.propose_new_region(new_index, [index] + [x for x in range(1, upper_index)], random_obj_flag)
                                     if new_regions: break
                                 
@@ -974,7 +985,7 @@ class MCTS_algo_OG():
                 return None
 
             selected_leaf_node = self.selection()
-            if selected_leaf_node.is_goal_config() and not selected_leaf_node.object_in_collision_:
+            if selected_leaf_node.is_goal_config_swept() and not selected_leaf_node.object_in_collision_:
                 final_leaf = selected_leaf_node
                 break
             rollout_leaf_node = None

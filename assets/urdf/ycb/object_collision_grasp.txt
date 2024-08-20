@@ -4,3 +4,4 @@
 006_mustard_bottle/textured_vhacd.obj
 036_wood_block/textured_vhacd.obj
 011_banana/textured_vhacd.obj
+001_chips_can/textured_vhacd.obj

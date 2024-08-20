@@ -322,7 +322,7 @@ class Tree_Node():
         v3 = v3 / np.linalg.norm(v3)
 
         collision_points = []
-        for point in self.potential_centers:
+        for point in self.valid_area:
             test_vector = point - v2_start
             proj_v2 = np.dot(v2, test_vector)
             proj_v3 = np.dot(v3, test_vector)
@@ -352,8 +352,8 @@ class Tree_Node():
             proj_v2 = np.dot(v2, test_vector)
             proj_v3 = np.dot(v3, test_vector)
         
-            if -width/2.0 - 1.0 < proj_v2 < width/2.0 + 1.0 and \
-                 -height/2.0 - 1.0 < proj_v3 < height/2.0 + 1.0: 
+            if -width/2.0 - radius < proj_v2 < width/2.0 + radius and \
+                 -height/2.0 - radius < proj_v3 < height/2.0 + radius: 
                 return True
             
         if no_unknown:
@@ -457,8 +457,8 @@ class Tree_Node():
             proj_v2 = np.dot(v2, test_vector)
             proj_v3 = np.dot(v3, test_vector)
 
-            if -width/2.0 - self.radius < proj_v2 < width/2.0 + self.radius and \
-               -height/2.0 - self.radius < proj_v3 < height/2.0 + self.radius: 
+            if -width/2.0 - radius < proj_v2 < width/2.0 + radius and \
+               -height/2.0 - radius < proj_v3 < height/2.0 + radius: 
                 collision_items.add(i)
             
         return list(collision_items)
@@ -486,65 +486,6 @@ class Tree_Node():
             return True
         else:
             return False
-        
-
-    def scene_saver(self, save_path, tunnel_list = None, object_in_collision = None, unknown_show = False):
-        object_in_collision = self.check_collision_w_swept()
-
-        if self.scale == 0.01:
-            plt.figure(figsize = (len(self.grid_[0])/5, len(self.grid_)/5))
-        else:
-            plt.figure(figsize = (len(self.grid_[0]), len(self.grid_)))
-        plt.axis((0, len(self.grid_[0]), 0, len(self.grid_)))
-
-        for cx, cy, radius, color in self.curr_config_:
-            temp_circle = mpatches.Circle((cx, cy), radius, color = color)
-            plt.gca().add_patch(temp_circle)
-
-        for cx, cy, radius, color in self.static_config_:
-            temp_circle = mpatches.Circle((cx, cy), radius, color = 'black')
-            temp_circle_inner = mpatches.Circle((cx, cy), radius*0.7, color =  color)
-            plt.gca().add_patch(temp_circle)
-            plt.gca().add_patch(temp_circle_inner)
-
-        robot = mpatches.Rectangle((self.robot_[0] - 0.023 / self.scale, self.robot_[1] - 0.023 / self.scale), self.radius, self.radius)
-        plt.gca().add_patch(robot)
-
-        tunnel_counter = 0
-        tunnel_color = ['b', 'r']
-
-        if tunnel_list:
-            for start_corner, width, height, angle, v2_start, v2_end, v3_start, v3_end in tunnel_list:
-                tunnel_shape = mpatches.Rectangle(start_corner, width, height, angle, alpha = 0.5, color = tunnel_color[tunnel_counter])
-                plt.gca().add_patch(tunnel_shape)
-                plt.plot([v2_start[0], v2_end[0]], [v2_start[1], v2_end[1]], color = 'r')
-                plt.plot([v3_start[0], v3_end[0]], [v3_start[1], v3_end[1]], color = 'r')
-                tunnel_counter += 1
-
-        if object_in_collision:
-            for index in object_in_collision:
-                cx, cy, radius, color = self.curr_config_[index]
-                temp_square = mpatches.Rectangle((cx - radius, cy - radius), radius*2, radius*2, alpha = 0.3, color = 'black')
-                plt.gca().add_patch(temp_square)
-
-        if len(self.unknown_area) > 0:
-            plt.scatter(np.array(self.unknown_area)[:, 0], np.array(self.unknown_area)[:, 1], color='black')
-            # for cluster in self.unknown_area:
-            #     plt.scatter(np.array(cluster)[:, 0], np.array(cluster)[:, 1])
-        if len(self.valid_area) > 0:
-            plt.scatter(self.valid_area[:, 0], self.valid_area[:, 1], c='green')
-
-        if len(self.potential_centers) > 0:
-                plt.scatter(self.potential_centers[:, 0], self.potential_centers[:, 1], c='red')
-
-        plt.xlim(-len(self.grid_[0])/2, len(self.grid_[0])/2)
-        plt.ylim(0, len(self.grid_) - 1)
-        plt.savefig(save_path)
-
-        plt.clf()
-        plt.cla()
-        plt.close()
-
 
     def tunnel_and_normal_visualizer(self, tunnel_list = None, object_in_collision = None, true_color = False, animation = False, unknown_show = False):
         object_in_collision = self.check_collision_w_swept()
@@ -979,10 +920,55 @@ class Tree_Node():
             
         return True
 
+    def scene_saver(self, save_path):
+        object_in_collision = self.check_collision_w_swept()
 
-def write_result(method, test_index, object_count, time, steps, length, displacement, res_plan):
-    file_name = 'test_results_bound/' + method + '/test_result_' + str(test_index) + '.txt'
-    plan_name = 'test_results_bound/' + method + '/test_result_' + str(test_index) + '.npy'
+        if self.scale == 0.01:
+            plt.figure(figsize = (len(self.grid_[0])/5, len(self.grid_)/5))
+        else:
+            plt.figure(figsize = (len(self.grid_[0]), len(self.grid_)))
+        plt.axis((0, len(self.grid_[0]), 0, len(self.grid_)))
+
+        for cx, cy, radius, color in self.curr_config_:
+            temp_circle = mpatches.Circle((cx, cy), radius, color = color)
+            plt.gca().add_patch(temp_circle)
+
+        for cx, cy, radius, color in self.static_config_:
+            temp_circle = mpatches.Circle((cx, cy), radius, color = 'black')
+            temp_circle_inner = mpatches.Circle((cx, cy), radius*0.7, color =  color)
+            plt.gca().add_patch(temp_circle)
+            plt.gca().add_patch(temp_circle_inner)
+
+        robot = mpatches.Rectangle((self.robot_[0] - 0.023 / self.scale, self.robot_[1] - 0.023 / self.scale), self.radius, self.radius)
+        plt.gca().add_patch(robot)
+
+        if object_in_collision:
+            for index in object_in_collision:
+                cx, cy, radius, color = self.curr_config_[index]
+                temp_square = mpatches.Rectangle((cx - radius, cy - radius), radius*2, radius*2, alpha = 0.3, color = 'black')
+                plt.gca().add_patch(temp_square)
+
+        if len(self.unknown_area) > 0:
+            plt.scatter(np.array(self.unknown_area)[:, 0], np.array(self.unknown_area)[:, 1], color='black')
+            # for cluster in self.unknown_area:
+            #     plt.scatter(np.array(cluster)[:, 0], np.array(cluster)[:, 1])
+        if len(self.valid_area) > 0:
+            plt.scatter(self.valid_area[:, 0], self.valid_area[:, 1], c='green')
+
+        if len(self.potential_centers) > 0:
+                plt.scatter(self.potential_centers[:, 0], self.potential_centers[:, 1], c='red')
+
+        plt.xlim(-len(self.grid_[0])/2, len(self.grid_[0])/2)
+        plt.ylim(0, len(self.grid_) - 1)
+        plt.savefig(save_path)
+
+        # plt.clf()
+        # plt.cla()
+        plt.close()
+
+def write_result(new_folder, method, test_index, object_count, time, steps, length, displacement, num_collision_obj, res_plan):
+    file_name = new_folder + method + '/test_result_' + str(test_index) + '.txt'
+    plan_name = new_folder + method + '/test_result_' + str(test_index) + '.npy'
     if os.path.exists(file_name):
         os.remove(file_name)
     with open(file_name, 'w') as f:
@@ -991,10 +977,29 @@ def write_result(method, test_index, object_count, time, steps, length, displace
         f.write('number of steps : ' + str(steps) + '\n')
         f.write('total length travelled : ' + str(length) + '\n')
         f.write('total length displacement : ' + str(displacement) + '\n')
+        f.write('number of view : ' + str(test_index) + '\n')
+        f.write('number of initial collision objects : ' + str(num_collision_obj) + '\n')
     f.close()
 
     with open(plan_name, 'wb') as f:
         np.save(f, res_plan)
+
+
+# def write_result(new_folder, method, test_index, object_count, time, steps, length, displacement, res_plan):
+#     file_name = new_folder + 'test_results_bound/' + method + '/test_result_' + str(test_index) + '.txt'
+#     plan_name = new_folder + 'test_results_bound/' + method + '/test_result_' + str(test_index) + '.npy'
+#     if os.path.exists(file_name):
+#         os.remove(file_name)
+#     with open(file_name, 'w') as f:
+#         f.write('number of objects : ' + str(object_count) + '\n')
+#         f.write('time comsumption : ' + str(time) + '\n')
+#         f.write('number of steps : ' + str(steps) + '\n')
+#         f.write('total length travelled : ' + str(length) + '\n')
+#         f.write('total length displacement : ' + str(displacement) + '\n')
+#     f.close()
+
+#     with open(plan_name, 'wb') as f:
+#         np.save(f, res_plan)
     
 
 
