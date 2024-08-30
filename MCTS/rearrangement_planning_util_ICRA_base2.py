@@ -270,15 +270,15 @@ class Tree_Node_base2():
 
         self.is_goal_config_swept()
 
-        # self.distance_lookup_ = defaultdict(list)
-        # for t in range(-len(self.grid_) + 1, len(self.grid_), 5):
-        #     for k in range(-len(self.grid_[0]) + 1, len(self.grid_[0]), 5):
-        #         distance = round((t)**2 + (k)**2, 3)
-        #         # if abs(distance) <= 0.0001:
-        #         #     continue 
-        #         self.distance_lookup_[distance].append([t, k])
-        # self.distance_lookup_ = [list(x) for x in self.distance_lookup_.items()]
-        # self.distance_lookup_.sort(key = lambda x: x[0])
+        self.distance_lookup_ = defaultdict(list)
+        for t in range(-len(self.grid_) + 1, len(self.grid_), 5):
+            for k in range(-len(self.grid_[0]) + 1, len(self.grid_[0]), 5):
+                distance = round((t)**2 + (k)**2, 3)
+                # if abs(distance) <= 0.0001:
+                #     continue 
+                self.distance_lookup_[distance].append([t, k])
+        self.distance_lookup_ = [list(x) for x in self.distance_lookup_.items()]
+        self.distance_lookup_.sort(key = lambda x: x[0])
 
     def add_reward(self, reward):
         self.reward_ += reward
@@ -329,7 +329,7 @@ class Tree_Node_base2():
         v3 = v3 / np.linalg.norm(v3)
 
         collision_points = []
-        for point in self.potential_centers:
+        for point in self.valid_area:
             test_vector = point - v2_start
             proj_v2 = np.dot(v2, test_vector)
             proj_v3 = np.dot(v3, test_vector)
@@ -345,7 +345,6 @@ class Tree_Node_base2():
         invalid_dict = {}
 
         for spot in deepcopy(self.valid_list):
-            print("invalid_dict")
             tunnel = self.get_tunnel(self.robot_, spot)
             is_tunnel_collision = self.collision_tunnel_static(tunnel)
 

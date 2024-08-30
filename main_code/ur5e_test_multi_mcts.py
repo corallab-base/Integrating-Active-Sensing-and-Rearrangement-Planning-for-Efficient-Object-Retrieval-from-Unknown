@@ -92,8 +92,8 @@ TARGET_OBJ_INDEX = [3, 5]
 OBSTACLE_OBJ_INDEX = [0, 2]
 MIN_RADIUS = 0.03471716871486391
 
-MIN_NUM_OBSTACLES = 5
-MAX_NUM_OBSTACLES = 8
+MIN_NUM_OBSTACLES = 8
+MAX_NUM_OBSTACLES = 10
 NUM_OF_OBJECTS = np.random.randint(MIN_NUM_OBSTACLES + 1, MAX_NUM_OBSTACLES + 1)
 
 #*************************************************************************************************#
@@ -232,7 +232,7 @@ def get_best_cam_pose_point_check(camera_pose_list, points):
             if len(point) == 3:
                 target_location = point
             else:
-                target_location = [point[0]/100, point[1]/100, 0.05]
+                target_location = [point[1]/100, -point[0]/100, 0.05]
 
             flag, depth, location = cam.inside_frame(target_location)
             if flag:
@@ -287,7 +287,7 @@ def cam_loc_selection_for_clusters(sim, env, test_cam, center, end_points, scene
                                            converted_quat.z,
                                            converted_quat.w)
 
-            print('dist:', dist, 'loc', cam_loc + [cam_height], "dof result", True if dof_result else False, 'len', len(camera_pose_list))
+            print('dist:', dist, 'loc', cam_loc, "dof result", True if dof_result else False, 'len', len(camera_pose_list))
 
             if dof_result:
                 end_state_collision_free = rac.arm_collision_free(dof_result, plane_obj, object_collision_models, flexible_collision_models)
@@ -298,15 +298,16 @@ def cam_loc_selection_for_clusters(sim, env, test_cam, center, end_points, scene
 
         if cam_loc[0] < 0.05:
             break
-        elif len(camera_pose_list) < 5:
-            dist += 1
+
+        dist += 1
+
 
     print("cluster")
     best_cam_pose_index = get_best_cam_pose_point_check(camera_pose_list, points)
     return camera_setting_list[best_cam_pose_index][0], camera_setting_list[best_cam_pose_index][1], camera_setting_list[best_cam_pose_index][2]
 
 
-def random_sample_swept_volume_selection(sim, env, test_cam, scene, swept_center, swept_points):
+def random_sample_swept_volume_selection(sim, env, test_cam, swept_center, swept_points):
     camera_pose_list = []
     camera_setting_list = []
     while len(camera_pose_list) < 50:
@@ -516,86 +517,6 @@ def scale_config(config):
         pos[1] = temp
 
     return config
-
-
-def cal_cam_angle_for_area(valid_points, curr_config, scene_info, visualize=False):
-    valid_list, _ = RC.clustering(np.array(valid_points), visualize=False)
-    valid_list = sorted(valid_list, key=len, reverse=True)
-    left_point =  int(-scene_info[1]/2 * 100)
-    right_point = int( scene_info[1]/2 * 100)
-
-    if visualize:
-        line_list = []
-
-    cluster_angles = {'foc':[], 'loc':[]}
-    for cluster in valid_list:
-        center = np.median(cluster, axis=0)
-
-        max_dist = 0
-        max_line = None
-        no_obj = True
-        for point in np.arange(left_point, right_point + 1, int(scene_info[1] * 100) / 30):
-            vec = ([point, 25] - center)
-
-            is_collision = False
-            dist_list = []
-            for obj in curr_config:
-                obj_pos = [-obj[1] * 100, obj[0] * 100]
-                check_range = np.dot(obj_pos - np.array([point, 25]), -vec/np.linalg.norm(vec))
-                if abs(check_range) > np.linalg.norm(vec):
-                    continue
-                no_obj = False
-
-                obj_vec = obj_pos - center
-                radius = obj[2] * 100
-                dist = abs((obj_vec[0] * vec[1] - obj_vec[1] * vec[0]) / np.linalg.norm(vec))
-                if dist <= radius + 1:
-                    is_collision = True
-                    break
-                dist_list.append(dist)
-
-            if not is_collision:
-                if dist_list:
-                    dist_to_wall = abs(left_point - point) if point <= 0 else abs(right_point - point)
-                    min_dist = min(dist_list) if min(dist_list) < dist_to_wall else dist_to_wall
-                else:
-                    min_dist = abs(left_point - point) if point <= 0 else abs(right_point - point)
-                    
-                if min_dist > max_dist:
-                    max_dist = min_dist
-                    max_line = point
-
-                if visualize:
-                    line_list.append([[center[0], point], [center[1], 25]])
-
-        if no_obj:
-            print("no obj")
-            max_line = 0
-
-        cluster_angles["foc"].append(np.array([center[1], -center[0]]) / 100)
-        cluster_angles["loc"].append(np.array([25, -max_line]) / 100)
-        
-    if visualize:
-        plt.figure(figsize=(20,20))
-        plt.axis([-43,43,0,86])
-        for cluster in valid_list:
-            plt.scatter(np.array(cluster)[:,0], np.array(cluster)[:,1], color='orange')
-        for obj in curr_config:
-            obj_pos = [-obj[1] * 100, obj[0] * 100]
-            temp_circle = mpatches.Circle((obj_pos), radius, color = obj[3])
-            plt.gca().add_patch(temp_circle)
-
-        for line in line_list:
-            plt.plot(line[0], line[1], marker='o', color='black')
-
-        for i in range(len(cluster_angles['loc'])):
-            loc = cluster_angles['loc'][i]
-            foc = cluster_angles['foc'][i]
-            plt.plot([-loc[1] * 100, -foc[1] * 100], [loc[0] * 100, foc[0] * 100], marker='o', color='red')
-
-        plt.show()
-
-    return cluster_angles
 
 def save_scene(init2grasp_path, grasp2init_path, obj_pos_list, gt_obj_pos_list, NUM_OF_OBJECTS, scene_info,
                target_mesh, obj_mesh, target_pos, gt_target_pos, obstacles_num, w_target,
@@ -1209,9 +1130,6 @@ if __name__ == '__main__':
     ML_MCTS_ins_OG = mct_OG.multi_level_MCTS_algo_OG(None, None, scene_info=scene_info, swept_volume1=None, swept_volume2=None, obj_mesh=rac.obj_mesh)
     ML_MCTS_ins_base1 = mct_base1.multi_level_MCTS_algo_base1(None, None, scene_info=scene_info, swept_volume1=None, swept_volume2=None, obj_mesh=rac.obj_mesh)
 
-    # update_rac_val(rac, target_obj_mesh, obj_mesh_MCTS, obj_pos_MCTS)
-    # update_MCTS_val(ML_MCTS_ins, curr_config, target_pos_MCT, rac.obj_mesh, unknown_area, valid_area, potential_centers)
-
     #active sensing here
     obj_pos_MCTS = {}
     obj_mesh_MCTS = {}
@@ -1347,7 +1265,6 @@ if __name__ == '__main__':
                                 max_region_count = total_new_region
                                 max_region_idx = cluster_idx
 
-                        new_config = RC.transfor2global(max_node.curr_config_)
                         mcts_out_angle = RC.cal_cam_angle_for_area(potential_center_cluster[max_region_idx], ML_MCTS_ins.curr_config_ + [target_pos_MCT], scene_info, visualize=False)
                         # mcts_out_angle = RC.cal_cam_angle_for_area(potential_center_cluster[max_region_idx], new_config + [target_pos_MCT], scene_info, visualize=False)
                         mcts_selected_cluster = potential_center_cluster[max_region_idx]
@@ -1433,8 +1350,6 @@ if __name__ == '__main__':
                             if max_region_count < total_new_region:
                                 max_region_count = total_new_region
                                 max_region_idx = cluster_idx
-                        new_config = RC.transfor2global(max_node.curr_config_)
-                        pdb.set_trace() # check node_list and make sure the config is ogirinal config and makesure target_pos_MCT is in global!!!!!!!!1
 
                         mcts_og_out_angle = RC.cal_cam_angle_for_area(potential_center_cluster_OG[max_region_idx], ML_MCTS_ins_OG.curr_config_ + [target_pos_MCT], scene_info, visualize=False)
                         # mcts_og_out_angle = RC.cal_cam_angle_for_area(potential_center_cluster_OG[max_region_idx], new_config + [target_pos_MCT], scene_info, visualize=False)
@@ -1522,9 +1437,8 @@ if __name__ == '__main__':
                                 max_region_count = total_new_region
                                 max_region_idx = cluster_idx
 
-                        new_config = RC.transfor2global(max_node.curr_config_)
-                        base1_out_angle = RC.cal_cam_angle_for_area(potential_center_cluster_base1[max_region_idx], new_config + [target_pos_MCT], scene_info, visualize=False)
-                        base1_selected_cluster = potential_center_cluster_OG[max_region_idx]
+                        base1_out_angle = RC.cal_cam_angle_for_area(potential_center_cluster_base1[max_region_idx], ML_MCTS_ins_OG.curr_config_ + [target_pos_MCT], scene_info, visualize=False)
+                        base1_selected_cluster = potential_center_cluster_base1[max_region_idx]
                         run_base1 = False
 
             if is_plan_done_mcts and is_plan_done_base1 and is_plan_done_mcts_og: 
@@ -1867,7 +1781,7 @@ if __name__ == '__main__':
                     else: # continue tracking swept volume
                         _, focus_point = swept_coverage_check(scene, copy.deepcopy(swept_verts), rac, scene_info, MAX_HEIGHT)
                     
-                    camera_loc, camera_focus, dof_result = random_sample_swept_volume_selection(sim, envs[-1], test_cam, scene, focus_point, swept_verts)
+                    camera_loc, camera_focus, dof_result = random_sample_swept_volume_selection(sim, envs[-1], test_cam, focus_point, swept_verts)
 
                 gym.set_camera_location(test_cam, envs[-1], camera_loc, camera_focus)
                 target_pos = gym.get_camera_transform(sim, envs[-1], test_cam).p

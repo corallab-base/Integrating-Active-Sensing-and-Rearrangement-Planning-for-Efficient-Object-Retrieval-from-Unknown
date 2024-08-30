@@ -93,8 +93,11 @@ MIN_RADIUS = 0.03471716871486391
 
 MIN_NUM_OBSTACLES = 5
 MAX_NUM_OBSTACLES = 8
-NUM_OF_OBJECTS = 11
+# NUM_OF_OBJECTS = 11
+NUM_OF_OBJECTS = 7
 # NUM_OF_OBJECTS = np.random.randint(MIN_NUM_OBSTACLES + 1, MAX_NUM_OBSTACLES + 1)
+
+NUM_SWEPT_COLLISION = 3
 
 #*************************************************************************************************#
 
@@ -219,7 +222,7 @@ def get_best_cam_pose(scene, camera_pose_list):
     print (f'best score is : {best_score}')
     return best_index
 
-def get_best_cam_pose_point_check(camera_pose_list, points):
+def get_best_cam_pose_point_check(camera_pose_list, points, dofs=None):
     best_score = - sys.maxsize
     best_index = None
     for t in range(len(camera_pose_list)):
@@ -232,11 +235,16 @@ def get_best_cam_pose_point_check(camera_pose_list, points):
             if len(point) == 3:
                 target_location = point
             else:
-                target_location = [point[0]/100, point[1]/100, 0.05]
+                target_location = [point[1]/100, -point[0]/100, 0.06]
 
             flag, depth, location = cam.inside_frame(target_location)
             if flag:
                 in_cam += 1
+
+        print("score: ", in_cam)
+        # if dofs is not None:
+        #     rac.check_collision_models(dofs[t], scene_info=scene_info)
+        #     pdb.set_trace()
 
         if best_score < in_cam:
             best_score = in_cam
@@ -305,8 +313,9 @@ def cam_loc_selection_for_clusters(sim, env, test_cam, center, end_points, scene
 
         dist += 1
 
+    CAM_SETTING_LIST = [cam_set[2] for cam_set in camera_setting_list]
     print("cluster")
-    best_cam_pose_index = get_best_cam_pose_point_check(camera_pose_list, points)
+    best_cam_pose_index = get_best_cam_pose_point_check(camera_pose_list, points, CAM_SETTING_LIST)
     return camera_setting_list[best_cam_pose_index][0], camera_setting_list[best_cam_pose_index][1], camera_setting_list[best_cam_pose_index][2]
 
 
@@ -348,7 +357,6 @@ def random_sample_swept_volume_selection(sim, env, test_cam, swept_center, swept
                                        converted_quat.w)
         if dof_result:
             end_state_collision_free = rac.arm_collision_free(dof_result, plane_obj, object_collision_models, flexible_collision_models)
-
 
             if end_state_collision_free:
                 camera_pose_list.append(camera_pose)
@@ -398,7 +406,6 @@ def random_sample_guided_selection(sim, env, test_cam, scene):
                                        converted_quat.w)
         if dof_result:
             end_state_collision_free = rac.arm_collision_free(dof_result, plane_obj, object_collision_models, flexible_collision_models)
-
 
             if end_state_collision_free:
                 camera_pose_list.append(camera_pose)
@@ -511,6 +518,19 @@ def get_unobserved_area_w_height(scene, asset_root, object_asset_files, OBJ_FILE
 
     return unknown_area
 
+def convert_0_to_end(point):
+    new_point = [0,0,point[2]]
+    new_point[1] = -point[0]
+    new_point[0] = point[1]
+    new_point[0] -= 29
+    new_point[1] += int(scene_info[1] / 2 * 100)
+    new_point[0] /= 100
+    new_point[1] /= 100
+    new_point[2] /= 100
+
+    return new_point
+
+
 def scale_config(config):
     for pos in config:
         for i in range(3):
@@ -583,93 +603,6 @@ def update_rac_val(rac, target_obj_mesh, obj_mesh_MCTS, obj_pos_MCTS):
     rac.obj_mesh = copy.deepcopy(list(obj_mesh_MCTS.values()))
     rac.obj_pos_list = copy.deepcopy(list(obj_pos_MCTS.values()))
     rac.obstacles_num = len(rac.obj_pos_list)
-
-def move_objs(gym, object_collision_files, gymapi, new_obj_pos_list):
-    objs_manager = fcl.DynamicAABBTreeCollisionManager()
-    objs_manager.setup()
-    obstacle_objs = []
-    GT_TARGET_POS = [np.random.uniform(0.20 + table_dims.x/2, table_dims.x),
-                     np.random.uniform(-table_dims.y/2 + 0.1, table_dims.y/2 - 0.2),
-                     table_dims.z + 0.08]
-    
-    for k in range(NUM_OF_OBJECTS):
-        object_pose = gymapi.Transform()
-        is_collision = True
-        # add target obj
-        if k == NUM_OF_OBJECTS - 1:
-            object_pose.p = gymapi.Vec3(GT_TARGET_POS[0], GT_TARGET_POS[1], GT_TARGET_POS[2])
-            file_path = object_collision_files[OBJ_FILE_IDX_LIST[-1]]
-            collision_mesh = obj_reader(asset_root + file_path)
-            collision_mesh.set_scale(object_scaling_factor[-1])
-            collision_mesh.add_offset(object_offset[OBJ_FILE_IDX_LIST[-1]])
-            verts, tris = collision_mesh.get_bounding_box_mesh()
-            temp_center = collision_mesh.get_center()
-            temp_bounding_box = collision_mesh.get_bounding_box()
-            m = fcl.BVHModel()
-            m.beginModel(len(verts), len(tris))
-            m.addSubModel(verts, tris)
-            m.endModel()
-            t = fcl.Transform(np.array(GT_TARGET_POS))
-            is_collision = False
-        # random selec obj location
-        while is_collision:
-            tx = np.random.uniform(0.35, table_dims.x + 0.2)
-            ty = np.random.uniform(-table_dims.y/2 + 0.1, table_dims.y/2 - 0.2)
-            tz = table_dims.z + 0.08
-            object_pose.p = gymapi.Vec3(tx, ty, tz)
-            file_path = object_collision_files[OBJ_FILE_IDX_LIST[k]]
-            collision_mesh = obj_reader(asset_root + file_path)
-            collision_mesh.set_scale(object_scaling_factor[k])
-            collision_mesh.add_offset(object_offset[OBJ_FILE_IDX_LIST[k]])
-            
-            verts, tris = collision_mesh.get_bounding_box_mesh()
-            temp_center = collision_mesh.get_center()
-            temp_bounding_box = collision_mesh.get_bounding_box()
-            # new obj
-            m = fcl.BVHModel()
-            m.beginModel(len(verts), len(tris))
-            m.addSubModel(verts, tris)
-            m.endModel()
-            t = fcl.Transform(np.array([tx,ty,tz]))
-            
-            # check collision
-            req = fcl.CollisionRequest()
-            rdata = fcl.CollisionData(request = req)
-            objs_manager.collide(fcl.CollisionObject(m, t), rdata, fcl.defaultCollisionCallback)
-            is_collision = rdata.result.is_collision # update collision status
-            if not is_collision:
-                    dist = np.sqrt((tx - GT_TARGET_POS[0])**2 + (ty - GT_TARGET_POS[1])**2)
-                    if dist <= 0.2:
-                        is_collision = True
-                        print("target contact recalc")
-                        continue
-                    for obj in new_obj_pos_list:
-                        dist = np.sqrt((tx - obj[0])**2 + (ty - obj[1])**2)
-                        if dist <= 0.16:
-                            is_collision = True
-                            print("recalc")
-                            continue
-        new_obj_pos_list.append([object_pose.p.x, object_pose.p.y])
-        object_handles.append(gym.create_actor(envs[-1], 
-                                            object_assets[OBJ_FILE_IDX_LIST[k]], 
-                                            object_pose, 
-                                            "object" + str(k) + str(i), 0, 2**(k+1), k+1))
-        gym.set_actor_scale(envs[-1], object_handles[-1], object_scaling_factor[k])
-        object_reader_tracker.append(collision_mesh)
-        object_status_list.append([temp_center, temp_bounding_box])
-        object_collision_lib.append(m)
-        obstacle_objs.append(fcl.CollisionObject(m, t))
-        objs_manager.registerObjects(obstacle_objs)
-        objs_manager.setup()
-    
-    #set up global camera to record configuration
-    body_cam_handles.append(gym.create_camera_sensor(envs[-1], camera_props))
-    viewpoint_candidate = gymapi.Vec3(3, 0, 0.3)
-    gym.set_camera_location(body_cam_handles[-1], envs[-1], 
-                            viewpoint_candidate, 
-                            camera_focus)
-
-    return
 
 #*************************************************************************************************#
 
@@ -1008,10 +941,88 @@ if __name__ == '__main__':
         objs_manager.setup()
         obstacle_objs = []
         GT_OBJ_POS_LIST = []
+        GT_OBJ_MESH_LIST = []
         GT_TARGET_POS = [np.random.uniform(0.20 + table_dims.x/2, table_dims.x),
                          np.random.uniform(-table_dims.y/2 + 0.1, table_dims.y/2 - 0.2),
                          table_dims.z + 0.08]
+        
+        # init setup
+        ik_solver2 = IK("base_link", "wrist_3_link", urdf_string = urdf_str)
+        target_quat = gymapi.Quat(0.446, 0.560, -0.433, 0.549)
+        converted_quat = quaternion_multiply(gymapi.Quat(-math.sqrt(2)/2, 0, 0, math.sqrt(2)/2), target_quat)
+        file_path = '../assets/urdf/ur5e/meshes/collision/'
+        scene_info = [table_dims.x, table_dims.y, table_dims.z, 0.5]
+        MAX_HEIGHT = get_max_height(asset_root, object_asset_files, OBJ_FILE_IDX_LIST)
+        rac = RC.robot_arm_configuration(file_path, np.array([ur5e_pose.p.x, ur5e_pose.p.y, ur5e_pose.p.z]), scene_info)
+        target_obj_pos = copy.deepcopy(GT_TARGET_POS)
+        with open(asset_root + "urdf/ycb/object_urdf_grasp.txt") as f:
+            for idx, line in enumerate(f):
+                if idx != target_file_idx[0]:
+                    continue
+                i = line.find('/')
+                print(idx)
+                obj_name = asset_root + object_common_prefix + line[:i] + '/textured_vhacd.obj'
 
+        target_obj_mesh = obj_reader(obj_name)
+        target_obj_mesh.add_offset([target_obj_pos[0], target_obj_pos[1], 0.1])
+        target_obj_mesh = [target_obj_mesh.get_vertices(), target_obj_mesh.get_faces()]
+
+        # read grasp data
+        grasp_file = "/".join(obj_name.split('/')[:-1]) + "/grasp_dict.npy"
+        grasp_data = np.load(grasp_file, allow_pickle=True)
+        # generate swept volume
+        num_grasp = 0
+        swept_size = sys.maxsize
+        grasp_list = np.arange(len(grasp_data))
+        np.random.shuffle(np.arange(len(grasp_list)))
+        rac.target_mesh = target_obj_mesh
+        get_out = False
+        while num_grasp == 0:
+            skip_grasp = 0
+            for grasp_idx in grasp_list[:20]:
+                target_grasp_pos = grasp_data[grasp_idx]['target_pos']
+                target_grasp_quat = grasp_data[grasp_idx]['target_quat']
+                target_grasp_pos[:2] = target_grasp_pos[:2] + target_obj_pos[:2]
+                init2grasp_angels_temp = rac.grasp_verify(target_grasp_pos, target_grasp_quat)
+                grasp2init_angels_temp = rac.grasp_verify(target_grasp_pos + [0,0,0.01], target_grasp_quat)
+                if init2grasp_angels_temp is None or grasp2init_angels_temp is None:
+                    skip_grasp += 1
+                    assert skip_grasp < 15, "imposible grasp"
+                    print("skip imposible grasp")
+                    continue
+                # rac.check_collision_models(init2grasp_angels_temp, scene_info=scene_info)
+
+                init2grasp_path_temp = RC.get_path2grasp(rac, init2grasp_angels_temp, scene_info, target_mesh=target_obj_mesh, time_limit=30)
+                temp_mod_bbox = rac.modify_grasp_bbox(init2grasp_angels_temp, target_obj_mesh, visualize=False)
+                grasp2init_path_temp = RC.get_path2start(rac, grasp2init_angels_temp, temp_mod_bbox, scene_info, time_limit=30)
+                if init2grasp_path_temp is None or grasp2init_path_temp is None:
+                    print("No path generated\n")
+                    continue
+                swept_volume1_temp, swept_verts1_temp = rac.get_swept_volume(init2grasp_path_temp, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
+                swept_volume2_temp, swept_verts2_temp = rac.get_swept_volume(grasp2init_path_temp, w_target=temp_mod_bbox, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
+                num_grasp += 1
+                is_target_detected = True
+                print("\n----------grasp---------------\n")
+
+                # compare swept volumes
+                swept_center_temp, swept_verts_temp = rac.get_swept_center(swept_verts1_temp+swept_verts2_temp, scene_info, MAX_HEIGHT)
+                temp_swept_size = get_swept_volume_size(swept_verts_temp)
+                if temp_swept_size < swept_size:
+                    swept_size = temp_swept_size
+                    MAIN_swept_volume1 = swept_volume1_temp
+                    MAIN_swept_volume2 = swept_volume2_temp
+                    init2grasp_path = init2grasp_path_temp
+                    grasp2init_path = grasp2init_path_temp
+                    swept_center = swept_center_temp
+                    swept_verts = swept_verts_temp
+                    W_TARGET = temp_mod_bbox
+                if num_grasp == 5:
+                    break
+            if num_grasp > 0:
+                break
+
+        s_time = time.time()
+        num_in_swept = 0
         for k in range(NUM_OF_OBJECTS):
             object_pose = gymapi.Transform()
             is_collision = True
@@ -1047,6 +1058,7 @@ if __name__ == '__main__':
                 collision_mesh = obj_reader(asset_root + file_path)
                 collision_mesh.set_scale(object_scaling_factor[k])
                 collision_mesh.add_offset(object_offset[OBJ_FILE_IDX_LIST[k]])
+                collision_mesh.add_offset([tx,ty,tz])
                 
                 verts, tris = collision_mesh.get_bounding_box_mesh()
                 temp_center = collision_mesh.get_center()
@@ -1057,30 +1069,44 @@ if __name__ == '__main__':
                 m.beginModel(len(verts), len(tris))
                 m.addSubModel(verts, tris)
                 m.endModel()
-                t = fcl.Transform(np.array([tx,ty,tz]))
+                # t = fcl.Transform(np.array([tx,ty,tz]))
+                t = fcl.Transform()
                 
 
                 # check collision
                 req = fcl.CollisionRequest()
                 rdata = fcl.CollisionData(request = req)
                 objs_manager.collide(fcl.CollisionObject(m, t), rdata, fcl.defaultCollisionCallback)
-
                 is_collision = rdata.result.is_collision # update collision status
 
+                MAIN_swept_volume1.collide(fcl.CollisionObject(m, t), rdata, fcl.defaultCollisionCallback)
+                is_collision_swept1 = rdata.result.is_collision
+                MAIN_swept_volume2.collide(fcl.CollisionObject(m, t), rdata, fcl.defaultCollisionCallback)
+                is_collision_swept2 = rdata.result.is_collision
+
                 if not is_collision:
-                        dist = np.sqrt((tx - GT_TARGET_POS[0])**2 + (ty - GT_TARGET_POS[1])**2)
-                        if dist <= 0.2:
+                    dist = np.sqrt((tx - GT_TARGET_POS[0])**2 + (ty - GT_TARGET_POS[1])**2)
+                    if dist <= 0.2:
+                        is_collision = True
+                        print("target contact recalc")
+                        continue
+
+                    for obj in GT_OBJ_POS_LIST:
+                        dist = np.sqrt((tx - obj[0])**2 + (ty - obj[1])**2)
+                        if dist <= 0.16:
                             is_collision = True
-                            print("target contact recalc")
+                            print("recalc")
                             continue
 
-                        for obj in GT_OBJ_POS_LIST:
-                            dist = np.sqrt((tx - obj[0])**2 + (ty - obj[1])**2)
-                            if dist <= 0.16:
-                                is_collision = True
-                                print("recalc")
-                                continue
-
+                    if not is_collision_swept1 and not is_collision_swept2 and num_in_swept < NUM_SWEPT_COLLISION:
+                        is_collision = True
+                        assert time.time() - s_time < 60, "time out"
+                        continue
+            
+            if is_collision_swept1 or is_collision_swept2 and k != NUM_OF_OBJECTS - 1:
+                num_in_swept += 1
+            
+            GT_OBJ_MESH_LIST.append([verts, tris])
             GT_OBJ_POS_LIST.append([object_pose.p.x, object_pose.p.y])
 
             object_handles.append(gym.create_actor(envs[-1], 
@@ -1101,6 +1127,7 @@ if __name__ == '__main__':
         gym.set_camera_location(body_cam_handles[-1], envs[-1], 
                                 viewpoint_candidate, 
                                 camera_focus)
+        
 
     #*************************************************************************************************#
 
@@ -1168,16 +1195,6 @@ if __name__ == '__main__':
         gym.sync_frame_time(sim)
     #*************************************************************************************************#
 
-    ik_solver2 = IK("base_link", "wrist_3_link", urdf_string = urdf_str)
-
-    target_quat = gymapi.Quat(0.446, 0.560, -0.433, 0.549)
-    converted_quat = quaternion_multiply(gymapi.Quat(-math.sqrt(2)/2, 0, 0, math.sqrt(2)/2), target_quat)
-    file_path = '../assets/urdf/ur5e/meshes/collision/'
-
-    scene_info = [table_dims.x, table_dims.y, table_dims.z, 0.5]
-    obstacle_files = asset_root + "urdf/ycb/002_master_chef_can/textured_vhacd.obj"
-    rac = RC.robot_arm_configuration(file_path, np.array([ur5e_pose.p.x, ur5e_pose.p.y, ur5e_pose.p.z]), scene_info)
-
     seed_state = [0.0]*ik_solver2.number_of_joints
     dof_result = None
     trial = 0
@@ -1230,7 +1247,10 @@ if __name__ == '__main__':
     saved_scene_vertices = None
     saved_scene_faces = None
     ML_MCTS_ins = mct.multi_level_MCTS_algo(None, None, scene_info=scene_info, swept_volume1=None, swept_volume2=None, obj_mesh=rac.obj_mesh)
-    scene = global_scene(1.0, 1.2, 0.85, np.array([0.3, -0.6, 0.05]), table_dims.x, table_dims.y - 0.04, drawer_height, table_dims.z - 0.05)
+    OFFSET = np.array([0.3, -0.6, 0.05])
+    scene = global_scene(1.0, 1.2, 0.85, OFFSET, table_dims.x, table_dims.y - 0.04, drawer_height, table_dims.z - 0.05)
+    ML_MCTS_ins.swept_volume1 = MAIN_swept_volume1
+    ML_MCTS_ins.swept_volume2 = MAIN_swept_volume2
     #active sensing here
     obj_pos_MCTS = {}
     obj_mesh_MCTS = {}
@@ -1246,8 +1266,8 @@ if __name__ == '__main__':
     is_cluster_covered = False
     run_mcts = False
     mcts_out_angle = None
-    init2grasp_path = None
-    grasp2init_path = None
+    # init2grasp_path = None
+    # grasp2init_path = None
     start_time = time.time()
     while not gym.query_viewer_has_closed(viewer):
         if is_target_detected:
@@ -1315,84 +1335,51 @@ if __name__ == '__main__':
                             pc_extractor_grasp(new_rgb_image, new_depth_image, new_seg_image, new_cam_rotation, new_cam_translation, object_dict, table_dims.z)
                             
                             for i in object_dict:
-                                mask = new_seg_image == 1
-                                temp_seg_image = copy.deepcopy(new_seg_image)
-                                mask = new_seg_image == i
-                                temp_seg_image[~mask] = 0
-                                temp_seg_image[mask] = 1
-                                point_cloud, pcd = RC.write_to_pointcloud(new_rgb_image, new_depth_image, temp_seg_image, new_cam_rotation, new_cam_translation, visualization=False)
-                                if i in obj_pcd.keys():
-                                    obj_pcd[i] += pcd
-                                else:
-                                    obj_pcd[i] = pcd
-                                # find matching object mesh file
-                                downpcd = obj_pcd[i].voxel_down_sample(voxel_size=0.005) # downsampe pcd
-                                # downpcd = obj_pcd[i]
                                 if i != NUM_OF_OBJECTS:
-                                    # obstacle object matching
-                                    obstacle_obj_mesh, obj_pos, dist, obj_name = RC.get_matching_mesh(downpcd, OBSTACLE_OBJ_INDEX, visualize=False)
-                                    obj_pos = obj_pos - object_offset[OBJ_FILE_IDX_LIST[i-1]]
-                                    if dist < 3:
-                                        print("idx",i,"mesh added")
-                                        obj_pos_MCTS[i] = obj_pos[0:2].tolist()
-                                        obj_mesh_MCTS[i] = obstacle_obj_mesh
-                                        dy = obj_pos_MCTS[i][1] - GT_OBJ_POS_LIST[i-1][1]
-                                        dx = obj_pos_MCTS[i][0] - GT_OBJ_POS_LIST[i-1][0]
-                                        print("diff:", np.sqrt(dy**2 + dx**2), "dist", dist, '\n')
+                                    obj_pos_MCTS[i-1] = GT_OBJ_POS_LIST[i-1]
+                                    obj_mesh_MCTS[i-1] = GT_OBJ_MESH_LIST[i-1]
                                 else:
-                                    # target obj matching
-                                    temp_target_obj_mesh, temp_target_obj_pos, dist, obj_name = RC.get_matching_mesh(downpcd, TARGET_OBJ_INDEX, visualize=False)
-                                    temp_target_obj_pos = temp_target_obj_pos - object_offset[OBJ_FILE_IDX_LIST[i-1]]
-                                    if dist < 3:
-                                        print("idx",i,"mesh added")
-                                        target_obj_mesh = copy.deepcopy(temp_target_obj_mesh)
-                                        target_obj_pos = copy.deepcopy(temp_target_obj_pos[0:2].tolist())
-                                        dy = target_obj_pos[1] - GT_OBJ_POS_LIST[i-1][1]
-                                        dx = target_obj_pos[0] - GT_OBJ_POS_LIST[i-1][0]
-                                        print("diff:", np.sqrt(dy**2 + dx**2), "dist", dist, '\n')
-                                    if not is_target_detected and dist < 3:
-                                        # read grasp data
-                                        grasp_file = "/".join(obj_name.split('/')[:5]) + "/grasp_dict.npy"
-                                        grasp_data = np.load(grasp_file, allow_pickle=True)
-                                        # generate swept volume
-                                        num_grasp = 0
-                                        swept_size = sys.maxsize
-                                        grasp_list = np.arange(len(grasp_data))
-                                        np.random.shuffle(np.arange(len(grasp_list)))
-                                        for grasp_idx in grasp_list[:20]:
-                                            target_grasp_pos = grasp_data[grasp_idx]['target_pos']
-                                            target_grasp_quat = grasp_data[grasp_idx]['target_quat']
-                                            target_grasp_pos[:2] = target_grasp_pos[:2] + target_obj_pos[:2]
-                                            init2grasp_angels_temp = rac.grasp_verify(target_grasp_pos, target_grasp_quat)
-                                            grasp2init_angels_temp = rac.grasp_verify(target_grasp_pos + [0,0,0.01], target_grasp_quat)
-                                            if init2grasp_angels_temp is None or grasp2init_angels_temp is None:
-                                                print("skip imposible grasp")
-                                                continue
-                                            init2grasp_path_temp = RC.get_path2grasp(rac, init2grasp_angels_temp, scene_info, target_mesh=target_obj_mesh, time_limit=30)
-                                            temp_mod_bbox = rac.modify_grasp_bbox(init2grasp_angels_temp, target_obj_mesh, visualize=False)
-                                            grasp2init_path_temp = RC.get_path2start(rac, grasp2init_angels_temp, temp_mod_bbox, scene_info, time_limit=30)
-                                            if init2grasp_path_temp is None or grasp2init_path_temp is None:
-                                                print("No path generated\n")
-                                                continue
-                                            swept_volume1_temp, swept_verts1_temp = rac.get_swept_volume(init2grasp_path_temp, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
-                                            swept_volume2_temp, swept_verts2_temp = rac.get_swept_volume(grasp2init_path_temp, w_target=temp_mod_bbox, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
-                                            num_grasp += 1
-                                            is_target_detected = True
-                                            # compare swept volumes
-                                            swept_center_temp, swept_verts_temp = rac.get_swept_center(swept_verts1_temp+swept_verts2_temp, scene_info, MAX_HEIGHT)
-                                            temp_swept_size = get_swept_volume_size(swept_verts_temp)
-                                            if temp_swept_size < swept_size:
-                                                swept_size = temp_swept_size
-                                                ML_MCTS_ins.swept_volume1 = swept_volume1_temp
-                                                ML_MCTS_ins.swept_volume2 = swept_volume2_temp
-                                                init2grasp_path = init2grasp_path_temp
-                                                grasp2init_path = grasp2init_path_temp
-                                                swept_center = swept_center_temp
-                                                swept_verts = swept_verts_temp
-                                                W_TARGET = temp_mod_bbox
-                                            if num_grasp == 5:
-                                                break
-                                        print("\n!!!!!!!!!!!!!!!!!!!", num_grasp ,'grasp generated!!!!!!!!!!!!!!!!!!!!!!!\n')
+                                    target_obj_pos = GT_OBJ_POS_LIST[i-1]
+                                    target_obj_mesh = GT_OBJ_MESH_LIST[i-1]
+                                    is_target_detected = True
+                                
+                                # mask = new_seg_image == 1
+                                # temp_seg_image = copy.deepcopy(new_seg_image)
+                                # mask = new_seg_image == i
+                                # temp_seg_image[~mask] = 0
+                                # temp_seg_image[mask] = 1
+                                # point_cloud, pcd = RC.write_to_pointcloud(new_rgb_image, new_depth_image, temp_seg_image, new_cam_rotation, new_cam_translation, visualization=False)
+                                # if i in obj_pcd.keys():
+                                #     obj_pcd[i] += pcd
+                                # else:
+                                #     obj_pcd[i] = pcd
+                                # # find matching object mesh file
+                                # downpcd = obj_pcd[i].voxel_down_sample(voxel_size=0.005) # downsampe pcd
+
+                                # if i != NUM_OF_OBJECTS:
+                                #     # obstacle object matching
+                                #     obstacle_obj_mesh, obj_pos, dist, obj_name = RC.get_matching_mesh(downpcd, OBSTACLE_OBJ_INDEX, visualize=False)
+                                #     obj_pos = obj_pos - object_offset[OBJ_FILE_IDX_LIST[i-1]]
+                                #     if dist < 3:
+                                #         print("idx",i,"mesh added")
+                                #         obj_pos_MCTS[i] = obj_pos[0:2].tolist()
+                                #         obj_mesh_MCTS[i] = obstacle_obj_mesh
+                                #         dy = obj_pos_MCTS[i][1] - GT_OBJ_POS_LIST[i-1][1]
+                                #         dx = obj_pos_MCTS[i][0] - GT_OBJ_POS_LIST[i-1][0]
+                                #         print("diff:", np.sqrt(dy**2 + dx**2), "dist", dist, '\n')
+                                # else:
+                                #     # target obj matching
+                                #     temp_target_obj_mesh, temp_target_obj_pos, dist, obj_name = RC.get_matching_mesh(downpcd, TARGET_OBJ_INDEX, visualize=False)
+                                #     temp_target_obj_pos = temp_target_obj_pos - object_offset[OBJ_FILE_IDX_LIST[i-1]]
+                                #     if dist < 3:
+                                #         print("idx",i,"mesh added")
+                                #         target_obj_mesh = copy.deepcopy(temp_target_obj_mesh)
+                                #         target_obj_pos = copy.deepcopy(temp_target_obj_pos[0:2].tolist())
+                                #         dy = target_obj_pos[1] - GT_OBJ_POS_LIST[i-1][1]
+                                #         dx = target_obj_pos[0] - GT_OBJ_POS_LIST[i-1][0]
+                                #         print("diff:", np.sqrt(dy**2 + dx**2), "dist", dist, '\n')
+                                #         is_target_detected = True
+
                             _ = scene.register_camera_view(list(new_cam_rotation), list(new_cam_translation), new_depth_image, object_dict)
                             if is_target_detected:
                                 coverage_score, _ = swept_coverage_check(scene, swept_verts, rac, scene_info, MAX_HEIGHT)
@@ -1519,7 +1506,7 @@ if __name__ == '__main__':
     MAIN_cam_time = copy.deepcopy(cam_time)
 
     # ------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
+    
     print("\n\n--------------------------- init W swept ---------------------------")
     seed_state = [0.0]*ik_solver2.number_of_joints
     dof_result = None
@@ -1650,101 +1637,109 @@ if __name__ == '__main__':
                             pc_extractor_grasp(new_rgb_image, new_depth_image, new_seg_image, new_cam_rotation, new_cam_translation, object_dict, table_dims.z)
                             
                             for i in object_dict:
-                                mask = new_seg_image == 1
-                                temp_seg_image = copy.deepcopy(new_seg_image)
-                                mask = new_seg_image == i
-                                temp_seg_image[~mask] = 0
-                                temp_seg_image[mask] = 1
-
-                                point_cloud, pcd = RC.write_to_pointcloud(new_rgb_image, new_depth_image, temp_seg_image, new_cam_rotation, new_cam_translation, visualization=False)
-                                if i in obj_pcd.keys():
-                                    obj_pcd[i] += pcd
-                                else:
-                                    obj_pcd[i] = pcd
-
-                                # find matching object mesh file
-                                downpcd = obj_pcd[i].voxel_down_sample(voxel_size=0.005) # downsampe pcd
-                                # downpcd = obj_pcd[i]
-
                                 if i != NUM_OF_OBJECTS:
-                                    # obstacle object matching
-                                    obstacle_obj_mesh, obj_pos, dist, obj_name = RC.get_matching_mesh(downpcd, OBSTACLE_OBJ_INDEX, visualize=False)
-                                    obj_pos = obj_pos - object_offset[OBJ_FILE_IDX_LIST[i-1]]
-
-                                    if dist < 3:
-                                        print("idx",i,"mesh added")
-                                        obj_pos_MCTS[i] = obj_pos[0:2].tolist()
-                                        obj_mesh_MCTS[i] = obstacle_obj_mesh
-
-                                        dy = obj_pos_MCTS[i][1] - GT_OBJ_POS_LIST[i-1][1]
-                                        dx = obj_pos_MCTS[i][0] - GT_OBJ_POS_LIST[i-1][0]
-                                        print("diff:", np.sqrt(dy**2 + dx**2), "dist", dist, '\n')
+                                    obj_pos_MCTS[i-1] = GT_OBJ_POS_LIST[i-1]
+                                    obj_mesh_MCTS[i-1] = GT_OBJ_MESH_LIST[i-1]
                                 else:
-                                    # target obj matching
-                                    temp_target_obj_mesh, temp_target_obj_pos, dist, obj_name = RC.get_matching_mesh(downpcd, TARGET_OBJ_INDEX, visualize=False)
-                                    temp_target_obj_pos = temp_target_obj_pos - object_offset[OBJ_FILE_IDX_LIST[i-1]]
+                                    target_obj_pos = GT_OBJ_POS_LIST[i-1]
+                                    target_obj_mesh = GT_OBJ_MESH_LIST[i-1]
+                                    is_target_detected = True
 
-                                    if dist < 3:
-                                        print("idx",i,"mesh added")
-                                        target_obj_mesh = copy.deepcopy(temp_target_obj_mesh)
-                                        target_obj_pos = copy.deepcopy(temp_target_obj_pos[0:2].tolist())
+                                # mask = new_seg_image == 1
+                                # temp_seg_image = copy.deepcopy(new_seg_image)
+                                # mask = new_seg_image == i
+                                # temp_seg_image[~mask] = 0
+                                # temp_seg_image[mask] = 1
 
-                                        dy = target_obj_pos[1] - GT_OBJ_POS_LIST[i-1][1]
-                                        dx = target_obj_pos[0] - GT_OBJ_POS_LIST[i-1][0]
-                                        print("diff:", np.sqrt(dy**2 + dx**2), "dist", dist, '\n')
+                                # point_cloud, pcd = RC.write_to_pointcloud(new_rgb_image, new_depth_image, temp_seg_image, new_cam_rotation, new_cam_translation, visualization=False)
+                                # if i in obj_pcd.keys():
+                                #     obj_pcd[i] += pcd
+                                # else:
+                                #     obj_pcd[i] = pcd
 
-                                    if not is_target_detected and dist < 3:
-                                        # read grasp data
-                                        grasp_file = "/".join(obj_name.split('/')[:5]) + "/grasp_dict.npy"
-                                        grasp_data = np.load(grasp_file, allow_pickle=True)
+                                # # find matching object mesh file
+                                # downpcd = obj_pcd[i].voxel_down_sample(voxel_size=0.005) # downsampe pcd
+                                # # downpcd = obj_pcd[i]
 
-                                        # generate swept volume
-                                        num_grasp = 0
-                                        swept_size = sys.maxsize
-                                        grasp_list = np.arange(len(grasp_data))
-                                        np.random.shuffle(np.arange(len(grasp_list)))
+                                # if i != NUM_OF_OBJECTS:
+                                #     # obstacle object matching
+                                #     obstacle_obj_mesh, obj_pos, dist, obj_name = RC.get_matching_mesh(downpcd, OBSTACLE_OBJ_INDEX, visualize=False)
+                                #     obj_pos = obj_pos - object_offset[OBJ_FILE_IDX_LIST[i-1]]
 
-                                        for grasp_idx in grasp_list[:20]:
-                                            target_grasp_pos = grasp_data[grasp_idx]['target_pos']
-                                            target_grasp_quat = grasp_data[grasp_idx]['target_quat']
-                                            target_grasp_pos[:2] = target_grasp_pos[:2] + target_obj_pos[:2]
+                                #     if dist < 3:
+                                #         print("idx",i,"mesh added")
+                                #         obj_pos_MCTS[i] = obj_pos[0:2].tolist()
+                                #         obj_mesh_MCTS[i] = obstacle_obj_mesh
 
-                                            init2grasp_angels_temp = rac.grasp_verify(target_grasp_pos, target_grasp_quat)
-                                            grasp2init_angels_temp = rac.grasp_verify(target_grasp_pos + [0,0,0.01], target_grasp_quat)
+                                #         dy = obj_pos_MCTS[i][1] - GT_OBJ_POS_LIST[i-1][1]
+                                #         dx = obj_pos_MCTS[i][0] - GT_OBJ_POS_LIST[i-1][0]
+                                #         print("diff:", np.sqrt(dy**2 + dx**2), "dist", dist, '\n')
+                                # else:
+                                #     # target obj matching
+                                #     temp_target_obj_mesh, temp_target_obj_pos, dist, obj_name = RC.get_matching_mesh(downpcd, TARGET_OBJ_INDEX, visualize=False)
+                                #     temp_target_obj_pos = temp_target_obj_pos - object_offset[OBJ_FILE_IDX_LIST[i-1]]
 
-                                            if init2grasp_angels_temp is None or grasp2init_angels_temp is None:
-                                                print("skip imposible grasp")
-                                                continue
+                                #     if dist < 3:
+                                #         print("idx",i,"mesh added")
+                                #         target_obj_mesh = copy.deepcopy(temp_target_obj_mesh)
+                                #         target_obj_pos = copy.deepcopy(temp_target_obj_pos[0:2].tolist())
 
-                                            init2grasp_path_temp = RC.get_path2grasp(rac, init2grasp_angels_temp, scene_info, target_mesh=target_obj_mesh, time_limit=30)
-                                            temp_mod_bbox = rac.modify_grasp_bbox(init2grasp_angels_temp, target_obj_mesh, visualize=False)
-                                            grasp2init_path_temp = RC.get_path2start(rac, grasp2init_angels_temp, temp_mod_bbox, scene_info, time_limit=30)
+                                #         dy = target_obj_pos[1] - GT_OBJ_POS_LIST[i-1][1]
+                                #         dx = target_obj_pos[0] - GT_OBJ_POS_LIST[i-1][0]
+                                #         print("diff:", np.sqrt(dy**2 + dx**2), "dist", dist, '\n')
 
-                                            if init2grasp_path_temp is None or grasp2init_path_temp is None:
-                                                print("No path generated\n")
-                                                continue
+                                #     if not is_target_detected and dist < 3:
+                                #         # read grasp data
+                                #         grasp_file = "/".join(obj_name.split('/')[:5]) + "/grasp_dict.npy"
+                                #         grasp_data = np.load(grasp_file, allow_pickle=True)
 
-                                            swept_volume1_temp, swept_verts1_temp = rac.get_swept_volume(init2grasp_path_temp, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
-                                            swept_volume2_temp, swept_verts2_temp = rac.get_swept_volume(grasp2init_path_temp, w_target=temp_mod_bbox, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
-                                            num_grasp += 1
-                                            is_target_detected = True
+                                #         # generate swept volume
+                                #         num_grasp = 0
+                                #         swept_size = sys.maxsize
+                                #         grasp_list = np.arange(len(grasp_data))
+                                #         np.random.shuffle(np.arange(len(grasp_list)))
 
-                                            # compare swept volumes
-                                            swept_center_temp, swept_verts_temp = rac.get_swept_center(swept_verts1_temp+swept_verts2_temp, scene_info, MAX_HEIGHT)
-                                            temp_swept_size = get_swept_volume_size(swept_verts_temp)
-                                            if temp_swept_size < swept_size:
-                                                swept_size = temp_swept_size
-                                                ML_MCTS_ins.swept_volume1 = swept_volume1_temp
-                                                ML_MCTS_ins.swept_volume2 = swept_volume2_temp
-                                                init2grasp_path = init2grasp_path_temp
-                                                grasp2init_path = grasp2init_path_temp
-                                                swept_center = swept_center_temp
-                                                swept_verts = swept_verts_temp
-                                                W_TARGET = temp_mod_bbox
+                                #         for grasp_idx in grasp_list[:20]:
+                                #             target_grasp_pos = grasp_data[grasp_idx]['target_pos']
+                                #             target_grasp_quat = grasp_data[grasp_idx]['target_quat']
+                                #             target_grasp_pos[:2] = target_grasp_pos[:2] + target_obj_pos[:2]
 
-                                            if num_grasp == 5:
-                                                break
-                                        print("\n!!!!!!!!!!!!!!!!!!!", num_grasp ,'grasp generated!!!!!!!!!!!!!!!!!!!!!!!\n')
+                                #             init2grasp_angels_temp = rac.grasp_verify(target_grasp_pos, target_grasp_quat)
+                                #             grasp2init_angels_temp = rac.grasp_verify(target_grasp_pos + [0,0,0.01], target_grasp_quat)
+
+                                #             if init2grasp_angels_temp is None or grasp2init_angels_temp is None:
+                                #                 print("skip imposible grasp")
+                                #                 continue
+
+                                #             init2grasp_path_temp = RC.get_path2grasp(rac, init2grasp_angels_temp, scene_info, target_mesh=target_obj_mesh, time_limit=30)
+                                #             temp_mod_bbox = rac.modify_grasp_bbox(init2grasp_angels_temp, target_obj_mesh, visualize=False)
+                                #             grasp2init_path_temp = RC.get_path2start(rac, grasp2init_angels_temp, temp_mod_bbox, scene_info, time_limit=30)
+
+                                #             if init2grasp_path_temp is None or grasp2init_path_temp is None:
+                                #                 print("No path generated\n")
+                                #                 continue
+
+                                #             swept_volume1_temp, swept_verts1_temp = rac.get_swept_volume(init2grasp_path_temp, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
+                                #             swept_volume2_temp, swept_verts2_temp = rac.get_swept_volume(grasp2init_path_temp, w_target=temp_mod_bbox, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
+                                #             num_grasp += 1
+                                #             is_target_detected = True
+
+                                #             # compare swept volumes
+                                #             swept_center_temp, swept_verts_temp = rac.get_swept_center(swept_verts1_temp+swept_verts2_temp, scene_info, MAX_HEIGHT)
+                                #             temp_swept_size = get_swept_volume_size(swept_verts_temp)
+                                #             if temp_swept_size < swept_size:
+                                #                 swept_size = temp_swept_size
+                                #                 ML_MCTS_ins.swept_volume1 = swept_volume1_temp
+                                #                 ML_MCTS_ins.swept_volume2 = swept_volume2_temp
+                                #                 init2grasp_path = init2grasp_path_temp
+                                #                 grasp2init_path = grasp2init_path_temp
+                                #                 swept_center = swept_center_temp
+                                #                 swept_verts = swept_verts_temp
+                                #                 W_TARGET = temp_mod_bbox
+
+                                #             if num_grasp == 5:
+                                #                 break
+                                #         print("\n!!!!!!!!!!!!!!!!!!!", num_grasp ,'grasp generated!!!!!!!!!!!!!!!!!!!!!!!\n')
 
                             _ = scene.register_camera_view(list(new_cam_rotation), list(new_cam_translation), new_depth_image, object_dict)
 
@@ -1897,7 +1892,7 @@ if __name__ == '__main__':
         gym.step_graphics(sim)
         gym.draw_viewer(viewer, sim, True)
         gym.sync_frame_time(sim)
-
+    
     # -----------------------------------------------------------------------------------------------------------------------------------------------------
 
     print("\n\n--------------------------- init W feed back ---------------------------")
@@ -1995,7 +1990,7 @@ if __name__ == '__main__':
                     min_num_collision = sys.maxsize
                     max_node = None
                     for child in child_node_list:
-                        if len(child.check_collision_w_swept()) < min_num_collision:
+                        if len(child.check_collision_w_swept()) < min_num_collision and len(child.check_collision_w_swept()) != 0:
                             max_node = child
                             max_reward = child.reward_
                         elif len(child.check_collision_w_swept()) == min_num_collision:
@@ -2037,18 +2032,21 @@ if __name__ == '__main__':
                             max_region_count = total_new_region
                             max_region_idx = cluster_idx
 
-                    mcts_out_angle = RC.cal_cam_angle_for_area(potential_center_cluster[max_region_idx], ML_MCTS_ins.curr_config_ + [target_pos_MCT], scene_info, visualize=False)
-                    while mcts_out_angle is None and len(potential_center_cluster) != 0:
-                        max_region_idx = np.random.randint(len(potential_center_cluster))
-                        mcts_out_angle = RC.cal_cam_angle_for_area(potential_center_cluster[max_region_idx], ML_MCTS_ins.curr_config_ + [target_pos_MCT], scene_info, visualize=False)
+                    try:
+                        mcts_out_angle = RC.cal_cam_angle_for_area(valid_area_cluster[max_region_idx], ML_MCTS_ins.curr_config_ + [target_pos_MCT], scene_info, visualize=False)
+                    except:
+                        pdb.set_trace()
+                    while mcts_out_angle is None and len(valid_area_cluster) != 0:
+                        max_region_idx = np.random.randint(len(valid_area_cluster))
+                        mcts_out_angle = RC.cal_cam_angle_for_area(valid_area_cluster[max_region_idx], ML_MCTS_ins.curr_config_ + [target_pos_MCT], scene_info, visualize=False)
                         if mcts_out_angle is None:
-                            potential_center_cluster.pop(max_region_idx)
+                            valid_area_cluster.pop(max_region_idx)
 
-                    if len(potential_center_cluster) == 0:
+                    if len(valid_area_cluster) == 0:
                         print("------ RUN FAILED WITH UNOBSERVABLE AREA ------")
                         break
 
-                    mcts_selected_cluster = potential_center_cluster[max_region_idx]
+                    mcts_selected_cluster = valid_area_cluster[max_region_idx]
                     run_mcts = False
                     cam_time += time.time() - cam_time_start
 
@@ -2096,102 +2094,109 @@ if __name__ == '__main__':
                             pc_extractor_grasp(new_rgb_image, new_depth_image, new_seg_image, new_cam_rotation, new_cam_translation, object_dict, table_dims.z)
                             
                             for i in object_dict:
-                                mask = new_seg_image == 1
-                                temp_seg_image = copy.deepcopy(new_seg_image)
-                                mask = new_seg_image == i
-                                temp_seg_image[~mask] = 0
-                                temp_seg_image[mask] = 1
-
-                                point_cloud, pcd = RC.write_to_pointcloud(new_rgb_image, new_depth_image, temp_seg_image, new_cam_rotation, new_cam_translation, visualization=False)
-                                if i in obj_pcd.keys():
-                                    obj_pcd[i] += pcd
-                                else:
-                                    obj_pcd[i] = pcd
-
-                                # find matching object mesh file
-                                downpcd = obj_pcd[i].voxel_down_sample(voxel_size=0.005) # downsampe pcd
-                                # downpcd = obj_pcd[i]
-
                                 if i != NUM_OF_OBJECTS:
-                                    # obstacle object matching
-                                    obstacle_obj_mesh, obj_pos, dist, obj_name = RC.get_matching_mesh(downpcd, OBSTACLE_OBJ_INDEX, visualize=False)
-                                    obj_pos = obj_pos - object_offset[OBJ_FILE_IDX_LIST[i-1]]
-
-                                    if dist < 3:
-                                        print("idx",i,"mesh added")
-                                        obj_pos_MCTS[i] = obj_pos[0:2].tolist()
-                                        obj_mesh_MCTS[i] = obstacle_obj_mesh
-
-                                        dy = obj_pos_MCTS[i][1] - GT_OBJ_POS_LIST[i-1][1]
-                                        dx = obj_pos_MCTS[i][0] - GT_OBJ_POS_LIST[i-1][0]
-                                        print("diff:", np.sqrt(dy**2 + dx**2), "dist", dist, '\n')
+                                    obj_pos_MCTS[i-1] = GT_OBJ_POS_LIST[i-1]
+                                    obj_mesh_MCTS[i-1] = GT_OBJ_MESH_LIST[i-1]
                                 else:
-                                    # target obj matching
-                                    temp_target_obj_mesh, temp_target_obj_pos, dist, obj_name = RC.get_matching_mesh(downpcd, TARGET_OBJ_INDEX, visualize=False)
-                                    temp_target_obj_pos = temp_target_obj_pos - object_offset[OBJ_FILE_IDX_LIST[i-1]]
+                                    target_obj_pos = GT_OBJ_POS_LIST[i-1]
+                                    target_obj_mesh = GT_OBJ_MESH_LIST[i-1]
+                                    is_target_detected = True
+                                # mask = new_seg_image == 1
+                                # temp_seg_image = copy.deepcopy(new_seg_image)
+                                # mask = new_seg_image == i
+                                # temp_seg_image[~mask] = 0
+                                # temp_seg_image[mask] = 1
 
-                                    if dist < 3:
-                                        print("idx",i,"mesh added")
-                                        target_obj_mesh = copy.deepcopy(temp_target_obj_mesh)
-                                        target_obj_pos = copy.deepcopy(temp_target_obj_pos[0:2].tolist())
+                                # point_cloud, pcd = RC.write_to_pointcloud(new_rgb_image, new_depth_image, temp_seg_image, new_cam_rotation, new_cam_translation, visualization=False)
+                                # if i in obj_pcd.keys():
+                                #     obj_pcd[i] += pcd
+                                # else:
+                                #     obj_pcd[i] = pcd
 
-                                        dy = target_obj_pos[1] - GT_OBJ_POS_LIST[i-1][1]
-                                        dx = target_obj_pos[0] - GT_OBJ_POS_LIST[i-1][0]
-                                        print("diff:", np.sqrt(dy**2 + dx**2), "dist", dist, '\n')
+                                # # find matching object mesh file
+                                # downpcd = obj_pcd[i].voxel_down_sample(voxel_size=0.005) # downsampe pcd
+                                # # downpcd = obj_pcd[i]
 
-                                    if not is_target_detected and dist < 3:
-                                        # read grasp data
-                                        grasp_file = "/".join(obj_name.split('/')[:5]) + "/grasp_dict.npy"
-                                        grasp_data = np.load(grasp_file, allow_pickle=True)
+                                # if i != NUM_OF_OBJECTS:
+                                #     # obstacle object matching
+                                #     obstacle_obj_mesh, obj_pos, dist, obj_name = RC.get_matching_mesh(downpcd, OBSTACLE_OBJ_INDEX, visualize=False)
+                                #     obj_pos = obj_pos - object_offset[OBJ_FILE_IDX_LIST[i-1]]
 
-                                        # generate swept volume
-                                        num_grasp = 0
-                                        swept_size = sys.maxsize
-                                        grasp_list = np.arange(len(grasp_data))
-                                        np.random.shuffle(np.arange(len(grasp_list)))
+                                #     if dist < 3:
+                                #         print("idx",i,"mesh added")
+                                #         obj_pos_MCTS[i] = obj_pos[0:2].tolist()
+                                #         obj_mesh_MCTS[i] = obstacle_obj_mesh
 
-                                        for grasp_idx in grasp_list[:20]:
-                                            target_grasp_pos = grasp_data[grasp_idx]['target_pos']
-                                            target_grasp_quat = grasp_data[grasp_idx]['target_quat']
-                                            target_grasp_pos[:2] = target_grasp_pos[:2] + target_obj_pos[:2]
+                                #         dy = obj_pos_MCTS[i][1] - GT_OBJ_POS_LIST[i-1][1]
+                                #         dx = obj_pos_MCTS[i][0] - GT_OBJ_POS_LIST[i-1][0]
+                                #         print("diff:", np.sqrt(dy**2 + dx**2), "dist", dist, '\n')
+                                # else:
+                                #     # target obj matching
+                                #     temp_target_obj_mesh, temp_target_obj_pos, dist, obj_name = RC.get_matching_mesh(downpcd, TARGET_OBJ_INDEX, visualize=False)
+                                #     temp_target_obj_pos = temp_target_obj_pos - object_offset[OBJ_FILE_IDX_LIST[i-1]]
 
-                                            init2grasp_angels_temp = rac.grasp_verify(target_grasp_pos, target_grasp_quat)
-                                            grasp2init_angels_temp = rac.grasp_verify(target_grasp_pos + [0,0,0.01], target_grasp_quat)
+                                #     if dist < 3:
+                                #         print("idx",i,"mesh added")
+                                #         target_obj_mesh = copy.deepcopy(temp_target_obj_mesh)
+                                #         target_obj_pos = copy.deepcopy(temp_target_obj_pos[0:2].tolist())
 
-                                            if init2grasp_angels_temp is None or grasp2init_angels_temp is None:
-                                                print("skip imposible grasp")
-                                                continue
+                                #         dy = target_obj_pos[1] - GT_OBJ_POS_LIST[i-1][1]
+                                #         dx = target_obj_pos[0] - GT_OBJ_POS_LIST[i-1][0]
+                                #         print("diff:", np.sqrt(dy**2 + dx**2), "dist", dist, '\n')
 
-                                            init2grasp_path_temp = RC.get_path2grasp(rac, init2grasp_angels_temp, scene_info, target_mesh=target_obj_mesh, time_limit=30)
-                                            temp_mod_bbox = rac.modify_grasp_bbox(init2grasp_angels_temp, target_obj_mesh, visualize=False)
-                                            grasp2init_path_temp = RC.get_path2start(rac, grasp2init_angels_temp, temp_mod_bbox, scene_info, time_limit=30)
+                                #     if not is_target_detected and dist < 3:
+                                #         # read grasp data
+                                #         grasp_file = "/".join(obj_name.split('/')[:5]) + "/grasp_dict.npy"
+                                #         grasp_data = np.load(grasp_file, allow_pickle=True)
 
-                                            if init2grasp_path_temp is None or grasp2init_path_temp is None:
-                                                print("No path generated\n")
-                                                continue
+                                #         # generate swept volume
+                                #         num_grasp = 0
+                                #         swept_size = sys.maxsize
+                                #         grasp_list = np.arange(len(grasp_data))
+                                #         np.random.shuffle(np.arange(len(grasp_list)))
 
-                                            swept_volume1_temp, swept_verts1_temp = rac.get_swept_volume(init2grasp_path_temp, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
-                                            swept_volume2_temp, swept_verts2_temp = rac.get_swept_volume(grasp2init_path_temp, w_target=temp_mod_bbox, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
-                                            num_grasp += 1
-                                            is_target_detected = True
+                                #         for grasp_idx in grasp_list[:20]:
+                                #             target_grasp_pos = grasp_data[grasp_idx]['target_pos']
+                                #             target_grasp_quat = grasp_data[grasp_idx]['target_quat']
+                                #             target_grasp_pos[:2] = target_grasp_pos[:2] + target_obj_pos[:2]
 
-                                            # compare swept volumes
-                                            swept_center_temp, swept_verts_temp = rac.get_swept_center(swept_verts1_temp+swept_verts2_temp, scene_info, MAX_HEIGHT)
-                                            temp_swept_size = get_swept_volume_size(swept_verts_temp)
-                                            if temp_swept_size < swept_size:
-                                                swept_size = temp_swept_size
-                                                ML_MCTS_ins.swept_volume1 = swept_volume1_temp
-                                                ML_MCTS_ins.swept_volume2 = swept_volume2_temp
-                                                init2grasp_path = init2grasp_path_temp
-                                                grasp2init_path = grasp2init_path_temp
-                                                swept_center = swept_center_temp
-                                                swept_verts = swept_verts_temp
-                                                W_TARGET = temp_mod_bbox
-                                                run_mcts = True
+                                #             init2grasp_angels_temp = rac.grasp_verify(target_grasp_pos, target_grasp_quat)
+                                #             grasp2init_angels_temp = rac.grasp_verify(target_grasp_pos + [0,0,0.01], target_grasp_quat)
 
-                                            if num_grasp == 5:
-                                                break
-                                        print("\n!!!!!!!!!!!!!!!!!!!", num_grasp ,'grasp generated!!!!!!!!!!!!!!!!!!!!!!!\n')
+                                #             if init2grasp_angels_temp is None or grasp2init_angels_temp is None:
+                                #                 print("skip imposible grasp")
+                                #                 continue
+
+                                #             init2grasp_path_temp = RC.get_path2grasp(rac, init2grasp_angels_temp, scene_info, target_mesh=target_obj_mesh, time_limit=30)
+                                #             temp_mod_bbox = rac.modify_grasp_bbox(init2grasp_angels_temp, target_obj_mesh, visualize=False)
+                                #             grasp2init_path_temp = RC.get_path2start(rac, grasp2init_angels_temp, temp_mod_bbox, scene_info, time_limit=30)
+
+                                #             if init2grasp_path_temp is None or grasp2init_path_temp is None:
+                                #                 print("No path generated\n")
+                                #                 continue
+
+                                #             swept_volume1_temp, swept_verts1_temp = rac.get_swept_volume(init2grasp_path_temp, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
+                                #             swept_volume2_temp, swept_verts2_temp = rac.get_swept_volume(grasp2init_path_temp, w_target=temp_mod_bbox, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
+                                #             num_grasp += 1
+                                #             is_target_detected = True
+
+                                #             # compare swept volumes
+                                #             swept_center_temp, swept_verts_temp = rac.get_swept_center(swept_verts1_temp+swept_verts2_temp, scene_info, MAX_HEIGHT)
+                                #             temp_swept_size = get_swept_volume_size(swept_verts_temp)
+                                #             if temp_swept_size < swept_size:
+                                #                 swept_size = temp_swept_size
+                                #                 ML_MCTS_ins.swept_volume1 = swept_volume1_temp
+                                #                 ML_MCTS_ins.swept_volume2 = swept_volume2_temp
+                                #                 init2grasp_path = init2grasp_path_temp
+                                #                 grasp2init_path = grasp2init_path_temp
+                                #                 swept_center = swept_center_temp
+                                #                 swept_verts = swept_verts_temp
+                                #                 W_TARGET = temp_mod_bbox
+                                #                 run_mcts = True
+
+                                #             if num_grasp == 5:
+                                #                 break
+                                #         print("\n!!!!!!!!!!!!!!!!!!!", num_grasp ,'grasp generated!!!!!!!!!!!!!!!!!!!!!!!\n')
 
                             _ = scene.register_camera_view(list(new_cam_rotation), list(new_cam_translation), new_depth_image, object_dict)
 
@@ -2429,101 +2434,108 @@ if __name__ == '__main__':
                             pc_extractor_grasp(new_rgb_image, new_depth_image, new_seg_image, new_cam_rotation, new_cam_translation, object_dict, table_dims.z)
                             
                             for i in object_dict:
-                                mask = new_seg_image == 1
-                                temp_seg_image = copy.deepcopy(new_seg_image)
-                                mask = new_seg_image == i
-                                temp_seg_image[~mask] = 0
-                                temp_seg_image[mask] = 1
-
-                                point_cloud, pcd = RC.write_to_pointcloud(new_rgb_image, new_depth_image, temp_seg_image, new_cam_rotation, new_cam_translation, visualization=False)
-                                if i in obj_pcd.keys():
-                                    obj_pcd[i] += pcd
-                                else:
-                                    obj_pcd[i] = pcd
-
-                                # find matching object mesh file
-                                downpcd = obj_pcd[i].voxel_down_sample(voxel_size=0.005) # downsampe pcd
-                                # downpcd = obj_pcd[i]
-
                                 if i != NUM_OF_OBJECTS:
-                                    # obstacle object matching
-                                    obstacle_obj_mesh, obj_pos, dist, obj_name = RC.get_matching_mesh(downpcd, OBSTACLE_OBJ_INDEX, visualize=False)
-                                    obj_pos = obj_pos - object_offset[OBJ_FILE_IDX_LIST[i-1]]
-
-                                    if dist < 3:
-                                        print("idx",i,"mesh added")
-                                        obj_pos_MCTS[i] = obj_pos[0:2].tolist()
-                                        obj_mesh_MCTS[i] = obstacle_obj_mesh
-
-                                        dy = obj_pos_MCTS[i][1] - GT_OBJ_POS_LIST[i-1][1]
-                                        dx = obj_pos_MCTS[i][0] - GT_OBJ_POS_LIST[i-1][0]
-                                        print("diff:", np.sqrt(dy**2 + dx**2), "dist", dist, '\n')
+                                    obj_pos_MCTS[i-1] = GT_OBJ_POS_LIST[i-1]
+                                    obj_mesh_MCTS[i-1] = GT_OBJ_MESH_LIST[i-1]
                                 else:
-                                    # target obj matching
-                                    temp_target_obj_mesh, temp_target_obj_pos, dist, obj_name = RC.get_matching_mesh(downpcd, TARGET_OBJ_INDEX, visualize=False)
-                                    temp_target_obj_pos = temp_target_obj_pos - object_offset[OBJ_FILE_IDX_LIST[i-1]]
+                                    target_obj_pos = GT_OBJ_POS_LIST[i-1]
+                                    target_obj_mesh = GT_OBJ_MESH_LIST[i-1]
+                                    is_target_detected = True
+                                # mask = new_seg_image == 1
+                                # temp_seg_image = copy.deepcopy(new_seg_image)
+                                # mask = new_seg_image == i
+                                # temp_seg_image[~mask] = 0
+                                # temp_seg_image[mask] = 1
 
-                                    if dist < 3:
-                                        print("idx",i,"mesh added")
-                                        target_obj_mesh = copy.deepcopy(temp_target_obj_mesh)
-                                        target_obj_pos = copy.deepcopy(temp_target_obj_pos[0:2].tolist())
+                                # point_cloud, pcd = RC.write_to_pointcloud(new_rgb_image, new_depth_image, temp_seg_image, new_cam_rotation, new_cam_translation, visualization=False)
+                                # if i in obj_pcd.keys():
+                                #     obj_pcd[i] += pcd
+                                # else:
+                                #     obj_pcd[i] = pcd
 
-                                        dy = target_obj_pos[1] - GT_OBJ_POS_LIST[i-1][1]
-                                        dx = target_obj_pos[0] - GT_OBJ_POS_LIST[i-1][0]
-                                        print("diff:", np.sqrt(dy**2 + dx**2), "dist", dist, '\n')
+                                # # find matching object mesh file
+                                # downpcd = obj_pcd[i].voxel_down_sample(voxel_size=0.005) # downsampe pcd
+                                # # downpcd = obj_pcd[i]
 
-                                    if not is_target_detected and dist < 3:
-                                        # read grasp data
-                                        grasp_file = "/".join(obj_name.split('/')[:5]) + "/grasp_dict.npy"
-                                        grasp_data = np.load(grasp_file, allow_pickle=True)
+                                # if i != NUM_OF_OBJECTS:
+                                #     # obstacle object matching
+                                #     obstacle_obj_mesh, obj_pos, dist, obj_name = RC.get_matching_mesh(downpcd, OBSTACLE_OBJ_INDEX, visualize=False)
+                                #     obj_pos = obj_pos - object_offset[OBJ_FILE_IDX_LIST[i-1]]
 
-                                        # generate swept volume
-                                        num_grasp = 0
-                                        swept_size = sys.maxsize
-                                        grasp_list = np.arange(len(grasp_data))
-                                        np.random.shuffle(np.arange(len(grasp_list)))
+                                #     if dist < 3:
+                                #         print("idx",i,"mesh added")
+                                #         obj_pos_MCTS[i] = obj_pos[0:2].tolist()
+                                #         obj_mesh_MCTS[i] = obstacle_obj_mesh
 
-                                        for grasp_idx in grasp_list[:20]:
-                                            target_grasp_pos = grasp_data[grasp_idx]['target_pos']
-                                            target_grasp_quat = grasp_data[grasp_idx]['target_quat']
-                                            target_grasp_pos[:2] = target_grasp_pos[:2] + target_obj_pos[:2]
+                                #         dy = obj_pos_MCTS[i][1] - GT_OBJ_POS_LIST[i-1][1]
+                                #         dx = obj_pos_MCTS[i][0] - GT_OBJ_POS_LIST[i-1][0]
+                                #         print("diff:", np.sqrt(dy**2 + dx**2), "dist", dist, '\n')
+                                # else:
+                                #     # target obj matching
+                                #     temp_target_obj_mesh, temp_target_obj_pos, dist, obj_name = RC.get_matching_mesh(downpcd, TARGET_OBJ_INDEX, visualize=False)
+                                #     temp_target_obj_pos = temp_target_obj_pos - object_offset[OBJ_FILE_IDX_LIST[i-1]]
 
-                                            init2grasp_angels_temp = rac.grasp_verify(target_grasp_pos, target_grasp_quat)
-                                            grasp2init_angels_temp = rac.grasp_verify(target_grasp_pos + [0,0,0.01], target_grasp_quat)
+                                #     if dist < 3:
+                                #         print("idx",i,"mesh added")
+                                #         target_obj_mesh = copy.deepcopy(temp_target_obj_mesh)
+                                #         target_obj_pos = copy.deepcopy(temp_target_obj_pos[0:2].tolist())
 
-                                            if init2grasp_angels_temp is None or grasp2init_angels_temp is None:
-                                                print("skip imposible grasp")
-                                                continue
+                                #         dy = target_obj_pos[1] - GT_OBJ_POS_LIST[i-1][1]
+                                #         dx = target_obj_pos[0] - GT_OBJ_POS_LIST[i-1][0]
+                                #         print("diff:", np.sqrt(dy**2 + dx**2), "dist", dist, '\n')
 
-                                            init2grasp_path_temp = RC.get_path2grasp(rac, init2grasp_angels_temp, scene_info, target_mesh=target_obj_mesh, time_limit=30)
-                                            temp_mod_bbox = rac.modify_grasp_bbox(init2grasp_angels_temp, target_obj_mesh, visualize=False)
-                                            grasp2init_path_temp = RC.get_path2start(rac, grasp2init_angels_temp, temp_mod_bbox, scene_info, time_limit=30)
+                                #     if not is_target_detected and dist < 3:
+                                #         # read grasp data
+                                #         grasp_file = "/".join(obj_name.split('/')[:5]) + "/grasp_dict.npy"
+                                #         grasp_data = np.load(grasp_file, allow_pickle=True)
 
-                                            if init2grasp_path_temp is None or grasp2init_path_temp is None:
-                                                print("No path generated\n")
-                                                continue
+                                #         # generate swept volume
+                                #         num_grasp = 0
+                                #         swept_size = sys.maxsize
+                                #         grasp_list = np.arange(len(grasp_data))
+                                #         np.random.shuffle(np.arange(len(grasp_list)))
 
-                                            swept_volume1_temp, swept_verts1_temp = rac.get_swept_volume(init2grasp_path_temp, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
-                                            swept_volume2_temp, swept_verts2_temp = rac.get_swept_volume(grasp2init_path_temp, w_target=temp_mod_bbox, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
-                                            num_grasp += 1
-                                            is_target_detected = True
+                                #         for grasp_idx in grasp_list[:20]:
+                                #             target_grasp_pos = grasp_data[grasp_idx]['target_pos']
+                                #             target_grasp_quat = grasp_data[grasp_idx]['target_quat']
+                                #             target_grasp_pos[:2] = target_grasp_pos[:2] + target_obj_pos[:2]
 
-                                            # compare swept volumes
-                                            swept_center_temp, swept_verts_temp = rac.get_swept_center(swept_verts1_temp+swept_verts2_temp, scene_info, MAX_HEIGHT)
-                                            temp_swept_size = get_swept_volume_size(swept_verts_temp)
-                                            if temp_swept_size < swept_size:
-                                                swept_size = temp_swept_size
-                                                ML_MCTS_ins.swept_volume1 = swept_volume1_temp
-                                                ML_MCTS_ins.swept_volume2 = swept_volume2_temp
-                                                init2grasp_path = init2grasp_path_temp
-                                                grasp2init_path = grasp2init_path_temp
-                                                swept_center = swept_center_temp
-                                                swept_verts = swept_verts_temp
-                                                W_TARGET = temp_mod_bbox
+                                #             init2grasp_angels_temp = rac.grasp_verify(target_grasp_pos, target_grasp_quat)
+                                #             grasp2init_angels_temp = rac.grasp_verify(target_grasp_pos + [0,0,0.01], target_grasp_quat)
 
-                                            if num_grasp == 5:
-                                                break
-                                        print("\n!!!!!!!!!!!!!!!!!!!", num_grasp ,'grasp generated!!!!!!!!!!!!!!!!!!!!!!!\n')
+                                #             if init2grasp_angels_temp is None or grasp2init_angels_temp is None:
+                                #                 print("skip imposible grasp")
+                                #                 continue
+
+                                #             init2grasp_path_temp = RC.get_path2grasp(rac, init2grasp_angels_temp, scene_info, target_mesh=target_obj_mesh, time_limit=30)
+                                #             temp_mod_bbox = rac.modify_grasp_bbox(init2grasp_angels_temp, target_obj_mesh, visualize=False)
+                                #             grasp2init_path_temp = RC.get_path2start(rac, grasp2init_angels_temp, temp_mod_bbox, scene_info, time_limit=30)
+
+                                #             if init2grasp_path_temp is None or grasp2init_path_temp is None:
+                                #                 print("No path generated\n")
+                                #                 continue
+
+                                #             swept_volume1_temp, swept_verts1_temp = rac.get_swept_volume(init2grasp_path_temp, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
+                                #             swept_volume2_temp, swept_verts2_temp = rac.get_swept_volume(grasp2init_path_temp, w_target=temp_mod_bbox, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
+                                #             num_grasp += 1
+                                #             is_target_detected = True
+
+                                #             # compare swept volumes
+                                #             swept_center_temp, swept_verts_temp = rac.get_swept_center(swept_verts1_temp+swept_verts2_temp, scene_info, MAX_HEIGHT)
+                                #             temp_swept_size = get_swept_volume_size(swept_verts_temp)
+                                #             if temp_swept_size < swept_size:
+                                #                 swept_size = temp_swept_size
+                                #                 ML_MCTS_ins.swept_volume1 = swept_volume1_temp
+                                #                 ML_MCTS_ins.swept_volume2 = swept_volume2_temp
+                                #                 init2grasp_path = init2grasp_path_temp
+                                #                 grasp2init_path = grasp2init_path_temp
+                                #                 swept_center = swept_center_temp
+                                #                 swept_verts = swept_verts_temp
+                                #                 W_TARGET = temp_mod_bbox
+
+                                #             if num_grasp == 5:
+                                #                 break
+                                #         print("\n!!!!!!!!!!!!!!!!!!!", num_grasp ,'grasp generated!!!!!!!!!!!!!!!!!!!!!!!\n')
 
                             coverage_score = scene.register_camera_view(list(new_cam_rotation), list(new_cam_translation), new_depth_image, object_dict)
                             print("------ coverage_score: ", coverage_score, '------')
@@ -2748,7 +2760,7 @@ if __name__ == '__main__':
                 num_collision_obj_ = len(ML_MCTS_ins.MCTS_ins.MCTS_tree_.check_collision_w_swept())
                 write_result(new_folder + "test_results/", 'complete_sensing/MCTS*', scene.num_observation, len(curr_config), ML_MCTS_ins.time_consumption_, "Failed", "Failed", "Failed", num_collision_obj_, mcts_attempts, total_view_time_comsumption, cam_dofs, cam_time, None)
                 
-                if len(valid_area_cluster) == 0:
+                if len(potential_center_cluster) == 0:
                     print("!!!!!!!!!!!!!!Planning Faild without unobserved area!!!!!!!!!!!!!!!!!!!!!")
                     is_cluster_covered = True
                     break
@@ -2759,7 +2771,7 @@ if __name__ == '__main__':
                     min_num_collision = sys.maxsize
                     max_node = None
                     for child in child_node_list:
-                        if len(child.check_collision_w_swept()) < min_num_collision:
+                        if len(child.check_collision_w_swept()) < min_num_collision and len(child.check_collision_w_swept()) != 0:
                             max_node = child
                             max_reward = child.reward_
                         elif len(child.check_collision_w_swept()) == min_num_collision:
@@ -2801,14 +2813,21 @@ if __name__ == '__main__':
                             max_region_count = total_new_region
                             max_region_idx = cluster_idx
 
-                    mcts_out_angle = RC.cal_cam_angle_for_area(potential_center_cluster[max_region_idx], ML_MCTS_ins.curr_config_ + [target_pos_MCT], scene_info, visualize=False)
-                    while mcts_out_angle is None and len(potential_center_cluster) != 0:
-                        max_region_idx = np.random.randint(len(potential_center_cluster))
-                        mcts_out_angle = RC.cal_cam_angle_for_area(potential_center_cluster[max_region_idx], ML_MCTS_ins.curr_config_ + [target_pos_MCT], scene_info, visualize=False)
+                    try:
+                        mcts_out_angle = RC.cal_cam_angle_for_area(valid_area_cluster[max_region_idx], ML_MCTS_ins.curr_config_ + [target_pos_MCT], scene_info, visualize=False)
+                    except:
+                        pdb.set_trace()
+                    while mcts_out_angle is None and len(valid_area_cluster) != 0:
+                        max_region_idx = np.random.randint(len(valid_area_cluster))
+                        mcts_out_angle = RC.cal_cam_angle_for_area(valid_area_cluster[max_region_idx], ML_MCTS_ins.curr_config_ + [target_pos_MCT], scene_info, visualize=False)
                         if mcts_out_angle is None:
-                            potential_center_cluster.pop(max_region_idx)
+                            valid_area_cluster.pop(max_region_idx)
 
-                    mcts_selected_cluster = potential_center_cluster[max_region_idx]
+                    if len(valid_area_cluster) == 0:
+                        print("------ RUN FAILED WITH UNOBSERVABLE AREA ------")
+                        break
+
+                    mcts_selected_cluster = valid_area_cluster[max_region_idx]
                     run_mcts = False
                     cam_time += time.time() - cam_time_start
                     
@@ -2856,101 +2875,108 @@ if __name__ == '__main__':
                             pc_extractor_grasp(new_rgb_image, new_depth_image, new_seg_image, new_cam_rotation, new_cam_translation, object_dict, table_dims.z)
                             
                             for i in object_dict:
-                                mask = new_seg_image == 1
-                                temp_seg_image = copy.deepcopy(new_seg_image)
-                                mask = new_seg_image == i
-                                temp_seg_image[~mask] = 0
-                                temp_seg_image[mask] = 1
-
-                                point_cloud, pcd = RC.write_to_pointcloud(new_rgb_image, new_depth_image, temp_seg_image, new_cam_rotation, new_cam_translation, visualization=False)
-                                if i in obj_pcd.keys():
-                                    obj_pcd[i] += pcd
-                                else:
-                                    obj_pcd[i] = pcd
-
-                                # find matching object mesh file
-                                downpcd = obj_pcd[i].voxel_down_sample(voxel_size=0.005) # downsampe pcd
-                                # downpcd = obj_pcd[i]
-
                                 if i != NUM_OF_OBJECTS:
-                                    # obstacle object matching
-                                    obstacle_obj_mesh, obj_pos, dist, obj_name = RC.get_matching_mesh(downpcd, OBSTACLE_OBJ_INDEX, visualize=False)
-                                    obj_pos = obj_pos - object_offset[OBJ_FILE_IDX_LIST[i-1]]
-
-                                    if dist < 3:
-                                        print("idx",i,"mesh added")
-                                        obj_pos_MCTS[i] = obj_pos[0:2].tolist()
-                                        obj_mesh_MCTS[i] = obstacle_obj_mesh
-
-                                        dy = obj_pos_MCTS[i][1] - GT_OBJ_POS_LIST[i-1][1]
-                                        dx = obj_pos_MCTS[i][0] - GT_OBJ_POS_LIST[i-1][0]
-                                        print("diff:", np.sqrt(dy**2 + dx**2), "dist", dist, '\n')
+                                    obj_pos_MCTS[i-1] = GT_OBJ_POS_LIST[i-1]
+                                    obj_mesh_MCTS[i-1] = GT_OBJ_MESH_LIST[i-1]
                                 else:
-                                    # target obj matching
-                                    temp_target_obj_mesh, temp_target_obj_pos, dist, obj_name = RC.get_matching_mesh(downpcd, TARGET_OBJ_INDEX, visualize=False)
-                                    temp_target_obj_pos = temp_target_obj_pos - object_offset[OBJ_FILE_IDX_LIST[i-1]]
+                                    target_obj_pos = GT_OBJ_POS_LIST[i-1]
+                                    target_obj_mesh = GT_OBJ_MESH_LIST[i-1]
+                                    is_target_detected = True
+                                # mask = new_seg_image == 1
+                                # temp_seg_image = copy.deepcopy(new_seg_image)
+                                # mask = new_seg_image == i
+                                # temp_seg_image[~mask] = 0
+                                # temp_seg_image[mask] = 1
 
-                                    if dist < 3:
-                                        print("idx",i,"mesh added")
-                                        target_obj_mesh = copy.deepcopy(temp_target_obj_mesh)
-                                        target_obj_pos = copy.deepcopy(temp_target_obj_pos[0:2].tolist())
+                                # point_cloud, pcd = RC.write_to_pointcloud(new_rgb_image, new_depth_image, temp_seg_image, new_cam_rotation, new_cam_translation, visualization=False)
+                                # if i in obj_pcd.keys():
+                                #     obj_pcd[i] += pcd
+                                # else:
+                                #     obj_pcd[i] = pcd
 
-                                        dy = target_obj_pos[1] - GT_OBJ_POS_LIST[i-1][1]
-                                        dx = target_obj_pos[0] - GT_OBJ_POS_LIST[i-1][0]
-                                        print("diff:", np.sqrt(dy**2 + dx**2), "dist", dist, '\n')
+                                # # find matching object mesh file
+                                # downpcd = obj_pcd[i].voxel_down_sample(voxel_size=0.005) # downsampe pcd
+                                # # downpcd = obj_pcd[i]
 
-                                    if not is_target_detected and dist < 3:
-                                        # read grasp data
-                                        grasp_file = "/".join(obj_name.split('/')[:5]) + "/grasp_dict.npy"
-                                        grasp_data = np.load(grasp_file, allow_pickle=True)
+                                # if i != NUM_OF_OBJECTS:
+                                #     # obstacle object matching
+                                #     obstacle_obj_mesh, obj_pos, dist, obj_name = RC.get_matching_mesh(downpcd, OBSTACLE_OBJ_INDEX, visualize=False)
+                                #     obj_pos = obj_pos - object_offset[OBJ_FILE_IDX_LIST[i-1]]
 
-                                        # generate swept volume
-                                        num_grasp = 0
-                                        swept_size = sys.maxsize
-                                        grasp_list = np.arange(len(grasp_data))
-                                        np.random.shuffle(np.arange(len(grasp_list)))
+                                #     if dist < 3:
+                                #         print("idx",i,"mesh added")
+                                #         obj_pos_MCTS[i] = obj_pos[0:2].tolist()
+                                #         obj_mesh_MCTS[i] = obstacle_obj_mesh
 
-                                        for grasp_idx in grasp_list[:20]:
-                                            target_grasp_pos = grasp_data[grasp_idx]['target_pos']
-                                            target_grasp_quat = grasp_data[grasp_idx]['target_quat']
-                                            target_grasp_pos[:2] = target_grasp_pos[:2] + target_obj_pos[:2]
+                                #         dy = obj_pos_MCTS[i][1] - GT_OBJ_POS_LIST[i-1][1]
+                                #         dx = obj_pos_MCTS[i][0] - GT_OBJ_POS_LIST[i-1][0]
+                                #         print("diff:", np.sqrt(dy**2 + dx**2), "dist", dist, '\n')
+                                # else:
+                                #     # target obj matching
+                                #     temp_target_obj_mesh, temp_target_obj_pos, dist, obj_name = RC.get_matching_mesh(downpcd, TARGET_OBJ_INDEX, visualize=False)
+                                #     temp_target_obj_pos = temp_target_obj_pos - object_offset[OBJ_FILE_IDX_LIST[i-1]]
 
-                                            init2grasp_angels_temp = rac.grasp_verify(target_grasp_pos, target_grasp_quat)
-                                            grasp2init_angels_temp = rac.grasp_verify(target_grasp_pos + [0,0,0.01], target_grasp_quat)
+                                #     if dist < 3:
+                                #         print("idx",i,"mesh added")
+                                #         target_obj_mesh = copy.deepcopy(temp_target_obj_mesh)
+                                #         target_obj_pos = copy.deepcopy(temp_target_obj_pos[0:2].tolist())
 
-                                            if init2grasp_angels_temp is None or grasp2init_angels_temp is None:
-                                                print("skip imposible grasp")
-                                                continue
+                                #         dy = target_obj_pos[1] - GT_OBJ_POS_LIST[i-1][1]
+                                #         dx = target_obj_pos[0] - GT_OBJ_POS_LIST[i-1][0]
+                                #         print("diff:", np.sqrt(dy**2 + dx**2), "dist", dist, '\n')
 
-                                            init2grasp_path_temp = RC.get_path2grasp(rac, init2grasp_angels_temp, scene_info, target_mesh=target_obj_mesh, time_limit=30)
-                                            temp_mod_bbox = rac.modify_grasp_bbox(init2grasp_angels_temp, target_obj_mesh, visualize=False)
-                                            grasp2init_path_temp = RC.get_path2start(rac, grasp2init_angels_temp, temp_mod_bbox, scene_info, time_limit=30)
+                                #     if not is_target_detected and dist < 3:
+                                #         # read grasp data
+                                #         grasp_file = "/".join(obj_name.split('/')[:5]) + "/grasp_dict.npy"
+                                #         grasp_data = np.load(grasp_file, allow_pickle=True)
 
-                                            if init2grasp_path_temp is None or grasp2init_path_temp is None:
-                                                print("No path generated\n")
-                                                continue
+                                #         # generate swept volume
+                                #         num_grasp = 0
+                                #         swept_size = sys.maxsize
+                                #         grasp_list = np.arange(len(grasp_data))
+                                #         np.random.shuffle(np.arange(len(grasp_list)))
 
-                                            swept_volume1_temp, swept_verts1_temp = rac.get_swept_volume(init2grasp_path_temp, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
-                                            swept_volume2_temp, swept_verts2_temp = rac.get_swept_volume(grasp2init_path_temp, w_target=temp_mod_bbox, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
-                                            num_grasp += 1
-                                            is_target_detected = True
+                                #         for grasp_idx in grasp_list[:20]:
+                                #             target_grasp_pos = grasp_data[grasp_idx]['target_pos']
+                                #             target_grasp_quat = grasp_data[grasp_idx]['target_quat']
+                                #             target_grasp_pos[:2] = target_grasp_pos[:2] + target_obj_pos[:2]
 
-                                            # compare swept volumes
-                                            swept_center_temp, swept_verts_temp = rac.get_swept_center(swept_verts1_temp+swept_verts2_temp, scene_info, MAX_HEIGHT)
-                                            temp_swept_size = get_swept_volume_size(swept_verts_temp)
-                                            if temp_swept_size < swept_size:
-                                                swept_size = temp_swept_size
-                                                ML_MCTS_ins.swept_volume1 = swept_volume1_temp
-                                                ML_MCTS_ins.swept_volume2 = swept_volume2_temp
-                                                init2grasp_path = init2grasp_path_temp
-                                                grasp2init_path = grasp2init_path_temp
-                                                swept_center = swept_center_temp
-                                                swept_verts = swept_verts_temp
-                                                W_TARGET = temp_mod_bbox
+                                #             init2grasp_angels_temp = rac.grasp_verify(target_grasp_pos, target_grasp_quat)
+                                #             grasp2init_angels_temp = rac.grasp_verify(target_grasp_pos + [0,0,0.01], target_grasp_quat)
 
-                                            if num_grasp == 5:
-                                                break
-                                        print("\n!!!!!!!!!!!!!!!!!!!", num_grasp ,'grasp generated!!!!!!!!!!!!!!!!!!!!!!!\n')
+                                #             if init2grasp_angels_temp is None or grasp2init_angels_temp is None:
+                                #                 print("skip imposible grasp")
+                                #                 continue
+
+                                #             init2grasp_path_temp = RC.get_path2grasp(rac, init2grasp_angels_temp, scene_info, target_mesh=target_obj_mesh, time_limit=30)
+                                #             temp_mod_bbox = rac.modify_grasp_bbox(init2grasp_angels_temp, target_obj_mesh, visualize=False)
+                                #             grasp2init_path_temp = RC.get_path2start(rac, grasp2init_angels_temp, temp_mod_bbox, scene_info, time_limit=30)
+
+                                #             if init2grasp_path_temp is None or grasp2init_path_temp is None:
+                                #                 print("No path generated\n")
+                                #                 continue
+
+                                #             swept_volume1_temp, swept_verts1_temp = rac.get_swept_volume(init2grasp_path_temp, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
+                                #             swept_volume2_temp, swept_verts2_temp = rac.get_swept_volume(grasp2init_path_temp, w_target=temp_mod_bbox, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
+                                #             num_grasp += 1
+                                #             is_target_detected = True
+
+                                #             # compare swept volumes
+                                #             swept_center_temp, swept_verts_temp = rac.get_swept_center(swept_verts1_temp+swept_verts2_temp, scene_info, MAX_HEIGHT)
+                                #             temp_swept_size = get_swept_volume_size(swept_verts_temp)
+                                #             if temp_swept_size < swept_size:
+                                #                 swept_size = temp_swept_size
+                                #                 ML_MCTS_ins.swept_volume1 = swept_volume1_temp
+                                #                 ML_MCTS_ins.swept_volume2 = swept_volume2_temp
+                                #                 init2grasp_path = init2grasp_path_temp
+                                #                 grasp2init_path = grasp2init_path_temp
+                                #                 swept_center = swept_center_temp
+                                #                 swept_verts = swept_verts_temp
+                                #                 W_TARGET = temp_mod_bbox
+
+                                #             if num_grasp == 5:
+                                #                 break
+                                #         print("\n!!!!!!!!!!!!!!!!!!!", num_grasp ,'grasp generated!!!!!!!!!!!!!!!!!!!!!!!\n')
 
                             _ = scene.register_camera_view(list(new_cam_rotation), list(new_cam_translation), new_depth_image, object_dict)
 
@@ -3204,7 +3230,7 @@ if __name__ == '__main__':
                 num_collision_obj_ = len(ML_MCTS_ins.MCTS_ins.MCTS_tree_.check_collision_w_swept())
                 write_result(new_folder + "test_results/", 'complete_sensing/MCTS_OG', scene.num_observation, len(curr_config), ML_MCTS_ins.time_consumption_, "Failed", "Failed", "Failed", num_collision_obj_, mcts_attempts, total_view_time_comsumption, cam_dofs, cam_time, None)
                 
-                if len(valid_area_cluster) == 0:
+                if len(potential_center_cluster) == 0:
                     print("!!!!!!!!!!!!!!Planning Faild without unobserved area!!!!!!!!!!!!!!!!!!!!!")
                     is_cluster_covered = True
                     break
@@ -3216,7 +3242,7 @@ if __name__ == '__main__':
                     min_num_collision = sys.maxsize
                     max_node = None
                     for child in child_node_list:
-                        if len(child.check_collision_w_swept()) < min_num_collision:
+                        if len(child.check_collision_w_swept()) < min_num_collision and len(child.check_collision_w_swept()) != 0:
                             max_node = child
                             max_reward = child.reward_
                         elif len(child.check_collision_w_swept()) == min_num_collision:
@@ -3257,15 +3283,22 @@ if __name__ == '__main__':
                         if max_region_count < total_new_region:
                             max_region_count = total_new_region
                             max_region_idx = cluster_idx
-                    
-                    mcts_out_angle = RC.cal_cam_angle_for_area(potential_center_cluster[max_region_idx], ML_MCTS_ins.curr_config_ + [target_pos_MCT], scene_info, visualize=False)
-                    while mcts_out_angle is None and len(potential_center_cluster) != 0:
-                        max_region_idx = np.random.randint(len(potential_center_cluster))
-                        mcts_out_angle = RC.cal_cam_angle_for_area(potential_center_cluster[max_region_idx], ML_MCTS_ins.curr_config_ + [target_pos_MCT], scene_info, visualize=False)
-                        if mcts_out_angle is None:
-                            potential_center_cluster.pop(max_region_idx)
 
-                    mcts_selected_cluster = potential_center_cluster[max_region_idx]
+                    try:
+                        mcts_out_angle = RC.cal_cam_angle_for_area(valid_area_cluster[max_region_idx], ML_MCTS_ins.curr_config_ + [target_pos_MCT], scene_info, visualize=False)
+                    except:
+                        pdb.set_trace()
+                    while mcts_out_angle is None and len(valid_area_cluster) != 0:
+                        max_region_idx = np.random.randint(len(valid_area_cluster))
+                        mcts_out_angle = RC.cal_cam_angle_for_area(valid_area_cluster[max_region_idx], ML_MCTS_ins.curr_config_ + [target_pos_MCT], scene_info, visualize=False)
+                        if mcts_out_angle is None:
+                            valid_area_cluster.pop(max_region_idx)
+
+                    if len(valid_area_cluster) == 0:
+                        print("------ RUN FAILED WITH UNOBSERVABLE AREA ------")
+                        break
+                        
+                    mcts_selected_cluster = valid_area_cluster[max_region_idx]
                     run_mcts = False
                     cam_time += time.time() - cam_time_start
                     
@@ -3313,101 +3346,108 @@ if __name__ == '__main__':
                             pc_extractor_grasp(new_rgb_image, new_depth_image, new_seg_image, new_cam_rotation, new_cam_translation, object_dict, table_dims.z)
                             
                             for i in object_dict:
-                                mask = new_seg_image == 1
-                                temp_seg_image = copy.deepcopy(new_seg_image)
-                                mask = new_seg_image == i
-                                temp_seg_image[~mask] = 0
-                                temp_seg_image[mask] = 1
-
-                                point_cloud, pcd = RC.write_to_pointcloud(new_rgb_image, new_depth_image, temp_seg_image, new_cam_rotation, new_cam_translation, visualization=False)
-                                if i in obj_pcd.keys():
-                                    obj_pcd[i] += pcd
-                                else:
-                                    obj_pcd[i] = pcd
-
-                                # find matching object mesh file
-                                downpcd = obj_pcd[i].voxel_down_sample(voxel_size=0.005) # downsampe pcd
-                                # downpcd = obj_pcd[i]
-
                                 if i != NUM_OF_OBJECTS:
-                                    # obstacle object matching
-                                    obstacle_obj_mesh, obj_pos, dist, obj_name = RC.get_matching_mesh(downpcd, OBSTACLE_OBJ_INDEX, visualize=False)
-                                    obj_pos = obj_pos - object_offset[OBJ_FILE_IDX_LIST[i-1]]
-
-                                    if dist < 3:
-                                        print("idx",i,"mesh added")
-                                        obj_pos_MCTS[i] = obj_pos[0:2].tolist()
-                                        obj_mesh_MCTS[i] = obstacle_obj_mesh
-
-                                        dy = obj_pos_MCTS[i][1] - GT_OBJ_POS_LIST[i-1][1]
-                                        dx = obj_pos_MCTS[i][0] - GT_OBJ_POS_LIST[i-1][0]
-                                        print("diff:", np.sqrt(dy**2 + dx**2), "dist", dist, '\n')
+                                    obj_pos_MCTS[i-1] = GT_OBJ_POS_LIST[i-1]
+                                    obj_mesh_MCTS[i-1] = GT_OBJ_MESH_LIST[i-1]
                                 else:
-                                    # target obj matching
-                                    temp_target_obj_mesh, temp_target_obj_pos, dist, obj_name = RC.get_matching_mesh(downpcd, TARGET_OBJ_INDEX, visualize=False)
-                                    temp_target_obj_pos = temp_target_obj_pos - object_offset[OBJ_FILE_IDX_LIST[i-1]]
+                                    target_obj_pos = GT_OBJ_POS_LIST[i-1]
+                                    target_obj_mesh = GT_OBJ_MESH_LIST[i-1]
+                                    is_target_detected = True
+                                # mask = new_seg_image == 1
+                                # temp_seg_image = copy.deepcopy(new_seg_image)
+                                # mask = new_seg_image == i
+                                # temp_seg_image[~mask] = 0
+                                # temp_seg_image[mask] = 1
 
-                                    if dist < 3:
-                                        print("idx",i,"mesh added")
-                                        target_obj_mesh = copy.deepcopy(temp_target_obj_mesh)
-                                        target_obj_pos = copy.deepcopy(temp_target_obj_pos[0:2].tolist())
+                                # point_cloud, pcd = RC.write_to_pointcloud(new_rgb_image, new_depth_image, temp_seg_image, new_cam_rotation, new_cam_translation, visualization=False)
+                                # if i in obj_pcd.keys():
+                                #     obj_pcd[i] += pcd
+                                # else:
+                                #     obj_pcd[i] = pcd
 
-                                        dy = target_obj_pos[1] - GT_OBJ_POS_LIST[i-1][1]
-                                        dx = target_obj_pos[0] - GT_OBJ_POS_LIST[i-1][0]
-                                        print("diff:", np.sqrt(dy**2 + dx**2), "dist", dist, '\n')
+                                # # find matching object mesh file
+                                # downpcd = obj_pcd[i].voxel_down_sample(voxel_size=0.005) # downsampe pcd
+                                # # downpcd = obj_pcd[i]
 
-                                    if not is_target_detected and dist < 3:
-                                        # read grasp data
-                                        grasp_file = "/".join(obj_name.split('/')[:5]) + "/grasp_dict.npy"
-                                        grasp_data = np.load(grasp_file, allow_pickle=True)
+                                # if i != NUM_OF_OBJECTS:
+                                #     # obstacle object matching
+                                #     obstacle_obj_mesh, obj_pos, dist, obj_name = RC.get_matching_mesh(downpcd, OBSTACLE_OBJ_INDEX, visualize=False)
+                                #     obj_pos = obj_pos - object_offset[OBJ_FILE_IDX_LIST[i-1]]
 
-                                        # generate swept volume
-                                        num_grasp = 0
-                                        swept_size = sys.maxsize
-                                        grasp_list = np.arange(len(grasp_data))
-                                        np.random.shuffle(np.arange(len(grasp_list)))
+                                #     if dist < 3:
+                                #         print("idx",i,"mesh added")
+                                #         obj_pos_MCTS[i] = obj_pos[0:2].tolist()
+                                #         obj_mesh_MCTS[i] = obstacle_obj_mesh
 
-                                        for grasp_idx in grasp_list[:20]:
-                                            target_grasp_pos = grasp_data[grasp_idx]['target_pos']
-                                            target_grasp_quat = grasp_data[grasp_idx]['target_quat']
-                                            target_grasp_pos[:2] = target_grasp_pos[:2] + target_obj_pos[:2]
+                                #         dy = obj_pos_MCTS[i][1] - GT_OBJ_POS_LIST[i-1][1]
+                                #         dx = obj_pos_MCTS[i][0] - GT_OBJ_POS_LIST[i-1][0]
+                                #         print("diff:", np.sqrt(dy**2 + dx**2), "dist", dist, '\n')
+                                # else:
+                                #     # target obj matching
+                                #     temp_target_obj_mesh, temp_target_obj_pos, dist, obj_name = RC.get_matching_mesh(downpcd, TARGET_OBJ_INDEX, visualize=False)
+                                #     temp_target_obj_pos = temp_target_obj_pos - object_offset[OBJ_FILE_IDX_LIST[i-1]]
 
-                                            init2grasp_angels_temp = rac.grasp_verify(target_grasp_pos, target_grasp_quat)
-                                            grasp2init_angels_temp = rac.grasp_verify(target_grasp_pos + [0,0,0.01], target_grasp_quat)
+                                #     if dist < 3:
+                                #         print("idx",i,"mesh added")
+                                #         target_obj_mesh = copy.deepcopy(temp_target_obj_mesh)
+                                #         target_obj_pos = copy.deepcopy(temp_target_obj_pos[0:2].tolist())
 
-                                            if init2grasp_angels_temp is None or grasp2init_angels_temp is None:
-                                                print("skip imposible grasp")
-                                                continue
+                                #         dy = target_obj_pos[1] - GT_OBJ_POS_LIST[i-1][1]
+                                #         dx = target_obj_pos[0] - GT_OBJ_POS_LIST[i-1][0]
+                                #         print("diff:", np.sqrt(dy**2 + dx**2), "dist", dist, '\n')
 
-                                            init2grasp_path_temp = RC.get_path2grasp(rac, init2grasp_angels_temp, scene_info, target_mesh=target_obj_mesh, time_limit=30)
-                                            temp_mod_bbox = rac.modify_grasp_bbox(init2grasp_angels_temp, target_obj_mesh, visualize=False)
-                                            grasp2init_path_temp = RC.get_path2start(rac, grasp2init_angels_temp, temp_mod_bbox, scene_info, time_limit=30)
+                                #     if not is_target_detected and dist < 3:
+                                #         # read grasp data
+                                #         grasp_file = "/".join(obj_name.split('/')[:5]) + "/grasp_dict.npy"
+                                #         grasp_data = np.load(grasp_file, allow_pickle=True)
 
-                                            if init2grasp_path_temp is None or grasp2init_path_temp is None:
-                                                print("No path generated\n")
-                                                continue
+                                #         # generate swept volume
+                                #         num_grasp = 0
+                                #         swept_size = sys.maxsize
+                                #         grasp_list = np.arange(len(grasp_data))
+                                #         np.random.shuffle(np.arange(len(grasp_list)))
 
-                                            swept_volume1_temp, swept_verts1_temp = rac.get_swept_volume(init2grasp_path_temp, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
-                                            swept_volume2_temp, swept_verts2_temp = rac.get_swept_volume(grasp2init_path_temp, w_target=temp_mod_bbox, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
-                                            num_grasp += 1
-                                            is_target_detected = True
+                                #         for grasp_idx in grasp_list[:20]:
+                                #             target_grasp_pos = grasp_data[grasp_idx]['target_pos']
+                                #             target_grasp_quat = grasp_data[grasp_idx]['target_quat']
+                                #             target_grasp_pos[:2] = target_grasp_pos[:2] + target_obj_pos[:2]
 
-                                            # compare swept volumes
-                                            swept_center_temp, swept_verts_temp = rac.get_swept_center(swept_verts1_temp+swept_verts2_temp, scene_info, MAX_HEIGHT)
-                                            temp_swept_size = get_swept_volume_size(swept_verts_temp)
-                                            if temp_swept_size < swept_size:
-                                                swept_size = temp_swept_size
-                                                ML_MCTS_ins.swept_volume1 = swept_volume1_temp
-                                                ML_MCTS_ins.swept_volume2 = swept_volume2_temp
-                                                init2grasp_path = init2grasp_path_temp
-                                                grasp2init_path = grasp2init_path_temp
-                                                swept_center = swept_center_temp
-                                                swept_verts = swept_verts_temp
-                                                W_TARGET = temp_mod_bbox
+                                #             init2grasp_angels_temp = rac.grasp_verify(target_grasp_pos, target_grasp_quat)
+                                #             grasp2init_angels_temp = rac.grasp_verify(target_grasp_pos + [0,0,0.01], target_grasp_quat)
 
-                                            if num_grasp == 5:
-                                                break
-                                        print("\n!!!!!!!!!!!!!!!!!!!", num_grasp ,'grasp generated!!!!!!!!!!!!!!!!!!!!!!!\n')
+                                #             if init2grasp_angels_temp is None or grasp2init_angels_temp is None:
+                                #                 print("skip imposible grasp")
+                                #                 continue
+
+                                #             init2grasp_path_temp = RC.get_path2grasp(rac, init2grasp_angels_temp, scene_info, target_mesh=target_obj_mesh, time_limit=30)
+                                #             temp_mod_bbox = rac.modify_grasp_bbox(init2grasp_angels_temp, target_obj_mesh, visualize=False)
+                                #             grasp2init_path_temp = RC.get_path2start(rac, grasp2init_angels_temp, temp_mod_bbox, scene_info, time_limit=30)
+
+                                #             if init2grasp_path_temp is None or grasp2init_path_temp is None:
+                                #                 print("No path generated\n")
+                                #                 continue
+
+                                #             swept_volume1_temp, swept_verts1_temp = rac.get_swept_volume(init2grasp_path_temp, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
+                                #             swept_volume2_temp, swept_verts2_temp = rac.get_swept_volume(grasp2init_path_temp, w_target=temp_mod_bbox, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
+                                #             num_grasp += 1
+                                #             is_target_detected = True
+
+                                #             # compare swept volumes
+                                #             swept_center_temp, swept_verts_temp = rac.get_swept_center(swept_verts1_temp+swept_verts2_temp, scene_info, MAX_HEIGHT)
+                                #             temp_swept_size = get_swept_volume_size(swept_verts_temp)
+                                #             if temp_swept_size < swept_size:
+                                #                 swept_size = temp_swept_size
+                                #                 ML_MCTS_ins.swept_volume1 = swept_volume1_temp
+                                #                 ML_MCTS_ins.swept_volume2 = swept_volume2_temp
+                                #                 init2grasp_path = init2grasp_path_temp
+                                #                 grasp2init_path = grasp2init_path_temp
+                                #                 swept_center = swept_center_temp
+                                #                 swept_verts = swept_verts_temp
+                                #                 W_TARGET = temp_mod_bbox
+
+                                #             if num_grasp == 5:
+                                #                 break
+                                #         print("\n!!!!!!!!!!!!!!!!!!!", num_grasp ,'grasp generated!!!!!!!!!!!!!!!!!!!!!!!\n')
 
                             _ = scene.register_camera_view(list(new_cam_rotation), list(new_cam_translation), new_depth_image, object_dict)
 
@@ -3648,7 +3688,6 @@ if __name__ == '__main__':
 
             if is_plan_success:
                 print("!!!!!!!!!!!!!!BASE1 planning Success!!!!!!!!!!!!!!!!!!!!!")
-                ML_MCTS_ins.global_optimization()
                 # ML_MCTS_ins.animate_whole_sequence()
                 res_plan = ML_MCTS_ins.save_planning_results()
                 num_collision_obj_ = len(ML_MCTS_ins.track_level_steps_[0][0].check_collision_w_swept())
@@ -3661,7 +3700,7 @@ if __name__ == '__main__':
                 num_collision_obj_ = len(ML_MCTS_ins.MCTS_ins.MCTS_tree_.check_collision_w_swept())
                 write_result(new_folder + "test_results/", 'complete_sensing/BASE1', scene.num_observation, len(curr_config), ML_MCTS_ins.time_consumption_, "Failed", "Failed", "Failed", num_collision_obj_, mcts_attempts, total_view_time_comsumption, cam_dofs, cam_time, None)
                 
-                if len(valid_area_cluster) == 0:
+                if len(potential_center_cluster) == 0:
                     print("!!!!!!!!!!!!!!Planning Faild without unobserved area!!!!!!!!!!!!!!!!!!!!!")
                     is_cluster_covered = True
                     break
@@ -3673,7 +3712,7 @@ if __name__ == '__main__':
                     min_num_collision = sys.maxsize
                     max_node = None
                     for child in child_node_list:
-                        if len(child.check_collision_w_swept()) < min_num_collision:
+                        if len(child.check_collision_w_swept()) < min_num_collision and len(child.check_collision_w_swept()) != 0:
                             max_node = child
                             max_reward = child.reward_
                         elif len(child.check_collision_w_swept()) == min_num_collision:
@@ -3715,14 +3754,21 @@ if __name__ == '__main__':
                             max_region_count = total_new_region
                             max_region_idx = cluster_idx
 
-                    mcts_out_angle = RC.cal_cam_angle_for_area(potential_center_cluster[max_region_idx], ML_MCTS_ins.curr_config_ + [target_pos_MCT], scene_info, visualize=False)
-                    while mcts_out_angle is None and len(potential_center_cluster) != 0:
-                        max_region_idx = np.random.randint(len(potential_center_cluster))
-                        mcts_out_angle = RC.cal_cam_angle_for_area(potential_center_cluster[max_region_idx], ML_MCTS_ins.curr_config_ + [target_pos_MCT], scene_info, visualize=False)
+                    try:
+                        mcts_out_angle = RC.cal_cam_angle_for_area(valid_area_cluster[max_region_idx], ML_MCTS_ins.curr_config_ + [target_pos_MCT], scene_info, visualize=False)
+                    except:
+                        pdb.set_trace()
+                    while mcts_out_angle is None and len(valid_area_cluster) != 0:
+                        max_region_idx = np.random.randint(len(valid_area_cluster))
+                        mcts_out_angle = RC.cal_cam_angle_for_area(valid_area_cluster[max_region_idx], ML_MCTS_ins.curr_config_ + [target_pos_MCT], scene_info, visualize=False)
                         if mcts_out_angle is None:
-                            potential_center_cluster.pop(max_region_idx)
+                            valid_area_cluster.pop(max_region_idx)
 
-                    mcts_selected_cluster = potential_center_cluster[max_region_idx]
+                    if len(valid_area_cluster) == 0:
+                        print("------ RUN FAILED WITH UNOBSERVABLE AREA ------")
+                        break
+                        
+                    mcts_selected_cluster = valid_area_cluster[max_region_idx]
                     run_mcts = False
                     cam_time += time.time() - cam_time_start
                     
@@ -3770,101 +3816,108 @@ if __name__ == '__main__':
                             pc_extractor_grasp(new_rgb_image, new_depth_image, new_seg_image, new_cam_rotation, new_cam_translation, object_dict, table_dims.z)
                             
                             for i in object_dict:
-                                mask = new_seg_image == 1
-                                temp_seg_image = copy.deepcopy(new_seg_image)
-                                mask = new_seg_image == i
-                                temp_seg_image[~mask] = 0
-                                temp_seg_image[mask] = 1
-
-                                point_cloud, pcd = RC.write_to_pointcloud(new_rgb_image, new_depth_image, temp_seg_image, new_cam_rotation, new_cam_translation, visualization=False)
-                                if i in obj_pcd.keys():
-                                    obj_pcd[i] += pcd
-                                else:
-                                    obj_pcd[i] = pcd
-
-                                # find matching object mesh file
-                                downpcd = obj_pcd[i].voxel_down_sample(voxel_size=0.005) # downsampe pcd
-                                # downpcd = obj_pcd[i]
-
                                 if i != NUM_OF_OBJECTS:
-                                    # obstacle object matching
-                                    obstacle_obj_mesh, obj_pos, dist, obj_name = RC.get_matching_mesh(downpcd, OBSTACLE_OBJ_INDEX, visualize=False)
-                                    obj_pos = obj_pos - object_offset[OBJ_FILE_IDX_LIST[i-1]]
-
-                                    if dist < 3:
-                                        print("idx",i,"mesh added")
-                                        obj_pos_MCTS[i] = obj_pos[0:2].tolist()
-                                        obj_mesh_MCTS[i] = obstacle_obj_mesh
-
-                                        dy = obj_pos_MCTS[i][1] - GT_OBJ_POS_LIST[i-1][1]
-                                        dx = obj_pos_MCTS[i][0] - GT_OBJ_POS_LIST[i-1][0]
-                                        print("diff:", np.sqrt(dy**2 + dx**2), "dist", dist, '\n')
+                                    obj_pos_MCTS[i-1] = GT_OBJ_POS_LIST[i-1]
+                                    obj_mesh_MCTS[i-1] = GT_OBJ_MESH_LIST[i-1]
                                 else:
-                                    # target obj matching
-                                    temp_target_obj_mesh, temp_target_obj_pos, dist, obj_name = RC.get_matching_mesh(downpcd, TARGET_OBJ_INDEX, visualize=False)
-                                    temp_target_obj_pos = temp_target_obj_pos - object_offset[OBJ_FILE_IDX_LIST[i-1]]
+                                    target_obj_pos = GT_OBJ_POS_LIST[i-1]
+                                    target_obj_mesh = GT_OBJ_MESH_LIST[i-1]
+                                    is_target_detected = True
+                                # mask = new_seg_image == 1
+                                # temp_seg_image = copy.deepcopy(new_seg_image)
+                                # mask = new_seg_image == i
+                                # temp_seg_image[~mask] = 0
+                                # temp_seg_image[mask] = 1
 
-                                    if dist < 3:
-                                        print("idx",i,"mesh added")
-                                        target_obj_mesh = copy.deepcopy(temp_target_obj_mesh)
-                                        target_obj_pos = copy.deepcopy(temp_target_obj_pos[0:2].tolist())
+                                # point_cloud, pcd = RC.write_to_pointcloud(new_rgb_image, new_depth_image, temp_seg_image, new_cam_rotation, new_cam_translation, visualization=False)
+                                # if i in obj_pcd.keys():
+                                #     obj_pcd[i] += pcd
+                                # else:
+                                #     obj_pcd[i] = pcd
 
-                                        dy = target_obj_pos[1] - GT_OBJ_POS_LIST[i-1][1]
-                                        dx = target_obj_pos[0] - GT_OBJ_POS_LIST[i-1][0]
-                                        print("diff:", np.sqrt(dy**2 + dx**2), "dist", dist, '\n')
+                                # # find matching object mesh file
+                                # downpcd = obj_pcd[i].voxel_down_sample(voxel_size=0.005) # downsampe pcd
+                                # # downpcd = obj_pcd[i]
 
-                                    if not is_target_detected and dist < 3:
-                                        # read grasp data
-                                        grasp_file = "/".join(obj_name.split('/')[:5]) + "/grasp_dict.npy"
-                                        grasp_data = np.load(grasp_file, allow_pickle=True)
+                                # if i != NUM_OF_OBJECTS:
+                                #     # obstacle object matching
+                                #     obstacle_obj_mesh, obj_pos, dist, obj_name = RC.get_matching_mesh(downpcd, OBSTACLE_OBJ_INDEX, visualize=False)
+                                #     obj_pos = obj_pos - object_offset[OBJ_FILE_IDX_LIST[i-1]]
 
-                                        # generate swept volume
-                                        num_grasp = 0
-                                        swept_size = sys.maxsize
-                                        grasp_list = np.arange(len(grasp_data))
-                                        np.random.shuffle(np.arange(len(grasp_list)))
+                                #     if dist < 3:
+                                #         print("idx",i,"mesh added")
+                                #         obj_pos_MCTS[i] = obj_pos[0:2].tolist()
+                                #         obj_mesh_MCTS[i] = obstacle_obj_mesh
 
-                                        for grasp_idx in grasp_list[:20]:
-                                            target_grasp_pos = grasp_data[grasp_idx]['target_pos']
-                                            target_grasp_quat = grasp_data[grasp_idx]['target_quat']
-                                            target_grasp_pos[:2] = target_grasp_pos[:2] + target_obj_pos[:2]
+                                #         dy = obj_pos_MCTS[i][1] - GT_OBJ_POS_LIST[i-1][1]
+                                #         dx = obj_pos_MCTS[i][0] - GT_OBJ_POS_LIST[i-1][0]
+                                #         print("diff:", np.sqrt(dy**2 + dx**2), "dist", dist, '\n')
+                                # else:
+                                #     # target obj matching
+                                #     temp_target_obj_mesh, temp_target_obj_pos, dist, obj_name = RC.get_matching_mesh(downpcd, TARGET_OBJ_INDEX, visualize=False)
+                                #     temp_target_obj_pos = temp_target_obj_pos - object_offset[OBJ_FILE_IDX_LIST[i-1]]
 
-                                            init2grasp_angels_temp = rac.grasp_verify(target_grasp_pos, target_grasp_quat)
-                                            grasp2init_angels_temp = rac.grasp_verify(target_grasp_pos + [0,0,0.01], target_grasp_quat)
+                                #     if dist < 3:
+                                #         print("idx",i,"mesh added")
+                                #         target_obj_mesh = copy.deepcopy(temp_target_obj_mesh)
+                                #         target_obj_pos = copy.deepcopy(temp_target_obj_pos[0:2].tolist())
 
-                                            if init2grasp_angels_temp is None or grasp2init_angels_temp is None:
-                                                print("skip imposible grasp")
-                                                continue
+                                #         dy = target_obj_pos[1] - GT_OBJ_POS_LIST[i-1][1]
+                                #         dx = target_obj_pos[0] - GT_OBJ_POS_LIST[i-1][0]
+                                #         print("diff:", np.sqrt(dy**2 + dx**2), "dist", dist, '\n')
 
-                                            init2grasp_path_temp = RC.get_path2grasp(rac, init2grasp_angels_temp, scene_info, target_mesh=target_obj_mesh, time_limit=30)
-                                            temp_mod_bbox = rac.modify_grasp_bbox(init2grasp_angels_temp, target_obj_mesh, visualize=False)
-                                            grasp2init_path_temp = RC.get_path2start(rac, grasp2init_angels_temp, temp_mod_bbox, scene_info, time_limit=30)
+                                #     if not is_target_detected and dist < 3:
+                                #         # read grasp data
+                                #         grasp_file = "/".join(obj_name.split('/')[:5]) + "/grasp_dict.npy"
+                                #         grasp_data = np.load(grasp_file, allow_pickle=True)
 
-                                            if init2grasp_path_temp is None or grasp2init_path_temp is None:
-                                                print("No path generated\n")
-                                                continue
+                                #         # generate swept volume
+                                #         num_grasp = 0
+                                #         swept_size = sys.maxsize
+                                #         grasp_list = np.arange(len(grasp_data))
+                                #         np.random.shuffle(np.arange(len(grasp_list)))
 
-                                            swept_volume1_temp, swept_verts1_temp = rac.get_swept_volume(init2grasp_path_temp, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
-                                            swept_volume2_temp, swept_verts2_temp = rac.get_swept_volume(grasp2init_path_temp, w_target=temp_mod_bbox, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
-                                            num_grasp += 1
-                                            is_target_detected = True
+                                #         for grasp_idx in grasp_list[:20]:
+                                #             target_grasp_pos = grasp_data[grasp_idx]['target_pos']
+                                #             target_grasp_quat = grasp_data[grasp_idx]['target_quat']
+                                #             target_grasp_pos[:2] = target_grasp_pos[:2] + target_obj_pos[:2]
 
-                                            # compare swept volumes
-                                            swept_center_temp, swept_verts_temp = rac.get_swept_center(swept_verts1_temp+swept_verts2_temp, scene_info, MAX_HEIGHT)
-                                            temp_swept_size = get_swept_volume_size(swept_verts_temp)
-                                            if temp_swept_size < swept_size:
-                                                swept_size = temp_swept_size
-                                                ML_MCTS_ins.swept_volume1 = swept_volume1_temp
-                                                ML_MCTS_ins.swept_volume2 = swept_volume2_temp
-                                                init2grasp_path = init2grasp_path_temp
-                                                grasp2init_path = grasp2init_path_temp
-                                                swept_center = swept_center_temp
-                                                swept_verts = swept_verts_temp
-                                                W_TARGET = temp_mod_bbox
+                                #             init2grasp_angels_temp = rac.grasp_verify(target_grasp_pos, target_grasp_quat)
+                                #             grasp2init_angels_temp = rac.grasp_verify(target_grasp_pos + [0,0,0.01], target_grasp_quat)
 
-                                            if num_grasp == 5:
-                                                break
-                                        print("\n!!!!!!!!!!!!!!!!!!!", num_grasp ,'grasp generated!!!!!!!!!!!!!!!!!!!!!!!\n')
+                                #             if init2grasp_angels_temp is None or grasp2init_angels_temp is None:
+                                #                 print("skip imposible grasp")
+                                #                 continue
+
+                                #             init2grasp_path_temp = RC.get_path2grasp(rac, init2grasp_angels_temp, scene_info, target_mesh=target_obj_mesh, time_limit=30)
+                                #             temp_mod_bbox = rac.modify_grasp_bbox(init2grasp_angels_temp, target_obj_mesh, visualize=False)
+                                #             grasp2init_path_temp = RC.get_path2start(rac, grasp2init_angels_temp, temp_mod_bbox, scene_info, time_limit=30)
+
+                                #             if init2grasp_path_temp is None or grasp2init_path_temp is None:
+                                #                 print("No path generated\n")
+                                #                 continue
+
+                                #             swept_volume1_temp, swept_verts1_temp = rac.get_swept_volume(init2grasp_path_temp, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
+                                #             swept_volume2_temp, swept_verts2_temp = rac.get_swept_volume(grasp2init_path_temp, w_target=temp_mod_bbox, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
+                                #             num_grasp += 1
+                                #             is_target_detected = True
+
+                                #             # compare swept volumes
+                                #             swept_center_temp, swept_verts_temp = rac.get_swept_center(swept_verts1_temp+swept_verts2_temp, scene_info, MAX_HEIGHT)
+                                #             temp_swept_size = get_swept_volume_size(swept_verts_temp)
+                                #             if temp_swept_size < swept_size:
+                                #                 swept_size = temp_swept_size
+                                #                 ML_MCTS_ins.swept_volume1 = swept_volume1_temp
+                                #                 ML_MCTS_ins.swept_volume2 = swept_volume2_temp
+                                #                 init2grasp_path = init2grasp_path_temp
+                                #                 grasp2init_path = grasp2init_path_temp
+                                #                 swept_center = swept_center_temp
+                                #                 swept_verts = swept_verts_temp
+                                #                 W_TARGET = temp_mod_bbox
+
+                                #             if num_grasp == 5:
+                                #                 break
+                                #         print("\n!!!!!!!!!!!!!!!!!!!", num_grasp ,'grasp generated!!!!!!!!!!!!!!!!!!!!!!!\n')
 
                             _ = scene.register_camera_view(list(new_cam_rotation), list(new_cam_translation), new_depth_image, object_dict)
 
@@ -4105,7 +4158,6 @@ if __name__ == '__main__':
 
             if is_plan_success:
                 print("!!!!!!!!!!!!!!BASE2 planning Success!!!!!!!!!!!!!!!!!!!!!")
-                ML_MCTS_ins.global_optimization()
                 # ML_MCTS_ins.animate_whole_sequence()
                 res_plan = ML_MCTS_ins.save_planning_results()
                 num_collision_obj_ = len(ML_MCTS_ins.track_level_steps_[0][0].check_collision_w_swept())
@@ -4118,7 +4170,7 @@ if __name__ == '__main__':
                 num_collision_obj_ = len(ML_MCTS_ins.MCTS_ins.MCTS_tree_.check_collision_w_swept())
                 write_result(new_folder + "test_results/", 'complete_sensing/BASE2', scene.num_observation, len(curr_config), ML_MCTS_ins.time_consumption_, "Failed", "Failed", "Failed", num_collision_obj_, mcts_attempts, total_view_time_comsumption, cam_dofs, cam_time, None)
                 
-                if len(valid_area_cluster) == 0:
+                if len(potential_center_cluster) == 0:
                     print("!!!!!!!!!!!!!!Planning Faild without unobserved area!!!!!!!!!!!!!!!!!!!!!")
                     is_cluster_covered = True
                     break
@@ -4130,7 +4182,7 @@ if __name__ == '__main__':
                     min_num_collision = sys.maxsize
                     max_node = None
                     for child in child_node_list:
-                        if len(child.check_collision_w_swept()) < min_num_collision:
+                        if len(child.check_collision_w_swept()) < min_num_collision and len(child.check_collision_w_swept()) != 0:
                             max_node = child
                             max_reward = child.reward_
                         elif len(child.check_collision_w_swept()) == min_num_collision:
@@ -4171,15 +4223,22 @@ if __name__ == '__main__':
                         if max_region_count < total_new_region:
                             max_region_count = total_new_region
                             max_region_idx = cluster_idx
-                    
-                    mcts_out_angle = RC.cal_cam_angle_for_area(potential_center_cluster[max_region_idx], ML_MCTS_ins.curr_config_ + [target_pos_MCT], scene_info, visualize=False)
-                    while mcts_out_angle is None and len(potential_center_cluster) != 0:
-                        max_region_idx = np.random.randint(len(potential_center_cluster))
-                        mcts_out_angle = RC.cal_cam_angle_for_area(potential_center_cluster[max_region_idx], ML_MCTS_ins.curr_config_ + [target_pos_MCT], scene_info, visualize=False)
-                        if mcts_out_angle is None:
-                            potential_center_cluster.pop(max_region_idx)
 
-                    mcts_selected_cluster = potential_center_cluster[max_region_idx]
+                    try:
+                        mcts_out_angle = RC.cal_cam_angle_for_area(valid_area_cluster[max_region_idx], ML_MCTS_ins.curr_config_ + [target_pos_MCT], scene_info, visualize=False)
+                    except:
+                        pdb.set_trace()
+                    while mcts_out_angle is None and len(valid_area_cluster) != 0:
+                        max_region_idx = np.random.randint(len(valid_area_cluster))
+                        mcts_out_angle = RC.cal_cam_angle_for_area(valid_area_cluster[max_region_idx], ML_MCTS_ins.curr_config_ + [target_pos_MCT], scene_info, visualize=False)
+                        if mcts_out_angle is None:
+                            valid_area_cluster.pop(max_region_idx)
+
+                    if len(valid_area_cluster) == 0:
+                        print("------ RUN FAILED WITH UNOBSERVABLE AREA ------")
+                        break
+                        
+                    mcts_selected_cluster = valid_area_cluster[max_region_idx]
                     run_mcts = False
                     cam_time += time.time() - cam_time_start
                     
@@ -4227,101 +4286,108 @@ if __name__ == '__main__':
                             pc_extractor_grasp(new_rgb_image, new_depth_image, new_seg_image, new_cam_rotation, new_cam_translation, object_dict, table_dims.z)
                             
                             for i in object_dict:
-                                mask = new_seg_image == 1
-                                temp_seg_image = copy.deepcopy(new_seg_image)
-                                mask = new_seg_image == i
-                                temp_seg_image[~mask] = 0
-                                temp_seg_image[mask] = 1
-
-                                point_cloud, pcd = RC.write_to_pointcloud(new_rgb_image, new_depth_image, temp_seg_image, new_cam_rotation, new_cam_translation, visualization=False)
-                                if i in obj_pcd.keys():
-                                    obj_pcd[i] += pcd
-                                else:
-                                    obj_pcd[i] = pcd
-
-                                # find matching object mesh file
-                                downpcd = obj_pcd[i].voxel_down_sample(voxel_size=0.005) # downsampe pcd
-                                # downpcd = obj_pcd[i]
-
                                 if i != NUM_OF_OBJECTS:
-                                    # obstacle object matching
-                                    obstacle_obj_mesh, obj_pos, dist, obj_name = RC.get_matching_mesh(downpcd, OBSTACLE_OBJ_INDEX, visualize=False)
-                                    obj_pos = obj_pos - object_offset[OBJ_FILE_IDX_LIST[i-1]]
-
-                                    if dist < 3:
-                                        print("idx",i,"mesh added")
-                                        obj_pos_MCTS[i] = obj_pos[0:2].tolist()
-                                        obj_mesh_MCTS[i] = obstacle_obj_mesh
-
-                                        dy = obj_pos_MCTS[i][1] - GT_OBJ_POS_LIST[i-1][1]
-                                        dx = obj_pos_MCTS[i][0] - GT_OBJ_POS_LIST[i-1][0]
-                                        print("diff:", np.sqrt(dy**2 + dx**2), "dist", dist, '\n')
+                                    obj_pos_MCTS[i-1] = GT_OBJ_POS_LIST[i-1]
+                                    obj_mesh_MCTS[i-1] = GT_OBJ_MESH_LIST[i-1]
                                 else:
-                                    # target obj matching
-                                    temp_target_obj_mesh, temp_target_obj_pos, dist, obj_name = RC.get_matching_mesh(downpcd, TARGET_OBJ_INDEX, visualize=False)
-                                    temp_target_obj_pos = temp_target_obj_pos - object_offset[OBJ_FILE_IDX_LIST[i-1]]
+                                    target_obj_pos = GT_OBJ_POS_LIST[i-1]
+                                    target_obj_mesh = GT_OBJ_MESH_LIST[i-1]
+                                    is_target_detected = True
+                                # mask = new_seg_image == 1
+                                # temp_seg_image = copy.deepcopy(new_seg_image)
+                                # mask = new_seg_image == i
+                                # temp_seg_image[~mask] = 0
+                                # temp_seg_image[mask] = 1
 
-                                    if dist < 3:
-                                        print("idx",i,"mesh added")
-                                        target_obj_mesh = copy.deepcopy(temp_target_obj_mesh)
-                                        target_obj_pos = copy.deepcopy(temp_target_obj_pos[0:2].tolist())
+                                # point_cloud, pcd = RC.write_to_pointcloud(new_rgb_image, new_depth_image, temp_seg_image, new_cam_rotation, new_cam_translation, visualization=False)
+                                # if i in obj_pcd.keys():
+                                #     obj_pcd[i] += pcd
+                                # else:
+                                #     obj_pcd[i] = pcd
 
-                                        dy = target_obj_pos[1] - GT_OBJ_POS_LIST[i-1][1]
-                                        dx = target_obj_pos[0] - GT_OBJ_POS_LIST[i-1][0]
-                                        print("diff:", np.sqrt(dy**2 + dx**2), "dist", dist, '\n')
+                                # # find matching object mesh file
+                                # downpcd = obj_pcd[i].voxel_down_sample(voxel_size=0.005) # downsampe pcd
+                                # # downpcd = obj_pcd[i]
 
-                                    if not is_target_detected and dist < 3:
-                                        # read grasp data
-                                        grasp_file = "/".join(obj_name.split('/')[:5]) + "/grasp_dict.npy"
-                                        grasp_data = np.load(grasp_file, allow_pickle=True)
+                                # if i != NUM_OF_OBJECTS:
+                                #     # obstacle object matching
+                                #     obstacle_obj_mesh, obj_pos, dist, obj_name = RC.get_matching_mesh(downpcd, OBSTACLE_OBJ_INDEX, visualize=False)
+                                #     obj_pos = obj_pos - object_offset[OBJ_FILE_IDX_LIST[i-1]]
 
-                                        # generate swept volume
-                                        num_grasp = 0
-                                        swept_size = sys.maxsize
-                                        grasp_list = np.arange(len(grasp_data))
-                                        np.random.shuffle(np.arange(len(grasp_list)))
+                                #     if dist < 3:
+                                #         print("idx",i,"mesh added")
+                                #         obj_pos_MCTS[i] = obj_pos[0:2].tolist()
+                                #         obj_mesh_MCTS[i] = obstacle_obj_mesh
 
-                                        for grasp_idx in grasp_list[:20]:
-                                            target_grasp_pos = grasp_data[grasp_idx]['target_pos']
-                                            target_grasp_quat = grasp_data[grasp_idx]['target_quat']
-                                            target_grasp_pos[:2] = target_grasp_pos[:2] + target_obj_pos[:2]
+                                #         dy = obj_pos_MCTS[i][1] - GT_OBJ_POS_LIST[i-1][1]
+                                #         dx = obj_pos_MCTS[i][0] - GT_OBJ_POS_LIST[i-1][0]
+                                #         print("diff:", np.sqrt(dy**2 + dx**2), "dist", dist, '\n')
+                                # else:
+                                #     # target obj matching
+                                #     temp_target_obj_mesh, temp_target_obj_pos, dist, obj_name = RC.get_matching_mesh(downpcd, TARGET_OBJ_INDEX, visualize=False)
+                                #     temp_target_obj_pos = temp_target_obj_pos - object_offset[OBJ_FILE_IDX_LIST[i-1]]
 
-                                            init2grasp_angels_temp = rac.grasp_verify(target_grasp_pos, target_grasp_quat)
-                                            grasp2init_angels_temp = rac.grasp_verify(target_grasp_pos + [0,0,0.01], target_grasp_quat)
+                                #     if dist < 3:
+                                #         print("idx",i,"mesh added")
+                                #         target_obj_mesh = copy.deepcopy(temp_target_obj_mesh)
+                                #         target_obj_pos = copy.deepcopy(temp_target_obj_pos[0:2].tolist())
 
-                                            if init2grasp_angels_temp is None or grasp2init_angels_temp is None:
-                                                print("skip imposible grasp")
-                                                continue
+                                #         dy = target_obj_pos[1] - GT_OBJ_POS_LIST[i-1][1]
+                                #         dx = target_obj_pos[0] - GT_OBJ_POS_LIST[i-1][0]
+                                #         print("diff:", np.sqrt(dy**2 + dx**2), "dist", dist, '\n')
 
-                                            init2grasp_path_temp = RC.get_path2grasp(rac, init2grasp_angels_temp, scene_info, target_mesh=target_obj_mesh, time_limit=30)
-                                            temp_mod_bbox = rac.modify_grasp_bbox(init2grasp_angels_temp, target_obj_mesh, visualize=False)
-                                            grasp2init_path_temp = RC.get_path2start(rac, grasp2init_angels_temp, temp_mod_bbox, scene_info, time_limit=30)
+                                #     if not is_target_detected and dist < 3:
+                                #         # read grasp data
+                                #         grasp_file = "/".join(obj_name.split('/')[:5]) + "/grasp_dict.npy"
+                                #         grasp_data = np.load(grasp_file, allow_pickle=True)
 
-                                            if init2grasp_path_temp is None or grasp2init_path_temp is None:
-                                                print("No path generated\n")
-                                                continue
+                                #         # generate swept volume
+                                #         num_grasp = 0
+                                #         swept_size = sys.maxsize
+                                #         grasp_list = np.arange(len(grasp_data))
+                                #         np.random.shuffle(np.arange(len(grasp_list)))
 
-                                            swept_volume1_temp, swept_verts1_temp = rac.get_swept_volume(init2grasp_path_temp, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
-                                            swept_volume2_temp, swept_verts2_temp = rac.get_swept_volume(grasp2init_path_temp, w_target=temp_mod_bbox, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
-                                            num_grasp += 1
-                                            is_target_detected = True
+                                #         for grasp_idx in grasp_list[:20]:
+                                #             target_grasp_pos = grasp_data[grasp_idx]['target_pos']
+                                #             target_grasp_quat = grasp_data[grasp_idx]['target_quat']
+                                #             target_grasp_pos[:2] = target_grasp_pos[:2] + target_obj_pos[:2]
 
-                                            # compare swept volumes
-                                            swept_center_temp, swept_verts_temp = rac.get_swept_center(swept_verts1_temp+swept_verts2_temp, scene_info, MAX_HEIGHT)
-                                            temp_swept_size = get_swept_volume_size(swept_verts_temp)
-                                            if temp_swept_size < swept_size:
-                                                swept_size = temp_swept_size
-                                                ML_MCTS_ins.swept_volume1 = swept_volume1_temp
-                                                ML_MCTS_ins.swept_volume2 = swept_volume2_temp
-                                                init2grasp_path = init2grasp_path_temp
-                                                grasp2init_path = grasp2init_path_temp
-                                                swept_center = swept_center_temp
-                                                swept_verts = swept_verts_temp
-                                                W_TARGET = temp_mod_bbox
+                                #             init2grasp_angels_temp = rac.grasp_verify(target_grasp_pos, target_grasp_quat)
+                                #             grasp2init_angels_temp = rac.grasp_verify(target_grasp_pos + [0,0,0.01], target_grasp_quat)
 
-                                            if num_grasp == 5:
-                                                break
-                                        print("\n!!!!!!!!!!!!!!!!!!!", num_grasp ,'grasp generated!!!!!!!!!!!!!!!!!!!!!!!\n')
+                                #             if init2grasp_angels_temp is None or grasp2init_angels_temp is None:
+                                #                 print("skip imposible grasp")
+                                #                 continue
+
+                                #             init2grasp_path_temp = RC.get_path2grasp(rac, init2grasp_angels_temp, scene_info, target_mesh=target_obj_mesh, time_limit=30)
+                                #             temp_mod_bbox = rac.modify_grasp_bbox(init2grasp_angels_temp, target_obj_mesh, visualize=False)
+                                #             grasp2init_path_temp = RC.get_path2start(rac, grasp2init_angels_temp, temp_mod_bbox, scene_info, time_limit=30)
+
+                                #             if init2grasp_path_temp is None or grasp2init_path_temp is None:
+                                #                 print("No path generated\n")
+                                #                 continue
+
+                                #             swept_volume1_temp, swept_verts1_temp = rac.get_swept_volume(init2grasp_path_temp, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
+                                #             swept_volume2_temp, swept_verts2_temp = rac.get_swept_volume(grasp2init_path_temp, w_target=temp_mod_bbox, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
+                                #             num_grasp += 1
+                                #             is_target_detected = True
+
+                                #             # compare swept volumes
+                                #             swept_center_temp, swept_verts_temp = rac.get_swept_center(swept_verts1_temp+swept_verts2_temp, scene_info, MAX_HEIGHT)
+                                #             temp_swept_size = get_swept_volume_size(swept_verts_temp)
+                                #             if temp_swept_size < swept_size:
+                                #                 swept_size = temp_swept_size
+                                #                 ML_MCTS_ins.swept_volume1 = swept_volume1_temp
+                                #                 ML_MCTS_ins.swept_volume2 = swept_volume2_temp
+                                #                 init2grasp_path = init2grasp_path_temp
+                                #                 grasp2init_path = grasp2init_path_temp
+                                #                 swept_center = swept_center_temp
+                                #                 swept_verts = swept_verts_temp
+                                #                 W_TARGET = temp_mod_bbox
+
+                                #             if num_grasp == 5:
+                                #                 break
+                                #         print("\n!!!!!!!!!!!!!!!!!!!", num_grasp ,'grasp generated!!!!!!!!!!!!!!!!!!!!!!!\n')
 
                             _ = scene.register_camera_view(list(new_cam_rotation), list(new_cam_translation), new_depth_image, object_dict)
 

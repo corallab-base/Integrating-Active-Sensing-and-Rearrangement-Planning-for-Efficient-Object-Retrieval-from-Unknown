@@ -324,7 +324,7 @@ class Tree_Node_base1():
         v3 = v3 / np.linalg.norm(v3)
 
         collision_points = []
-        for point in self.potential_centers:
+        for point in self.valid_area:
             test_vector = point - v2_start
             proj_v2 = np.dot(v2, test_vector)
             proj_v3 = np.dot(v3, test_vector)

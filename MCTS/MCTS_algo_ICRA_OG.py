@@ -68,7 +68,8 @@ class multi_level_MCTS_algo_OG():
 
         if level_steps is None:
             curr_time = time.time()
-            print("planning failed. Time consumed", curr_time - start_time)
+            self.time_consumption_ = curr_time - start_time
+            print("planning failed. Time consumed", self.time_consumption_)
             children_list = MCTS_ins.get_children_nodes(MCTS_ins.root_)
             return False, children_list
 
@@ -606,13 +607,13 @@ class MCTS_algo_OG():
         self.leaf_ = []
         self.root_ = self.MCTS_tree_
 
-        self.distance_lookup_ = defaultdict(list)
-        for t in range(-len(self.grid_) + 1, len(self.grid_)):
-            for k in range(-len(self.grid_[0]) + 1, len(self.grid_[0])):
-                distance = round((t)**2 + (k)**2, 3)
-                self.distance_lookup_[distance].append([t, k])
-        self.distance_lookup_ = [list(x) for x in self.distance_lookup_.items()]
-        self.distance_lookup_.sort(key = lambda x: x[0])
+        # self.distance_lookup_ = defaultdict(list)
+        # for t in range(-len(self.grid_) + 1, len(self.grid_)):
+        #     for k in range(-len(self.grid_[0]) + 1, len(self.grid_[0])):
+        #         distance = round((t)**2 + (k)**2, 3)
+        #         self.distance_lookup_[distance].append([t, k])
+        # self.distance_lookup_ = [list(x) for x in self.distance_lookup_.items()]
+        # self.distance_lookup_.sort(key = lambda x: x[0])
 
     def scale_grid(self, scene_info, curr_config, cm_scale=False):
         # find max radius

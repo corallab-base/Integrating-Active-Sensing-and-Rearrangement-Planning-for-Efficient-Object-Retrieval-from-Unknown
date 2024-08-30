@@ -723,9 +723,9 @@ class Tree_Node():
     
     def propose_new_region(self, index, obs, random_obj_flag=False):
         swept_off_flag = False
-        if random_obj_flag:
-            swept_off_flag = random.choice([True, False])
-            num_feasible_list = []
+        # if random_obj_flag:
+        #     swept_off_flag = random.choice([True, False])
+        #     num_feasible_list = []
 
         gx, gy, radius, color = self.curr_config_[index]
         res = []
@@ -733,14 +733,14 @@ class Tree_Node():
             for ox, oy in offset_list:
                 #change for IROS 2024, add a 2D gaussian offset to change the discrete region proposal
                 #to continuous. The covariance matrix is [[R, 0], [0, R]]
-                temp_x = gx + ox + round(random.gauss(0, 3),2)
-                temp_y = gy + oy + round(random.gauss(0, 3),2)
+                temp_x = gx + ox + round(random.gauss(0, 5),5)
+                temp_y = gy + oy + round(random.gauss(0, 5),5)
 
                 #may delete
                 if self.x_min_ <= gx + ox <= self.x_max_ and self.y_min_ <= gy + oy <= self.y_max_:
                    while (temp_x < self.x_min_ or temp_x > self.x_max_ or temp_y < self.y_min_ or temp_y > self.y_max_):
-                       temp_x = gx + ox + round(random.gauss(0, 3),2)
-                       temp_y = gy + oy + round(random.gauss(0, 3),2)
+                       temp_x = gx + ox + round(random.gauss(0, 5),5)
+                       temp_y = gy + oy + round(random.gauss(0, 5),5)
 
                 ox_rand = temp_x - gx
                 oy_rand = temp_y - gy
@@ -966,23 +966,36 @@ class Tree_Node():
         # plt.cla()
         plt.close()
 
-def write_result(new_folder, method, test_index, object_count, time, steps, length, displacement, num_collision_obj, res_plan):
+def write_result(new_folder, method, test_index, object_count, time, steps, length, displacement, num_collision_obj, mcts_attemps, view_time_con, cam_dofs, cam_time, res_plan):
     file_name = new_folder + method + '/test_result_' + str(test_index) + '.txt'
     plan_name = new_folder + method + '/test_result_' + str(test_index) + '.npy'
+    cam_name = new_folder + method + '/cam_dofs_' + str(test_index) + '.npy'
     if os.path.exists(file_name):
         os.remove(file_name)
     with open(file_name, 'w') as f:
         f.write('number of objects : ' + str(object_count) + '\n')
-        f.write('time comsumption : ' + str(time) + '\n')
+        f.write('rearrangment time comsumption : ' + str(time) + '\n')
         f.write('number of steps : ' + str(steps) + '\n')
-        f.write('total length travelled : ' + str(length) + '\n')
-        f.write('total length displacement : ' + str(displacement) + '\n')
+        f.write('rearrangment length travelled : ' + str(length) + '\n')
+        f.write('rearrangment length displacement : ' + str(displacement) + '\n')
+
         f.write('number of view : ' + str(test_index) + '\n')
         f.write('number of initial collision objects : ' + str(num_collision_obj) + '\n')
+        f.write('number of rearrangement attempts : ' + str(mcts_attemps) + '\n')
+        f.write('view time comsumption : ' + str(view_time_con) + '\n')
+        f.write('calculation for cam loc time comsumption : ' + str(cam_time) + '\n')
+
+        f.write('total time comsumption : ' + str(view_time_con + time) + '\n')
+        # f.write('total length travelled: ' + str(length + cam_dofs) + '\n')
+
     f.close()
 
-    with open(plan_name, 'wb') as f:
-        np.save(f, res_plan)
+    if res_plan is not None:
+        with open(plan_name, 'wb') as f:
+            np.save(f, res_plan)
+
+    with open(cam_name, 'wb') as f:
+            np.save(f, np.array(cam_dofs))
 
 
 # def write_result(new_folder, method, test_index, object_count, time, steps, length, displacement, res_plan):

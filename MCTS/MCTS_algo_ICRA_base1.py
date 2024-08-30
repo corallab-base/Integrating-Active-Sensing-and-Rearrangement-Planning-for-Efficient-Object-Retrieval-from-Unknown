@@ -96,7 +96,8 @@ class multi_level_MCTS_algo_base1():
 
             if level_steps is None:
                 curr_time = time.time()
-                print("planning failed. Time consumed", curr_time - start_time)
+                self.time_consumption_ = curr_time - start_time
+                print("planning failed. Time consumed", self.time_consumption_)
                 children_list = self.MCTS_ins.get_children_nodes(self.MCTS_ins.root_)
                 return False, children_list
             

@@ -33,6 +33,10 @@ import copy
 
 import pdb
 
+from isaacgym import gymapi
+from isaacgym import gymutil
+from isaacgym import gymtorch
+
 def global_coord_converter(coord1, coord2, coord3, offset1, offset2, offset3):
     return (coord1 - offset1, coord3 - offset3, - coord2 + offset2)
 
@@ -2147,7 +2151,7 @@ def cal_cam_angle_for_area(valid_points, curr_config, scene_info, visualize=Fals
             obj_vec = obj_pos - center
             radius = obj[2] * 100
             dist = abs((obj_vec[0] * vec[1] - obj_vec[1] * vec[0]) / np.linalg.norm(vec))
-            if dist <= radius + 1:
+            if dist <= radius + 2:
                 is_collision = True
                 break
 
@@ -2167,6 +2171,7 @@ def cal_cam_angle_for_area(valid_points, curr_config, scene_info, visualize=Fals
 
         for obj in curr_config:
             obj_pos = [-obj[1] * 100, obj[0] * 100]
+            radius = radius = obj[2] * 100
             temp_circle = mpatches.Circle((obj_pos), radius, color = obj[3])
             plt.gca().add_patch(temp_circle)
 
@@ -2176,6 +2181,9 @@ def cal_cam_angle_for_area(valid_points, curr_config, scene_info, visualize=Fals
             plt.plot([-foc[1], -loc[1]], [foc[0], loc[0]], marker='o', color='black')
 
         plt.show()
+
+    if len(cluster_angles["loc"]) == 0:
+        return None
 
     return cluster_angles
 
@@ -2545,14 +2553,14 @@ def check_MCTS(MCTS_root, MCTS_name, file_path):
                                             swept_volume1=swept_volume1, swept_volume2=swept_volume2, obj_mesh=rac.obj_mesh,
                                             target_pos=copy.deepcopy(target_pos_MCT), unknown_area=unknown_area, valid_area=valid_area,
                                             potential_centers=potential_centers)
-    # ML_MCTS_ins_OG = mct_OG.multi_level_MCTS_algo_OG(copy.deepcopy(curr_config), copy.deepcopy(curr_config), scene_info=scene_info,
-    #                                         swept_volume1=swept_volume1, swept_volume2=swept_volume2, obj_mesh=rac.obj_mesh,
-    #                                         target_pos=copy.deepcopy(target_pos_MCT), unknown_area=unknown_area, valid_area=valid_area,
-    #                                         potential_centers=potential_centers)
-    # ML_MCTS_ins_base1 = mct_base1.multi_level_MCTS_algo_base1(copy.deepcopy(curr_config), copy.deepcopy(curr_config), scene_info=scene_info,
-    #                                         swept_volume1=swept_volume1, swept_volume2=swept_volume2, obj_mesh=rac.obj_mesh,
-    #                                         target_pos=copy.deepcopy(target_pos_MCT), unknown_area=unknown_area, valid_area=valid_area,
-    #                                         potential_centers=potential_centers)
+    ML_MCTS_ins_OG = mct_OG.multi_level_MCTS_algo_OG(copy.deepcopy(curr_config), copy.deepcopy(curr_config), scene_info=scene_info,
+                                            swept_volume1=swept_volume1, swept_volume2=swept_volume2, obj_mesh=rac.obj_mesh,
+                                            target_pos=copy.deepcopy(target_pos_MCT), unknown_area=unknown_area, valid_area=valid_area,
+                                            potential_centers=potential_centers)
+    ML_MCTS_ins_base1 = mct_base1.multi_level_MCTS_algo_base1(copy.deepcopy(curr_config), copy.deepcopy(curr_config), scene_info=scene_info,
+                                            swept_volume1=swept_volume1, swept_volume2=swept_volume2, obj_mesh=rac.obj_mesh,
+                                            target_pos=copy.deepcopy(target_pos_MCT), unknown_area=unknown_area, valid_area=valid_area,
+                                            potential_centers=potential_centers)
     ML_MCTS_ins_base2 = mct_base2.multi_level_MCTS_algo_base2(copy.deepcopy(curr_config), copy.deepcopy(curr_config), scene_info=scene_info,
                                             swept_volume1=swept_volume1, swept_volume2=swept_volume2, obj_mesh=rac.obj_mesh,
                                             target_pos=copy.deepcopy(target_pos_MCT), unknown_area=unknown_area, valid_area=valid_area,
@@ -2560,21 +2568,33 @@ def check_MCTS(MCTS_root, MCTS_name, file_path):
     
     
     # swept_volume1, _ = rac.get_swept_volume(init2grasp_path, test_name, idx, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
+    # ML_MCTS_ins_base1.init_MCTS()
+    # ML_MCTS_ins_base1.MCTS_ins.MCTS_tree_.tunnel_and_normal_visualizer(unknown_show=True)
+
+    # obj_idx, collision_points = ML_MCTS_ins_base1.unknown_tunnel_check()
+
+    # ML_MCTS_ins.init_MCTS()
+    # is_success, child_node_list = ML_MCTS_ins.run_mcts(2)
+
+    # ML_MCTS_ins_OG.init_MCTS()
+    # is_success, child_node_list = ML_MCTS_ins_OG.run_mcts(2)
+
+    # ML_MCTS_ins_base1.init_MCTS()
+    # is_success, child_node_list = ML_MCTS_ins_base1.run_mcts(2)
+    # ML_MCTS_ins_base1.animate_whole_sequence()
+
+    # new_folder = "/".join(MCTS_root.split('/')[:2]) + '/'\
 
     ML_MCTS_ins.init_MCTS()
-    # ML_MCTS_ins_OG.init_MCTS()
-    # ML_MCTS_ins_base1.init_MCTS()
-    # pdb.set_trace()
     ML_MCTS_ins.MCTS_ins.MCTS_tree_.tunnel_and_normal_visualizer(unknown_show=True)
+    is_plan_success, child_node_list = ML_MCTS_ins.run_mcts(30)
 
-    is_success, time_con = ML_MCTS_ins.run_mcts(30)
-    if is_success:
-        pdb.set_trace()
-        ML_MCTS_ins.animate_whole_sequence()
-
-    cluster_angles = cal_cam_angle_for_area(potential_center_cluster[0], curr_config, scene_info, visualize=False)
-    pdb.set_trace()
+    ML_MCTS_ins.animate_whole_sequence()
     return
+
+    # cluster_angles = cal_cam_angle_for_area(potential_center_cluster[1], curr_config, scene_info, visualize=True)
+    # pdb.set_trace()
+    # return
     # ML_MCTS_ins.track_level_steps_[-1][-1].scene_saver(MCTS_root + 'test_results_hybrid_MCTS*_final_layout.png')
     # ML_MCTS_ins.MCTS_ins.MCTS_tree_.scene_saver(MCTS_root + 'test_results_hybrid_MCTS*_scene_capture' + '.png')
     # ML_MCTS_ins.MCTS_ins.MCTS_tree_.scene_saver(MCTS_root + 'test_results_hybrid_MCTS*_scene_capture1' + '.png')
@@ -2584,7 +2604,7 @@ def check_MCTS(MCTS_root, MCTS_name, file_path):
     # return
     ML_MCTS_ins_base2.init_MCTS()
 
-    # ML_MCTS_ins_base2.MCTS_ins.MCTS_tree_.tunnel_and_normal_visualizer(unknown_show=True)
+    ML_MCTS_ins_base2.MCTS_ins.MCTS_tree_.tunnel_and_normal_visualizer(unknown_show=True)
 
     # ML_MCTS_ins.scenario_check()
     # ML_MCTS_ins_OG.scenario_check()
@@ -2621,16 +2641,62 @@ def check_MCTS(MCTS_root, MCTS_name, file_path):
     #     ML_MCTS_ins_base1.total_length_travelled_ = "Faild"
     #     ML_MCTS_ins_base1.total_length_displacement_ = "Faild"
 
-    is_success, time_con = ML_MCTS_ins_base2.run_mcts(600)
+    is_success, child_node_list = ML_MCTS_ins_base2.run_mcts(5)
     if is_success:
         ML_MCTS_ins_base2.animate_whole_sequence()
         num_collision_obj_ = len(ML_MCTS_ins_base2.track_level_steps_[0][0].check_collision_w_swept())
-        print("Time:", time_con)
+        print("Time:", child_node_list)
     else: 
-        time_con = 'Failed'
-        ML_MCTS_ins_base2.total_steps_ = "Failed"
-        ML_MCTS_ins_base2.total_length_travelled_ = "Faild"
-        ML_MCTS_ins_base2.total_length_displacement_ = "Faild"
+        pdb.set_trace()
+        max_reward = -sys.maxsize
+        min_num_collision = sys.maxsize
+        max_node = None
+        for child in child_node_list:
+            if len(child.check_collision_w_swept()) < min_num_collision:
+                max_node = child
+                max_reward = child.reward_
+            elif len(child.check_collision_w_swept()) == min_num_collision:
+                if child.reward_ > max_reward:
+                    max_reward = child.reward_
+                    max_node = child
+
+        collision_check_obj = []
+        swept_check_obj = []
+        swept_obj = max_node.check_collision_w_swept()
+        for obj_idx in swept_obj:
+            tunnel = max_node.get_tunnel(max_node.robot_, max_node.curr_config_[obj_idx][:2])
+            tunnel_collision_obj = max_node.collision_tunnel_object(tunnel)
+            tunnel_collision_obj.remove(obj_idx)
+
+            if tunnel_collision_obj:
+                print(tunnel_collision_obj)
+                collision_check_obj += tunnel_collision_obj
+            else:
+                swept_check_obj.append(obj_idx)
+
+        check_obj = swept_check_obj + sorted(set(collision_check_obj))
+        # max_node.tunnel_and_normal_visualizer()
+
+        max_region_idx = None
+        max_region_count = 0
+        for cluster_idx in range(len(valid_area_cluster)):
+            if len(valid_area_cluster[cluster_idx]) < 5:
+                continue
+            temp_valid_area = copy.deepcopy(valid_area_cluster)
+            temp_valid_area.pop(cluster_idx)
+            temp_valid_area = np.array(sum(temp_valid_area, []))
+
+            total_new_region = 0
+            for obj_idx in check_obj:
+                total_new_region += max_node.region_counting(obj_idx, temp_valid_area)
+
+            if max_region_count < total_new_region:
+                max_region_count = total_new_region
+                max_region_idx = cluster_idx
+
+        base2_out_angle = RC.cal_cam_angle_for_area(potential_center_cluster_base2[max_region_idx], ML_MCTS_ins_OG.curr_config_ + [target_pos_MCT], scene_info, visualize=False)
+        base2_selected_cluster = potential_center_cluster_OG[max_region_idx]
+        run_base2 = False
         
 
     # print('MCTS*   :', "time:", time_con,       "Num steps:", ML_MCTS_ins.total_steps_,         "total_length_travelled:", ML_MCTS_ins.total_length_travelled_,         "total_length_displacement:", ML_MCTS_ins.total_length_displacement_)
@@ -2808,19 +2874,19 @@ if __name__ == '__main__':
     # mcts_name = "temp_scene2_success.npy"
     # mcts_name = "groud_truth_scene2_success.npy"
 
-    # scene_name = "8.1.22.50_failed/" # unsolve
-    # mcts_name = "temp_scene2_failed.npy"
+    scene_name = "8.1.22.50_failed/" # unsolve
+    mcts_name = "temp_scene2_failed.npy"
 
-    # scene_name = "8.7.18.14/"
-    # mcts_name = "temp_scene2_success.npy"
+    scene_name = "8.7.18.14/"
+    mcts_name = "temp_scene2_success.npy"
 
     # --------------------------------------------------------
 
-    # scene_name = "8.6.18.25/"
-    # mcts_name = "temp_scene3_success.npy"
+    scene_name = "8.6.18.25/"
+    mcts_name = "temp_scene3_success.npy"
 
-    # scene_name = "8.6.18.15/"
-    # mcts_name = "temp_scene3_success.npy"
+    scene_name = "8.6.18.15/"
+    mcts_name = "temp_scene3_success.npy"
 
     # scene_name = "7.31.16.39_success/"
     # mcts_name = "groud_truth_scene4.npy"
@@ -2828,11 +2894,11 @@ if __name__ == '__main__':
     # scene_name = "8.7.18.14/"
     # mcts_name = "temp_scene2_success.npy"
 
-    # scene_name = "8.7.18.4/"
-    # mcts_name = "temp_scene2_success.npy"
+    scene_name = "8.7.18.4/"
+    mcts_name = "temp_scene2_success.npy"
 
-    # scene_name = "8.7.20.15/"
-    # mcts_name = "temp_scene2None.npy"
+    scene_name = "8.7.20.15/"
+    mcts_name = "temp_scene2None.npy"
 
     # scene_name = "8.7.20.28/"
     # mcts_name = "temp_scene2_success.npy"
@@ -2840,8 +2906,8 @@ if __name__ == '__main__':
     # scene_name = "8.7.20.39/"
     # mcts_name = "temp_scene2None.npy"
 
-    # scene_name = "8.7.22.6/"
-    # mcts_name = "temp_scene1_success.npy"
+    scene_name = "8.7.22.6/"
+    mcts_name = "temp_scene1_success.npy"
 
     # scene_name = "8.7.22.34/"
     # mcts_name = "temp_scene2_success.npy"
@@ -2851,10 +2917,35 @@ if __name__ == '__main__':
     # scene_name = "8.12.11.20/"
     # mcts_name = "mcts*_temp_scene2_success.npy"
 
-    data_root = "test_data/test_active_sensing/"
-    scene_name = "8.20.13.39/test_results/init_w_feed_back/"
-    mcts_name = "temp_scene3_success.npy"
+    # data_root = "test_data/collected_data/"
+    # scene_name = "5/test_results/complete_sensing/BASE2/"
+    # mcts_name = "temp_scene3_failed.npy"
 
+    # data_root = "test_data/test_active_sensing/"
+    # scene_name = "8.26.16.57/test_results/complete_sensing/BASE1/"
+    # mcts_name = "temp_scene3_success.npy"
+
+    data_root = "test_data/test_active_sensing/"
+    scene_name = "8.28.21.26/test_results/complete_sensing/MCTS*/"
+    mcts_name = "temp_scene1_failed.npy"
+
+    data_root = "test_data/test_active_sensing/"
+    scene_name = "8.29.0.0/test_results/complete_sensing/MCTS*/"
+    mcts_name = "temp_scene5_failed.npy"
+
+    data_root = "test_data/test_active_sensing/"
+    scene_name = "8.29.11.37/test_results/complete_sensing/BASE2/"
+    mcts_name = "temp_scene9_failed.npy"
+
+    data_root = "test_data/test_active_sensing/"
+    scene_name = "8.29.16.37/test_results/complete_sensing/MCTS*/"
+    mcts_name = "temp_scene2_failed.npy"
+
+
+
+    # data_root = "test_data/collected_data/"
+    # scene_name = "8/test_results/complete_sensing/BASE2/"
+    # mcts_name = "temp_scene2_success.npy"
 
     mcts_root = data_root + scene_name
     # mcts_name = "groud_truth_scene.npy"

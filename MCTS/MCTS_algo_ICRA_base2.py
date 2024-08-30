@@ -94,8 +94,11 @@ class multi_level_MCTS_algo_base2():
 
         if level_steps is None:
             curr_time = time.time()
-            print("planning failed. Time consumed", curr_time - start_time)
-            children_list = MCTS_ins.get_children_nodes(MCTS_ins.root_)
+            self.time_consumption_ = curr_time - start_time
+            print("planning failed. Time consumed", self.time_consumption_)
+            # children_list = MCTS_ins.get_children_nodes(MCTS_ins.root_)
+            children_list = MCTS_ins.tree_list_
+            self.get_rewards(children_list)
             return False, children_list
 
         track_level_steps.append(level_steps)
@@ -177,6 +180,10 @@ class multi_level_MCTS_algo_base2():
                 if config1[i][-1] != config2[i][-1]:
                     return False
             return True
+    
+    def get_rewards(self, child_list):
+        for tree in child_list:
+            tree.reward_ = 1000 - tree.total_distance_
 
     def delete_swept(self, root):
         if root.children_ is not None:
@@ -639,14 +646,15 @@ class MCTS_algo_base2():
         self.MCTS_tree_ = Tree_Node_base2(deepcopy(self.curr_config_), self.goal_config_, self.grid_, self.static_config_, swept_volume1=swept_volume1, swept_volume2=swept_volume2, obj_mesh=obj_mesh, scale=self.scale, target_pos=target_pos, unknown_area=unknown_area, valid_area=valid_area, potential_centers=potential_centers, invalid_list=self.invalid_list, valid_list=self.valid_list)
         self.leaf_ = []
         self.root_ = self.MCTS_tree_
+        self.tree_list_ = []
 
-        # self.distance_lookup_ = defaultdict(list)
-        # for t in range(-len(self.grid_) + 1, len(self.grid_)):
-        #     for k in range(-len(self.grid_[0]) + 1, len(self.grid_[0])):
-        #         distance = round((t)**2 + (k)**2, 3)
-        #         self.distance_lookup_[distance].append([t, k])
-        # self.distance_lookup_ = [list(x) for x in self.distance_lookup_.items()]
-        # self.distance_lookup_.sort(key = lambda x: x[0])
+        self.distance_lookup_ = defaultdict(list)
+        for t in range(-len(self.grid_) + 1, len(self.grid_)):
+            for k in range(-len(self.grid_[0]) + 1, len(self.grid_[0])):
+                distance = round((t)**2 + (k)**2, 3)
+                self.distance_lookup_[distance].append([t, k])
+        self.distance_lookup_ = [list(x) for x in self.distance_lookup_.items()]
+        self.distance_lookup_.sort(key = lambda x: x[0])
 
     def scale_grid(self, scene_info, curr_config, cm_scale=False):
         # find max radius
@@ -720,9 +728,9 @@ class MCTS_algo_base2():
 
         invalid_list = []
         valid_list = []
-        for y in range(y_min, y_max + 1):
+        for y in range(y_min, y_max + 1, 2):
             print(y)
-            for x in range(x_min, x_max + 1):
+            for x in range(x_min, x_max + 1, 2):
                 is_valid_spot = self.check_valid_spot_w_swept([x, y, 0])
                 if not is_valid_spot:
                     invalid_list.append([x, y])
@@ -911,50 +919,56 @@ class MCTS_algo_base2():
         return total_child
 
     def exec_algo(self):
-        tree_list = [self.MCTS_tree_]
+        self.tree_list_ = [self.MCTS_tree_]
         solved_tree_list = []
 
         while True:
-            if not tree_list:
+            if not self.tree_list_:
                 break
+            
+            if self.tree_list_[-1].is_goal_config_swept():
+                solved_tree_list.append(self.tree_list_.pop(-1))
+                continue
+            else:
+                min_dist_node = self.tree_list_[-1]
 
             is_overrun = self.check_time()
             if is_overrun:
                 return None
-            
-            if tree_list[0].is_goal_config_swept():
-                solved_tree_list.append(tree_list.pop(0))
-                continue
-            else:
-                min_dist_node = tree_list[0]
 
             print("expansion start")
             new_nodes = self.expansion(min_dist_node)
+
+            min_deleted = False
             if new_nodes is not None and new_nodes:
-                print(tree_list)
+                print(self.tree_list_)
                 for new_node in new_nodes:
-                    for idx, tree in enumerate(tree_list):
-                        if tree.total_distance_ < new_node.total_distance_ and idx + 1 != len(tree_list):
+                    print(self.tree_list_)
+                    added = False
+                    for idx, tree in enumerate(self.tree_list_):
+                        if tree.total_distance_ < new_node.total_distance_ and tree != new_node:
+                            self.tree_list_.insert(idx, new_node)
+                            added = True
+                            break
+                        elif tree.total_distance_ >= new_node.total_distance_:
                             continue
-                        elif idx + 1 == len(tree_list):
-                            tree_list.append(new_node)
-                        else:
-                            tree_list.insert(idx, new_node)
-
-                pdb.set_trace()
-
-                tree_list.remove(min_dist_node)
-
-            if new_nodes is None and self.check_time:
-                return None
+                        elif idx + 1 == len(self.tree_list_) and tree != new_node:
+                            added = True
+                            self.tree_list_.append(new_node)
+                            break
+                    if added:
+                        if not min_deleted:
+                            min_deleted = True
+                            self.tree_list_.remove(min_dist_node)
         
-        #traverse the tree
+        # traverse the tree
         final_node = None
         min_distance = sys.maxsize
-        for node in tree_list:
-                if min_distance > node.total_distance_:
-                    min_distance = node.total_distance_
-                    final_node = node
+        for node in solved_tree_list:
+            if min_distance > node.total_distance_:
+                min_distance = node.total_distance_
+                final_node = node
+        
         tree_nodes = final_node.traverse_tree()
         return tree_nodes
 
