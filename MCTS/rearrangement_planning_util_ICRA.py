@@ -724,6 +724,7 @@ class Tree_Node():
     def propose_new_region(self, index, obs, random_obj_flag=False):
         swept_off_flag = False
         if random_obj_flag:
+            print("FUCK")
             swept_off_flag = random.choice([True, False])
             num_feasible_list = []
 

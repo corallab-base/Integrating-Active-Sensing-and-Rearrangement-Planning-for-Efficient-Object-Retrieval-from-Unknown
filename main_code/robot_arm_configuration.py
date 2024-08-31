@@ -2743,12 +2743,12 @@ if __name__ == '__main__':
     # scene_name = "8.29.16.37/test_results/complete_sensing/MCTS*/"
     # mcts_name = "temp_scene2_failed.npy"
 
-    data_root = "test_data/test_active_sensing/"
-    scene_name = "8/test_results/complete_sensing/MCTS*/"
-    mcts_name = "temp_scene4_success.npy"
+    # data_root = "test_data/test_active_sensing/"
+    # scene_name = "8/test_results/complete_sensing/MCTS*/"
+    # mcts_name = "temp_scene4_success.npy"
 
     data_root = "test_data/test_active_sensing/"
-    scene_name = "34/test_results/complete_sensing/MCTS*/"
+    scene_name = "33/test_results/complete_sensing/MCTS*/"
     mcts_name = "temp_scene4_failed.npy"
 
     # data_root = "test_data/collected_data/"
