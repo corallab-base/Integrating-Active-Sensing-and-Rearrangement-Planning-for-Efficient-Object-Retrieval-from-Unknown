@@ -730,9 +730,6 @@ class Tree_Node_base1():
                 if not collision_object and not self.collision_tunnel_static(relocate_tunnel):
                     res.append([temp_x, temp_y])
                         
-                    if len(res) == 4:
-                        random.shuffle(res)
-                        return res
         return res
     
     def open_space_count(self):

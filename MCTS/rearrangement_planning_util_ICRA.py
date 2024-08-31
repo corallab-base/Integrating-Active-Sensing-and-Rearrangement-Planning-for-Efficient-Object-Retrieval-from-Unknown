@@ -723,9 +723,9 @@ class Tree_Node():
     
     def propose_new_region(self, index, obs, random_obj_flag=False):
         swept_off_flag = False
-        # if random_obj_flag:
-        #     swept_off_flag = random.choice([True, False])
-        #     num_feasible_list = []
+        if random_obj_flag:
+            swept_off_flag = random.choice([True, False])
+            num_feasible_list = []
 
         gx, gy, radius, color = self.curr_config_[index]
         res = []
@@ -778,9 +778,9 @@ class Tree_Node():
                         
                         if len(res) == 4:
                             random.shuffle(res)
-                            if random_obj_flag:
-                                return res[0:2]
-                            return res
+                            # if random_obj_flag:
+                            #     return res[0:2]
+                            return res[:2]
                         
         if swept_off_flag and len(num_feasible_list) > 2:
             max_val = max(num_feasible_list)
@@ -791,9 +791,11 @@ class Tree_Node():
             max_idx = num_feasible_list.index(max_val)
             return[res1, res[max_idx]]
         
-        if random_obj_flag:
-            random.shuffle(res)
-            return res[0:2]
+        # if random_obj_flag:
+        #     random.shuffle(res)
+        #     return res[0:2]
+        if len(res) > 2:
+            return res[:2]
         return res
     
 
@@ -962,7 +964,7 @@ class Tree_Node():
         plt.ylim(0, len(self.grid_) - 1)
         plt.savefig(save_path)
 
-        # plt.clf()
+        plt.clf()
         # plt.cla()
         plt.close()
 
@@ -974,18 +976,18 @@ def write_result(new_folder, method, test_index, object_count, time, steps, leng
         os.remove(file_name)
     with open(file_name, 'w') as f:
         f.write('number of objects : ' + str(object_count) + '\n')
-        f.write('rearrangment time comsumption : ' + str(time) + '\n')
+        f.write('rearrangement time consumption : ' + str(time) + '\n')
         f.write('number of steps : ' + str(steps) + '\n')
-        f.write('rearrangment length travelled : ' + str(length) + '\n')
-        f.write('rearrangment length displacement : ' + str(displacement) + '\n')
+        f.write('rearrangement length travelled : ' + str(length) + '\n')
+        f.write('rearrangement length displacement : ' + str(displacement) + '\n')
 
         f.write('number of view : ' + str(test_index) + '\n')
         f.write('number of initial collision objects : ' + str(num_collision_obj) + '\n')
         f.write('number of rearrangement attempts : ' + str(mcts_attemps) + '\n')
-        f.write('view time comsumption : ' + str(view_time_con) + '\n')
+        f.write('view time consumption : ' + str(view_time_con) + '\n')
         f.write('calculation for cam loc time comsumption : ' + str(cam_time) + '\n')
 
-        f.write('total time comsumption : ' + str(view_time_con + time) + '\n')
+        f.write('total time consumption : ' + str(view_time_con + time) + '\n')
         # f.write('total length travelled: ' + str(length + cam_dofs) + '\n')
 
     f.close()
