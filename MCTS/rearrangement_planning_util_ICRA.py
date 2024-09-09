@@ -15,7 +15,6 @@ from collections import defaultdict
 from copy import deepcopy
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
-import pdb
 import fcl
 
 #IROS 2024 modifications
@@ -724,7 +723,6 @@ class Tree_Node():
     def propose_new_region(self, index, obs, random_obj_flag=False):
         swept_off_flag = False
         if random_obj_flag:
-            print("FUCK")
             swept_off_flag = random.choice([True, False])
             num_feasible_list = []
 
@@ -969,10 +967,15 @@ class Tree_Node():
         # plt.cla()
         plt.close()
 
-def write_result(new_folder, method, test_index, object_count, time, steps, length, displacement, num_collision_obj, mcts_attemps, view_time_con, cam_dofs, cam_time, res_plan):
-    file_name = new_folder + method + '/test_result_' + str(test_index) + '.txt'
-    plan_name = new_folder + method + '/test_result_' + str(test_index) + '.npy'
-    cam_name = new_folder + method + '/cam_dofs_' + str(test_index) + '.npy'
+def write_result(new_folder, method, test_index, object_count, time, steps, length, displacement, num_collision_obj, mcts_attemps, view_time_con, cam_dofs, cam_time, res_plan, extra_name = None):
+    if extra_name is not None:
+        file_name = new_folder + method + '/test_result_' + str(test_index) + extra_name + '.txt'
+        plan_name = new_folder + method + '/test_result_' + str(test_index) + extra_name + '.npy'
+        cam_name = new_folder + method + '/cam_dofs_' + str(test_index) + extra_name + '.npy'
+    else:
+        file_name = new_folder + method + '/test_result_' + str(test_index) + '.txt'
+        plan_name = new_folder + method + '/test_result_' + str(test_index) + '.npy'
+        cam_name = new_folder + method + '/cam_dofs_' + str(test_index) + '.npy'
     if os.path.exists(file_name):
         os.remove(file_name)
     with open(file_name, 'w') as f:
@@ -986,7 +989,7 @@ def write_result(new_folder, method, test_index, object_count, time, steps, leng
         f.write('number of initial collision objects : ' + str(num_collision_obj) + '\n')
         f.write('number of rearrangement attempts : ' + str(mcts_attemps) + '\n')
         f.write('view time consumption : ' + str(view_time_con) + '\n')
-        f.write('calculation for cam loc time comsumption : ' + str(cam_time) + '\n')
+        f.write('calculation for cam loc time consumption : ' + str(cam_time) + '\n')
 
         f.write('total time consumption : ' + str(view_time_con + time) + '\n')
         # f.write('total length travelled: ' + str(length + cam_dofs) + '\n')

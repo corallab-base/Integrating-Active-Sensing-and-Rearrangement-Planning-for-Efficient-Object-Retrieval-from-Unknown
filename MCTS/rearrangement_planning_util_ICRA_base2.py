@@ -966,7 +966,7 @@ class Tree_Node_base2():
         plt.ylim(0, len(self.grid_) - 1)
         plt.savefig(save_path)
 
-        # plt.clf()
+        plt.clf()
         # plt.cla()
         plt.close()
 

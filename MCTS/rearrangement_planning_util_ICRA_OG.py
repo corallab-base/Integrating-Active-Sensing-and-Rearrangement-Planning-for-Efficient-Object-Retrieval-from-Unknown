@@ -530,9 +530,9 @@ class Tree_Node_OG():
         plt.ylim(0, len(self.grid_) - 1)
         plt.savefig(save_path)
 
-        # plt.clf()
+        plt.clf()
         # plt.cla()
-        # plt.close()
+        plt.close()
 
 
     def tunnel_and_normal_visualizer(self, tunnel_list = None, object_in_collision = None, true_color = False, animation = False, unknown_show = False):

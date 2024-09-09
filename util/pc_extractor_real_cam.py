@@ -5,12 +5,13 @@ from scipy.spatial.transform import Rotation as R
 import sys
 import os
 import math
+import pdb
 
 file_dir = os.path.dirname(__file__)
 root_dir = os.path.join(file_dir, '..')
 sys.path.append(root_dir)
 from test_module.camera_view import camera
-from tools import object_completion_network
+# from tools import object_completion_network
 from YCB_object import YCB_object
 
 def get_real_rotation(rx, ry, rz):
@@ -85,10 +86,23 @@ def visualize_scene(object_dict, flag, bg):
         seen_data = object_handler.get_seen()
         comp_data = object_handler.get_completion()
 
-        if bg == False:
-            if ids == 0:
-                continue
+        if ids == 0:
+            if bg == False:
+                if ids == 0:
+                    continue
+            else:
+                temp_pcd = o3d.geometry.PointCloud()
+                temp_pcd_data = []
+                temp_pcd_color = []
+                for point, color in object_handler.get_seen().items():
+                    if list(point)[0] < 1.06 and list(point)[0] > 0.29 and abs(list(point)[1]) < 0.58:
+                        temp_pcd_data.append(point)
+                        temp_pcd_color.append(color)
 
+                temp_pcd.points = o3d.utility.Vector3dVector(temp_pcd_data)
+                temp_pcd.colors = o3d.utility.Vector3dVector(temp_pcd_color)
+                all_data.append(temp_pcd)
+                continue
     
         pcd_seen = o3d.geometry.PointCloud()
         pcd_seen.points = o3d.utility.Vector3dVector([list(x) for x in seen_data.keys()])
@@ -114,13 +128,13 @@ def visualize_scene(object_dict, flag, bg):
             #o3d.visualization.draw_geometries([pcd_comp, mesh_frame])
             all_data.append(pcd_comp)
    
-    mesh_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(
-                    size=0.4, origin=[0, 0, 0])
-    all_data.append(mesh_frame)
+    # mesh_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(
+    #                 size=0.4, origin=[0, 0, 0])
+    # all_data.append(mesh_frame)
     if not bg:
         all_data.append(env_pc)
 
-    o3d.visualization.draw_geometries(all_data)
+    o3d.visualization.draw_geometries(all_data, zoom=0.5, front=[-0.1, 0.0, 0.0], lookat=[0.0, 0.0, 0.5], up=[0.0, 0.0, 1.0])
 
 
 def save_object(object_dict, file_prefix):
@@ -251,7 +265,7 @@ class pc_extractor_real_cam:
         offset = np.array(cam_translation)
         rot = R.from_quat(cam_rotation)
 
-        erosion_times = 10
+        erosion_times = 0
         look_up_array = np.asarray(seg_raw)
         for k in range(erosion_times):
             new_array = np.zeros((m, n))
@@ -294,7 +308,7 @@ class pc_extractor_real_cam:
 
         all_data = []
 
-        self.completion_network = object_completion_network()
+        # self.completion_network = object_completion_network()
         
         for ids in object_list:
             object_handler = None
@@ -367,8 +381,19 @@ class pc_extractor_real_cam:
                     object_dict[0] = object_handler
                     object_handler.add_seen(temp_sets)
                 temp_pcd = o3d.geometry.PointCloud()
-                temp_pcd.points = o3d.utility.Vector3dVector([list(x) for x in object_handler.get_seen().keys()])
-                temp_pcd.colors = o3d.utility.Vector3dVector([list(x) for x in object_handler.get_seen().values()])
+
+                temp_pcd_data = []
+                temp_pcd_color = []
+                for point, color in object_handler.get_seen().items():
+                    if list(point)[0] < 1.06 and abs(list(point)[1]) < 0.58:
+                        temp_pcd_data.append(point)
+                        temp_pcd_color.append(color)
+
+
+                temp_pcd.points = o3d.utility.Vector3dVector(temp_pcd_data)
+                temp_pcd.colors = o3d.utility.Vector3dVector(temp_pcd_color)
+                # temp_pcd.points = o3d.utility.Vector3dVector([list(x) for x in object_handler.get_seen().keys()])
+                # temp_pcd.colors = o3d.utility.Vector3dVector([list(x) for x in object_handler.get_seen().values()])
                 all_data.append(temp_pcd)
                 continue
 
@@ -521,7 +546,7 @@ class pc_extractor_real_cam:
         env_pc = o3d.geometry.PointCloud()
         env_pc.points = o3d.utility.Vector3dVector(environment_pc)
         env_pc.colors = o3d.utility.Vector3dVector(environment_colors)
-        o3d.visualization.draw_geometries([mesh_frame] +  all_data)
+        # o3d.visualization.draw_geometries([mesh_frame] +  all_data)
         #np.save("scene.npy", np.asarray(scene_pcd.points))
 
         
