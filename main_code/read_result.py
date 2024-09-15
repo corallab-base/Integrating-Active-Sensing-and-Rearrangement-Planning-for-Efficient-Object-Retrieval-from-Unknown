@@ -3,7 +3,7 @@ from copy import deepcopy
 import numpy as np
 import pdb
 
-def get_data(dir, data_dict):
+def get_data(dir, data_dict, check_fail=False):
     file_list = []
     for x in os.listdir(dir):
         if x.endswith(".txt"):
@@ -13,7 +13,8 @@ def get_data(dir, data_dict):
     try: f = open(dir+file_list[-1], "r")
     except: pdb.set_trace()
     data_lines = f.read().split("\n")
-            
+    
+    is_failed = False
     for line in data_lines[:-1]:
         split_idx = line.find(":")
         name = line[:split_idx-1]
@@ -21,11 +22,13 @@ def get_data(dir, data_dict):
         try:
             number = float(line[split_idx+1:])
         except:
+            if check_fail:
+                is_failed = True
             number = line[split_idx+2:]
         
         data_dict[name].append(number)
     
-    return data_dict
+    return data_dict, is_failed
 
 def get_data_w_keyword(dir, data_dict, key_ward):
     file_list = []
@@ -109,7 +112,6 @@ def get_data_from_folders(root):
 
     complete_sensing_MCTS_dict = deepcopy(empty_dict)
     complete_sensing_MCTS_OG_dict = deepcopy(empty_dict)
-    complete_sensing_MCTS_OG2_dict = deepcopy(empty_dict)
     complete_sensing_BASE1_dict = deepcopy(empty_dict)
     complete_sensing_BASE2_dict = deepcopy(empty_dict)
 
@@ -120,10 +122,9 @@ def get_data_from_folders(root):
 
     folder_list.sort()
     for folder in folder_list:
-        print("collecting data from ", folder)
+        # print("collecting data from ", folder)
         complete_sensing_MCTS = folder + '/complete_sensing/MCTS*/test_results/'
         complete_sensing_MCTS_OG = folder + '/complete_sensing/MCTS_OG/test_results/'
-        complete_sensing_MCTS_OG2 = folder + '/complete_sensing/MCTS_OG2/test_results/'
         complete_sensing_BASE1 = folder + '/complete_sensing/BASE1/test_results/'
         complete_sensing_BASE2 = folder + '/complete_sensing/BASE2/test_results/'
 
@@ -132,19 +133,24 @@ def get_data_from_folders(root):
         init_w_feed_back = folder + '/init_w_feed_back/test_results/'
         init_w_swept = folder + '/init_w_swept/test_results/'
 
-        complete_sensing_MCTS_dict = get_data(complete_sensing_MCTS, complete_sensing_MCTS_dict)
-        complete_sensing_MCTS_OG_dict = get_data(complete_sensing_MCTS_OG, complete_sensing_MCTS_OG_dict)
-        complete_sensing_MCTS_OG2_dict = get_data(complete_sensing_MCTS_OG2, complete_sensing_MCTS_OG2_dict)
-        complete_sensing_BASE1_dict = get_data(complete_sensing_BASE1, complete_sensing_BASE1_dict)
-        complete_sensing_BASE2_dict = get_data(complete_sensing_BASE2, complete_sensing_BASE2_dict)
+        complete_sensing_MCTS_dict, MCTS_failed = get_data(complete_sensing_MCTS, complete_sensing_MCTS_dict, check_fail=True)
+        complete_sensing_MCTS_OG_dict, MCTS_OG_failed = get_data(complete_sensing_MCTS_OG, complete_sensing_MCTS_OG_dict, check_fail=True)
+        complete_sensing_BASE1_dict, BASE1_failed = get_data(complete_sensing_BASE1, complete_sensing_BASE1_dict, check_fail=True)
+        complete_sensing_BASE2_dict, BASE2_failed = get_data(complete_sensing_BASE2, complete_sensing_BASE2_dict, check_fail=True)
 
-        dense_sensing_dict = get_data(dense_sensing, dense_sensing_dict)
-        init_sensing_dict = get_data(init_sensing, init_sensing_dict)
-        init_w_feed_back_dict = get_data(init_w_feed_back, init_w_feed_back_dict)
-        init_w_swept_dict = get_data(init_w_swept, init_w_swept_dict)
+        if MCTS_failed and MCTS_OG_failed and BASE1_failed and BASE2_failed:
+            print("ALL METHOD FAILED: ", folder)
 
-    data_dicts = [complete_sensing_MCTS_dict, complete_sensing_MCTS_OG_dict, complete_sensing_MCTS_OG2_dict, complete_sensing_BASE1_dict, complete_sensing_BASE2_dict, dense_sensing_dict, init_sensing_dict, init_w_feed_back_dict, init_w_swept_dict]
-    names = ["complete_sensing_MCTS", "complete_sensing_MCTS_OG", "complete_sensing_MCTS_OG2","complete_sensing_BASE1", "complete_sensing_BASE2", "dense_sensing", "init_sensing", "init_w_feed_back", "init_w_swept"]
+        if MCTS_failed:
+            print("MCTS Failed: ", folder)
+
+        dense_sensing_dict, _ = get_data(dense_sensing, dense_sensing_dict)
+        init_sensing_dict, _ = get_data(init_sensing, init_sensing_dict)
+        init_w_feed_back_dict, _ = get_data(init_w_feed_back, init_w_feed_back_dict)
+        init_w_swept_dict, _ = get_data(init_w_swept, init_w_swept_dict)
+
+    data_dicts = [complete_sensing_MCTS_dict, complete_sensing_MCTS_OG_dict, complete_sensing_BASE1_dict, complete_sensing_BASE2_dict, dense_sensing_dict, init_sensing_dict, init_w_feed_back_dict, init_w_swept_dict]
+    names = ["complete_sensing_MCTS", "complete_sensing_MCTS_OG","complete_sensing_BASE1", "complete_sensing_BASE2", "dense_sensing", "init_sensing", "init_w_feed_back", "init_w_swept"]
 
     return data_dicts, names, len(folder_list)
 
@@ -155,10 +161,9 @@ def write_result(data_dicts, names, root, test_num):
 
         with open(root + file_name, 'w') as f:
             f.write("Result of " + str(test_num) + " test cases\n\n")
-
             success_rate = 100
             for key, val in data_dict.items():
-                new_val = [i for i in val if not isinstance(i, str)]        
+                new_val = [i for i in val if not isinstance(i, str)]
                 if len(new_val) != len(val):
                     success_rate = np.round(len(new_val) / len(val) * 100, 2)
 
@@ -239,7 +244,6 @@ def fix_data_(root):
     for folder in folder_list:
         complete_sensing_MCTS = folder + '/complete_sensing/MCTS*/test_results/'
         complete_sensing_MCTS_OG = folder + '/complete_sensing/MCTS_OG/test_results/'
-        complete_sensing_MCTS_OG2 = folder + '/complete_sensing/MCTS_OG2/test_results/'
         complete_sensing_BASE1 = folder + '/complete_sensing/BASE1/test_results/'
         complete_sensing_BASE2 = folder + '/complete_sensing/BASE2/test_results/'
 
@@ -250,7 +254,6 @@ def fix_data_(root):
 
         fix_typeo(complete_sensing_MCTS)
         fix_typeo(complete_sensing_MCTS_OG)
-        fix_typeo(complete_sensing_MCTS_OG2)
         fix_typeo(complete_sensing_BASE1)
         fix_typeo(complete_sensing_BASE2)
 
@@ -294,9 +297,33 @@ def fix_typeo(dir):
             for line in new_data:
                 f.write(line + '\n')
 
+def find_scene_size(root, scene_range):
+    folder_list = [f.path for f in os.scandir(root) if f.is_dir()]
+
+    name_list = []
+    for folder in folder_list:
+        dir = folder + "/init_sensing/test_results/"
+        for x in os.listdir(dir):
+            if x.endswith("failed.npy") or x.endswith("success.npy"):
+                data = np.load(dir + x, allow_pickle=True)[0]
+                try:
+                    scene_info = data['scene_info']
+                except:
+                    pdb.set_trace()
+
+                if scene_info[0] >= scene_range[0][0] and scene_info[0] <= scene_range[0][1] and scene_info[1] >= scene_range[1][0] and scene_info[1] <= scene_range[1][1]:
+                    name_list.append(folder)
+                    break
+
+    return name_list
+
 if __name__ == '__main__':
+    root = 'test_data/last_test/'
     root = 'test_data/collected_data/'
     # fix_data_(root)
+    # scene_size = [[0.76, 0.8], [1.1, 1.2]]
+    # folder_list = find_scene_size(root, scene_size)
+    # pdb.set_trace()
 
     data_dicts, names, test_num = get_data_from_folders(root)
     write_result(data_dicts, names, root, test_num)

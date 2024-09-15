@@ -22,6 +22,7 @@ from test_case_generator import RP_test_case_generator
 from test_case_generator import test_case_reader
 import fcl
 from obj_reader import obj_reader
+import copy
 import pdb
 
 
@@ -53,7 +54,7 @@ class multi_level_MCTS_algo_base2():
         self.track_level_steps_ = None
 
     def init_MCTS(self):
-        MCTS_ins = MCTS_algo_base2(self.curr_config_, self.goal_config_, self.scene_info, swept_volume1=self.swept_volume1, swept_volume2=self.swept_volume2, obj_mesh=deepcopy(self.obj_mesh), target_pos=deepcopy(self.target_pos), unknown_area=self.unknown_area, valid_area=self.valid_area, potential_centers=self.potential_centers)
+        MCTS_ins = MCTS_algo_base2(copy.deepcopy(self.curr_config_), self.goal_config_, self.scene_info, swept_volume1=self.swept_volume1, swept_volume2=self.swept_volume2, obj_mesh=deepcopy(self.obj_mesh), target_pos=deepcopy(self.target_pos), unknown_area=self.unknown_area, valid_area=self.valid_area, potential_centers=self.potential_centers)
         self.MCTS_ins = MCTS_ins
         # MCTS_ins.MCTS_tree_.tunnel_and_normal_visualizer(unknown_show=True)
 

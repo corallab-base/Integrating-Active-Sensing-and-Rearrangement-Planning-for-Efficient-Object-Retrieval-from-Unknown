@@ -31,6 +31,7 @@ import MCTS_algo_ICRA_base2 as mct_base2
 from rearrangement_planning_util_ICRA import write_result
 import time
 import copy
+from grasp_util.global_scene import global_scene
 
 import pdb
 
@@ -302,7 +303,22 @@ class robot_arm_configuration:
 
         for link in self.link_names_:
             m = fcl.BVHModel()
+
             vertices, faces = self.collision_models_[link]
+            # if link == 'gripper':
+            #     vertices= self.bounding_points_[link]
+            #     faces = np.array([[0, 1, 2],
+            #                     [0, 2, 3],
+            #                     [4, 5, 6],
+            #                     [4, 6, 7],
+            #                     [0, 1, 5],
+            #                     [0, 5, 4],
+            #                     [3, 2, 6],
+            #                     [3, 6, 7],
+            #                     [1, 5, 6],
+            #                     [1, 6, 2],
+            #                     [0, 4, 7],
+            #                     [0, 7, 3]])
             m.beginModel(len(vertices), len(faces))
             m.addSubModel(vertices, faces)
             m.endModel()
@@ -412,7 +428,7 @@ class robot_arm_configuration:
 
 
     def constrained_linear_motion_planner(self, distance):
-        target_translation = [distance, 0, 0.2550]
+        target_translation = [distance, 0, 0.12]
         target_rotation = [0, 0, 0, 1]
 
         converted_target_translation = global_coord_converter(target_translation[0], 
@@ -437,7 +453,7 @@ class robot_arm_configuration:
                                                                  converted_target_rotation[2],
                                                                  converted_target_rotation[3])
 
-            if dof_result: break
+            if dof_result and dof_result[-1] < 0: break
         
         dof_result = list(dof_result)
         #dof_result[0] += math.pi/4
@@ -449,6 +465,81 @@ class robot_arm_configuration:
         #col_plane = fcl.Plane(plane_normal, 0)
         #plane_obj = fcl.CollisionObect(col_plane, fcl.Transform())
 
+    def calculate_cam_pose(self, angles):
+        #link1 pose
+        trans1, rot1 = [0, 0, 0], [-0, -math.sqrt(2)/2, math.sqrt(2)/2, -0]
+        
+        #link2 pose
+        rot2_initial = [-0, -math.sqrt(2)/2, math.sqrt(2)/2, -0]
+        rot2_new = R.from_euler('z', angles[0]).as_quat().tolist()
+        rot2_final = rotation_concat(rot2_new, rot2_initial)
+        trans2, rot2 = [0, 0, 0.1625], rot2_final
+        accu = rot2_new
+        
+        #link3 pose
+        rot3_initial = [math.sqrt(2)/2, -0, math.sqrt(2)/2, -0]
+        rot3_vector = R.from_quat(accu).apply([0, 1, 0])
+        rot3_final = rotation_concat(accu, rot3_initial)
+        rot3_new = R.from_rotvec(angles[1]*rot3_vector).as_quat().tolist()
+        rot3_final = rotation_concat(rot3_new, rot3_final)
+        trans3, rot3 = [0, 0, 0.1625], rot3_final
+        accu = rotation_concat(rot3_new, accu)
+        
+        #link4 pose
+        rot4_initial = [math.sqrt(2)/2, -0, math.sqrt(2)/2, -0]
+        rot4_vector = rot3_vector
+        rot4_final = rot3_final
+        rot4_offset = R.from_quat(rot3_final).apply([0, 0, 0.425])
+        rot4_new = R.from_rotvec(angles[2]*rot4_vector).as_quat().tolist()
+        rot4_final = rotation_concat(rot4_new, rot4_final)
+        trans4, rot4 = trans3 + rot4_offset, rot4_final
+        accu = rotation_concat(rot4_new, accu)
+        
+        #link5 pose
+        rot5_offset = R.from_quat(rot4_final).apply([0, -0.1333, 0.3915])
+        rot5_initial = [0, -0, 1, 0]
+        rot5_vector = rot4_vector
+        rot5_final = rotation_concat(accu, rot5_initial)
+        rot5_new = R.from_rotvec(angles[3]*rot5_vector).as_quat().tolist()
+        rot5_final = rotation_concat(rot5_new, rot5_final)
+        trans5, rot5 = trans4 + rot5_offset, rot5_final
+        accu = rotation_concat(rot5_new, accu)
+        
+        #link6 pose
+        rot6_offset = R.from_quat(rot5_final).apply([0, 0, 0])
+        rot6_initial = [0, math.sqrt(2)/2, math.sqrt(2)/2, -0]
+        rot6_final = rotation_concat(accu, rot6_initial)
+        rot6_vector = [0, 0, -1]
+        rot6_vector = R.from_quat(accu).apply(rot6_vector)
+        rot6_new = R.from_rotvec(angles[4]*rot6_vector).as_quat().tolist()
+        rot6_final = rotation_concat(rot6_new, rot6_final)
+        trans6, rot6 = trans5 + rot6_offset, rot6_final
+        accu = rotation_concat(rot6_new, accu)
+        
+        #link7 pose
+        rot7_offset = R.from_quat(rot6_final).apply([0, -0.0996, 0])
+        rot7_initial = [math.sqrt(2)/2, math.sqrt(2)/2, 0, 0]
+        rot7_final = rotation_concat(accu, rot7_initial)
+        rot7_vector = [0, 1, 0]
+        rot7_vector = R.from_quat(accu).apply(rot7_vector)
+        rot7_new = R.from_rotvec(angles[5]*rot7_vector).as_quat().tolist()
+        rot7_final = rotation_concat(rot7_new, rot7_final)
+        trans7, rot7 = trans6 + rot7_offset, rot7_final
+        accu = rotation_concat(rot7_new, accu)
+        
+        #camera pose
+        rot9_offset = R.from_quat(rot7_final).apply([0.16, 0.03, 0.08])
+        rot9_final = rot7
+        trans9, rot9 = trans7 + rot9_offset, rot9_final
+
+        #gripper
+        rot8_offset = R.from_quat(rot7_final).apply([0.086, 0, 0])
+        rot8_initial = [0, math.sqrt(2)/2, math.sqrt(2)/2, 0]
+        rot8_final = rotation_concat(accu, rot8_initial)
+        trans8, rot8 = trans7 + rot8_offset, rot8_final
+
+        
+        return trans9+self.offset_, rot9
 
     def calculate_transform_from_angles(self, angles):
         #link1 pose
@@ -1455,20 +1546,12 @@ class ur5e_valid_all(ob.StateValidityChecker):
 class path_planner():
     def __init__(self, rac, plane_model, static_env_models):
         self.space_ = ob.RealVectorStateSpace(0)
-        self.space_.addDimension(-0.48 - 1.26, -0.48 + 1.26)
-        self.space_.addDimension(-1.19 - 0.98, -1.19 + 0.98)
-        self.space_.addDimension(1.67 - 1.8, 1.67 + 1.8)
-        self.space_.addDimension(-3.14, 3.14)
-        self.space_.addDimension(-0.25 - 1.54, -0.25 + 1.54)
-        self.space_.addDimension(-3.14, 3.14)
-
-
-        # self.space_.addDimension(2*-np.pi, 2*np.pi)
-        # self.space_.addDimension(2*-np.pi, 2*np.pi)
-        # self.space_.addDimension(2*-np.pi, 2*np.pi)
-        # self.space_.addDimension(2*-np.pi, 2*np.pi)
-        # self.space_.addDimension(2*-np.pi, 2*np.pi)
-        # self.space_.addDimension(2*-np.pi, 2*np.pi)
+        self.space_.addDimension(2*-np.pi, 2*np.pi)
+        self.space_.addDimension(2*-np.pi, 2*np.pi)
+        self.space_.addDimension(2*-np.pi, 2*np.pi)
+        self.space_.addDimension(2*-np.pi, 2*np.pi)
+        self.space_.addDimension(2*-np.pi, 2*np.pi)
+        self.space_.addDimension(2*-np.pi, 2*np.pi)
 
         self.si_ = ob.SpaceInformation(self.space_)
 
@@ -1496,7 +1579,7 @@ class path_planner():
 
         validityChecker = ur5e_valid_all(self.si_, self.rac_, self.plane_model_, self.static_env_models_, flex_collision_models)
         self.si_.setStateValidityChecker(validityChecker)
-        self.si_.setStateValidityCheckingResolution(0.00001)
+        self.si_.setStateValidityCheckingResolution(0.0001)
 
         self.si_.setup()
 
@@ -1879,11 +1962,6 @@ def get_patha2b(rac, start_dof, end_dof, scene_info=None, pcd_mesh=None, target_
     else:
         static_env_models = []
 
-    end_state_collision_free = rac.arm_collision_free(start_dof, plane_obj, given_static_model, [])
-    print("plan1 :", end_state_collision_free)
-    end_state_collision_free = rac.arm_collision_free(end_dof, plane_obj, given_static_model, [])
-    print("plan2 :", end_state_collision_free)
-
     pp = path_planner(rac, plane_obj, static_env_models)
 
     path = pp.plan_all(start_dof, end_dof, static_env_models, time_limit)
@@ -2186,8 +2264,8 @@ def cal_cam_angle_for_area(valid_points, curr_config, scene_info, visualize=Fals
     cluster_angles = {'foc':[], 'loc':[]}
     center = np.median(valid_points, axis=0)
 
-    for point in np.arange(left_point, right_point + 1, int(scene_info[1] * 100) / 30):
-        vec = ([point, 25] - center)
+    for point in np.arange(left_point + 1, right_point, int(scene_info[1] * 100) / 30):
+        vec = ([point, 20] - center)
 
         is_collision = False
         for obj in curr_config:
@@ -2565,6 +2643,24 @@ def grasp_path_check(file_path, test_data_root, grasp_root, test_name, scene_inf
     return
     # return mesh_time_list, bbox_time_list
 
+def get_unobserved_area_w_height(scene, min_height):
+    floor = scene.scene_[:scene.x_limit_, scene.y_left_+1 :(scene.y_left_ + scene.y_limit_-1), scene.g_height_: scene.g_height_ + min_height]
+
+    unknown_layer = set(map(tuple, np.argwhere(floor[:,:,0] == 0)[:,:2]))
+    for i in range(1, min_height):
+        temp_unknown = set(map(tuple, np.argwhere(floor[:,:,i] == 0)[:,:2]))
+        unknown_layer = unknown_layer.intersection(temp_unknown)
+    unknown_area = np.array(list(unknown_layer))
+
+    unknown_area[:, 0] += 29
+    unknown_area[:, 1] -= int((floor.shape[1]) / 2)
+
+    temp = copy.deepcopy(unknown_area)
+    unknown_area[:, 0] = -temp[:, 1]
+    unknown_area[:, 1] = temp[:, 0]
+
+    return unknown_area
+
 def check_MCTS(MCTS_root, MCTS_name, file_path=None):
     MCTS_path = MCTS_root + MCTS_name
     data = np.load(MCTS_path, allow_pickle=True)
@@ -2589,13 +2685,11 @@ def check_MCTS(MCTS_root, MCTS_name, file_path=None):
     # scene_info = [0.70, 1.1000001, 0.1, 0.5]
 
     # rac = robot_arm_configuration(file_path, np.array([0.0, 0, 0]), scene_info, target_mesh=target_mesh, obstacles_num=obstacles_num, target_pos=target_pos) # point_cloud=point_cloud
-    rac = robot_arm_configuration('../assets/urdf/ur5e/meshes/collision/', np.array([0.0, 0, 0]), scene_info) # point_cloud=point_cloud
+    rac = robot_arm_configuration('../assets/urdf/ur5e/meshes/collision/', np.array([-0.19, 0, 0]), scene_info) # point_cloud=point_cloud
     rac.target_mesh = target_mesh
-    rac.obstacles_num = obstacles_num - 1
+    rac.obstacles_num = obstacles_num
     rac.obj_mesh = obj_mesh
     rac.obj_pos_list = obj_pos_list
-
-
 
     for i in range(1, len(obj_pos_list)):
         obstacles_mesh = obj_reader('../assets/urdf/ycb/036_wood_block/textured_vhacd.obj')
@@ -2606,7 +2700,7 @@ def check_MCTS(MCTS_root, MCTS_name, file_path=None):
         rac.obj_mesh[i-1][1] = obstacles_mesh.get_faces()
 
     obj_pos_list.pop(0)
-    rac.check_collision_models(grasp2init_path[0], scene_info=scene_info)
+    # rac.check_collision_models(grasp2init_path[0], scene_info=scene_info)
 
 
     # ['#00fffb', '#ff00dd', '#bf00ff', '#ffae00', '#59ff00', '#FFFF00']
@@ -2617,7 +2711,20 @@ def check_MCTS(MCTS_root, MCTS_name, file_path=None):
     swept_volume1, swept_verts1 = rac.get_swept_volume(init2grasp_path, test_name, idx, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False, with_scene=True)
     swept_volume2, swept_verts2 = rac.get_swept_volume(grasp2init_path, test_name, idx, w_target=w_target, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False, with_scene=True)
     # swept_center, swept_verts = rac.get_swept_center(swept_verts1+swept_verts2, scene_info)
+    OFFSET = np.array([0.3, -0.6, 0.05])
+    scene = global_scene(1.0, 1.2, 0.85, OFFSET, scene_info[0], scene_info[1] - 0.04, scene_info[3], scene_info[2] - 0.05)
 
+    cam_move_plan = np.load('test_data/test_real_experiment/real_test2/MCTS*/test_results/cam_dofs_3.npy')[1:]
+    for i, dofs in enumerate(cam_move_plan):
+        print("n", i)
+        new_cam_translation, new_cam_rotation = rac.calculate_cam_pose(dofs)
+        img_name = 'test_data/test_real_experiment/real_test2/MCTS*/real_image/'
+        new_depth_image = np.asarray(o3d.io.read_image(img_name + "test_depth_" + str(i + 1) + '.png'))
+        _ = scene.register_camera_view(list(new_cam_rotation), list(new_cam_translation), new_depth_image, {})
+
+    min_height = 22
+    unknown_area = get_unobserved_area_w_height(scene, min_height)
+    
 
     # Replay -------------------------------------------------------------------------------------------------------------------
     # print("REPLAY START")
@@ -2652,7 +2759,7 @@ def check_MCTS(MCTS_root, MCTS_name, file_path=None):
     curr_config, target_pos_MCT = rac.get_MCT_config(rac.obj_pos_list, rac.obj_mesh, target_pos, target_mesh)
 
     unknown_area = delete_obj_spots(curr_config, target_pos_MCT, unknown_area, visualize=False)
-    unknown_area, potential_center_cluster, valid_area_cluster = process_unknown_area(unknown_area, curr_config, target_pos_MCT, min_radius= 3, valid_center_num=5, visualize=False)
+    unknown_area, potential_center_cluster, valid_area_cluster = process_unknown_area(unknown_area, curr_config, target_pos_MCT, min_radius= 5, valid_center_num=5, visualize=False)
     potential_centers = np.array(sum(potential_center_cluster, []))
     valid_area = np.array(sum(valid_area_cluster, []))
 
@@ -2724,73 +2831,66 @@ def check_MCTS(MCTS_root, MCTS_name, file_path=None):
 
     ML_MCTS_ins.init_MCTS()
     ML_MCTS_ins.MCTS_ins.MCTS_tree_.tunnel_and_normal_visualizer(unknown_show=True)
-    is_plan_success, child_node_list = ML_MCTS_ins.run_mcts(300)
+    is_plan_success, child_node_list = ML_MCTS_ins.run_mcts(30)
 
-    ML_MCTS_ins.animate_whole_sequence()
-    pdb.set_trace()
-    if is_plan_success:
-        res_plan = ML_MCTS_ins.save_planning_results()
-        write_result(MCTS_root, '', 0, 0, ML_MCTS_ins.time_consumption_, "Failed", "Failed", "Failed", 0, 0, 0, 0, 0, res_plan, "5")
+    if not is_plan_success:
+        max_reward = -sys.maxsize
+        min_num_collision = sys.maxsize
+        max_node = None
+        for child in child_node_list:
+            if len(child.check_collision_w_swept()) < min_num_collision and len(child.check_collision_w_swept()) != 0:
+                max_node = child
+                max_reward = child.reward_
+            elif len(child.check_collision_w_swept()) == min_num_collision:
+                if child.reward_ > max_reward:
+                    max_reward = child.reward_
+                    max_node = child
 
+        collision_check_obj = []
+        swept_check_obj = []
+        swept_obj = max_node.check_collision_w_swept()
+        for obj_idx in swept_obj:
+            tunnel = max_node.get_tunnel(max_node.robot_, max_node.curr_config_[obj_idx][:2])
+            tunnel_collision_obj = max_node.collision_tunnel_object(tunnel)
+            tunnel_collision_obj.remove(obj_idx)
 
-    # if not is_plan_success:
-    #     max_reward = -sys.maxsize
-    #     min_num_collision = sys.maxsize
-    #     max_node = None
-    #     for child in child_node_list:
-    #         if len(child.check_collision_w_swept()) < min_num_collision and len(child.check_collision_w_swept()) != 0:
-    #             max_node = child
-    #             max_reward = child.reward_
-    #         elif len(child.check_collision_w_swept()) == min_num_collision:
-    #             if child.reward_ > max_reward:
-    #                 max_reward = child.reward_
-    #                 max_node = child
+            if tunnel_collision_obj:
+                print(tunnel_collision_obj)
+                collision_check_obj += tunnel_collision_obj
+            else:
+                swept_check_obj.append(obj_idx)
 
-    #     collision_check_obj = []
-    #     swept_check_obj = []
-    #     swept_obj = max_node.check_collision_w_swept()
-    #     for obj_idx in swept_obj:
-    #         tunnel = max_node.get_tunnel(max_node.robot_, max_node.curr_config_[obj_idx][:2])
-    #         tunnel_collision_obj = max_node.collision_tunnel_object(tunnel)
-    #         tunnel_collision_obj.remove(obj_idx)
+        check_obj = swept_check_obj + sorted(set(collision_check_obj))
+        # max_node.tunnel_and_normal_visualizer()
 
-    #         if tunnel_collision_obj:
-    #             print(tunnel_collision_obj)
-    #             collision_check_obj += tunnel_collision_obj
-    #         else:
-    #             swept_check_obj.append(obj_idx)
+        max_region_dict = {}
+        for cluster_idx in range(len(valid_area_cluster)):
+            if len(valid_area_cluster[cluster_idx]) < 5:
+                continue
+            temp_valid_area = copy.deepcopy(valid_area_cluster)
+            temp_valid_area.pop(cluster_idx)
+            temp_valid_area = np.array(sum(temp_valid_area, []))
 
-    #     check_obj = swept_check_obj + sorted(set(collision_check_obj))
-    #     # max_node.tunnel_and_normal_visualizer()
+            total_new_region = 0
+            for obj_idx in check_obj:
+                total_new_region += max_node.region_counting(obj_idx, temp_valid_area)
+                max_region_dict[cluster_idx] = total_new_region
 
-    #     max_region_dict = {}
-    #     for cluster_idx in range(len(valid_area_cluster)):
-    #         if len(valid_area_cluster[cluster_idx]) < 5:
-    #             continue
-    #         temp_valid_area = copy.deepcopy(valid_area_cluster)
-    #         temp_valid_area.pop(cluster_idx)
-    #         temp_valid_area = np.array(sum(temp_valid_area, []))
+        region_list = [*dict(sorted(max_region_dict.items(), key=lambda item: item[1], reverse=True))]
+        mcts_out_angle = None
+        for idx in region_list:
+            mcts_out_angle = cal_cam_angle_for_area(valid_area_cluster[idx], ML_MCTS_ins.curr_config_ + [target_pos_MCT], scene_info, visualize=True)
+            if mcts_out_angle is not None:
+                break
 
-    #         total_new_region = 0
-    #         for obj_idx in check_obj:
-    #             total_new_region += max_node.region_counting(obj_idx, temp_valid_area)
-    #             max_region_dict[cluster_idx] = total_new_region
+        if mcts_out_angle is None:
+            print("------ RUN FAILED WITH UNOBSERVABLE AREA ------")
 
-    #     region_list = [*dict(sorted(max_region_dict.items(), key=lambda item: item[1], reverse=True))]
-    #     mcts_out_angle = None
-    #     for idx in region_list:
-    #         mcts_out_angle = cal_cam_angle_for_area(valid_area_cluster[idx], ML_MCTS_ins_base2.curr_config_ + [target_pos_MCT], scene_info, visualize=True)
-    #         if mcts_out_angle is not None:
-    #             break
+        mcts_selected_cluster = valid_area_cluster[idx]
+        run_mcts = False
 
-    #     if mcts_out_angle is None:
-    #         print("------ RUN FAILED WITH UNOBSERVABLE AREA ------")
-
-    #     mcts_selected_cluster = valid_area_cluster[idx]
-    #     run_mcts = False
-
-    # else:
-    #     ML_MCTS_ins_base2.animate_whole_sequence()
+    else:
+        ML_MCTS_ins.animate_whole_sequence()
     # if is_plan_success:
         # num_collision_obj_ = len(ML_MCTS_ins.track_level_steps_[0][0].check_collision_w_swept())
         # ML_MCTS_ins.global_optimization()
@@ -2915,8 +3015,9 @@ if __name__ == '__main__':
     
 
     # grasp_generation()
-    # file_path = '../assets/urdf/ur5e/meshes/collision/'
-    # rac = robot_arm_configuration(file_path, np.array([0.0, 0, 0]))
+    scene_info = [0.68,  0.9, 0.05, 0.48]
+    file_path = '../assets/urdf/ur5e/meshes/collision/'
+    rac = robot_arm_configuration(file_path, np.array([0.0, 0, 0]), scene_info=scene_info)
     # rac.update_bounding_box()
     # angles = [0, -math.pi/2, math.pi/2, -math.pi/2, 0, 0]
     # object_matching(None)
@@ -2951,10 +3052,10 @@ if __name__ == '__main__':
     # scene_info = [0.76,  1.16, 0.1, 0.5]
     # for i in range(10):
 
-    # scene_info = [0.80,  1.2, 0.1, 0.6]
-    # scene_info = [0.68,  0.9, 0.05, 0.48]
-    # # num = scene_height_check(scene_info, 5)
-    # # pdb.set_trace()
+    scene_info = [0.80,  1.2, 0.1, 0.6]
+    scene_info = [0.68,  0.9, 0.05, 0.48]
+    # num = scene_height_check(scene_info, 5)
+    # pdb.set_trace()
     # grasp_path_check(file_path, test_data_root, grasp_root, test_name, scene_info=scene_info, obstacles_num=0, grasp_check=False)
     # sys.exit(1)
 
@@ -3206,9 +3307,10 @@ if __name__ == '__main__':
 
 
 
-    sys.exit(1)
+    # sys.exit(1)
 
-    for t in range(20, 78):
+    for t in range(19, 80):
+        # print(t)
         rac.constrained_linear_motion_planner(t*0.01)
 
 

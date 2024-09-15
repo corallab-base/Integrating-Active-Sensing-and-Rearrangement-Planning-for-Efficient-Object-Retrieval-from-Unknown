@@ -95,6 +95,7 @@ MAX_NUM_OBSTACLES = 8
 NUM_OF_OBJECTS = 11
 
 scene_choose_idx = 2
+GAP_TO_BOX = 0
 
 if scene_choose_idx == 0:
 # Large scene ----------------------------------------------------------------------------------------
@@ -320,7 +321,7 @@ if __name__ == '__main__':
     # ur5e_pose.r = gymapi.Quat.from_axis_angle(gymapi.Vec3(1, 0, 0), 0.5*math.pi)
 
     table_pose = gymapi.Transform()
-    table_pose.p = gymapi.Vec3(table_dims.x*0.5 + 0.3, 0.0, table_dims.z*0.5)
+    table_pose.p = gymapi.Vec3(table_dims.x*0.5 + GAP_TO_BOX, 0.0, table_dims.z*0.5)
 
     left_cover_pose = gymapi.Transform()
     left_cover_pose.p = gymapi.Vec3(table_pose.p.x, table_dims.y*0.5 - 0.015, 
