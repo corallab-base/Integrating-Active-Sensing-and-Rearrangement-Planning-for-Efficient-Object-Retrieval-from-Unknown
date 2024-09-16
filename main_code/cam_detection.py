@@ -119,8 +119,8 @@ while True:
     cv2.imwrite('real_test_data/images/test_rgb_' + str(img_id) + '.jpg', color_image)
     cv2.imwrite('real_test_data/images/test_depth_' + str(img_id) + '.png', depth_image.astype(np.uint16))
 
-    det = detection(color_image, text_promt=["keyboard", "pen"])
-    masks = det.get_seg(mask_viz=True)
+    det = detection(color_image)
+    masks = det.get_seg(yolo_viz=True)
 
 
 pipeline.stop()

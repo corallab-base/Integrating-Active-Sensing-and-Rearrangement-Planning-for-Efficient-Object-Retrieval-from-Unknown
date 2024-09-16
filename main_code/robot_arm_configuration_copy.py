@@ -532,11 +532,11 @@ class robot_arm_configuration:
         rot9_final = rot7
         trans9, rot9 = trans7 + rot9_offset, rot9_final
 
-        #gripper
-        rot8_offset = R.from_quat(rot7_final).apply([0.086, 0, 0])
-        rot8_initial = [0, math.sqrt(2)/2, math.sqrt(2)/2, 0]
-        rot8_final = rotation_concat(accu, rot8_initial)
-        trans8, rot8 = trans7 + rot8_offset, rot8_final
+        # #gripper
+        # rot8_offset = R.from_quat(rot7_final).apply([0.086, 0, 0])
+        # rot8_initial = [0, math.sqrt(2)/2, math.sqrt(2)/2, 0]
+        # rot8_final = rotation_concat(accu, rot8_initial)
+        # trans8, rot8 = trans7 + rot8_offset, rot8_final
 
         
         return trans9+self.offset_, rot9
@@ -2832,6 +2832,8 @@ def check_MCTS(MCTS_root, MCTS_name, file_path=None):
     ML_MCTS_ins.init_MCTS()
     ML_MCTS_ins.MCTS_ins.MCTS_tree_.tunnel_and_normal_visualizer(unknown_show=True)
     is_plan_success, child_node_list = ML_MCTS_ins.run_mcts(30)
+
+    pdb.set_trace()
 
     if not is_plan_success:
         max_reward = -sys.maxsize

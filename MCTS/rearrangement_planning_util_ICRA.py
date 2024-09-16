@@ -226,7 +226,7 @@ class Tree_Node():
         if target_pos:
             self.static_config_ += target_pos
         self.grid_ = current_grid
-        self.robot_ = [0,-12]
+        self.robot_ = [0,-19]
         self.robot_width_ = 2
         self.robot_width_ = (0.104 / scale)
         self.radius = (0.0515 / scale)

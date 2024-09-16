@@ -140,8 +140,9 @@ def capture(pipeline, align, clipping_distance, img_id, save_addr=None):
                     cv2.imwrite('/home/j0k/Project/Imsa/main_code/test_data/test_real_experiment/images/test_rgb_' + str(img_id) + '.jpg', color_image)
                     cv2.imwrite('/home/j0k/Project/Imsa/main_code/test_data/test_real_experiment/images/test_depth_' + str(img_id) + '.png', depth_image.astype(np.uint16))
                 else:
-                    cv2.imwrite(save_addr + 'test_image' + str(img_id) + '.jpg', color_image)
-                    cv2.imwrite(save_addr + 'test_seg_image' + str(img_id) + '.png', depth_image.astype(np.uint16))
+                    cv2.imwrite(save_addr + 'test_image/' + str(img_id) + '.jpg', color_image)
+                    cv2.imwrite(save_addr + 'test_depth_image/' + str(img_id) + '.png', depth_image.astype(np.uint16))
+                    cv2.destroyAllWindows()
 
                 return color_image, depth_image
     finally:

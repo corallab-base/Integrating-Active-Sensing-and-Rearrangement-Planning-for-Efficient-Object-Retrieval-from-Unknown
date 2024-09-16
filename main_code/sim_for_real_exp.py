@@ -77,12 +77,22 @@ row_num_of_envs = int(math.sqrt(num_of_envs))
 # table_dims = gymapi.Vec3(0.76, 1.16, 0.10) # L
 
 table_dims = gymapi.Vec3(0.56, 0.84, 0.05) # L
-max_drawer_height = 0.40
-min_drawer_height = 0.40
+
+choose = np.random.randint(2)
+
+if choose == 0:
+    max_drawer_height = 0.43
+    min_drawer_height = 0.43
+    TARGET_OBJ_INDEX = [5] # banana
+else:
+    max_drawer_height = 0.49
+    min_drawer_height = 0.49
+    TARGET_OBJ_INDEX = [3] # mustard
+
 NUM_OF_OBJECTS = 6
 NUM_SWEPT_COLLISION = 2
 # TARGET_OBJ_INDEX = [3] # mustard
-TARGET_OBJ_INDEX = [5] # banana
+# TARGET_OBJ_INDEX = [3, 5]
 GAP_TO_BOX = 0.3
 
 piece_width = 0.03
@@ -986,7 +996,7 @@ if __name__ == '__main__':
         # GT_TARGET_POS = [np.random.uniform(0.20 + table_dims.x/2, table_dims.x),
         #                  np.random.uniform(-table_dims.y/2 + 0.1, table_dims.y/2 - 0.2),
         #                  table_dims.z + 0.08]
-        GT_TARGET_POS = [table_dims.x/2 + 0.3, 0, table_dims.z + 0.08]
+        GT_TARGET_POS = [table_dims.x/2 + 0.3, np.random.uniform(-table_dims.y/2 + 0.1, table_dims.y/2 - 0.2), table_dims.z + 0.08]
 
         # init setup
         ik_solver2 = IK("base_link", "wrist_3_link", urdf_string = urdf_str)
@@ -994,8 +1004,8 @@ if __name__ == '__main__':
         converted_quat = quaternion_multiply(gymapi.Quat(-math.sqrt(2)/2, 0, 0, math.sqrt(2)/2), target_quat)
         file_path = '../assets/urdf/ur5e/meshes/collision/'
         scene_info = [table_dims.x, table_dims.y, table_dims.z, drawer_height]
-        MAX_HEIGHT = get_max_height(asset_root, object_asset_files, OBJ_FILE_IDX_LIST)
-        # MAX_HEIGHT = 21
+        # MAX_HEIGHT = get_max_height(asset_root, object_asset_files, OBJ_FILE_IDX_LIST)
+        MAX_HEIGHT = 21
 
         rac = RC.robot_arm_configuration(file_path, np.array([ur5e_pose.p.x, ur5e_pose.p.y, ur5e_pose.p.z]), scene_info)
         target_obj_pos = copy.deepcopy(GT_TARGET_POS)
@@ -1022,69 +1032,66 @@ if __name__ == '__main__':
         np.random.shuffle(np.arange(len(grasp_list)))
         rac.target_mesh = target_obj_mesh
         get_out = False
-        # while num_grasp == 0:
-        #     skip_grasp = 0
-        #     for grasp_idx in grasp_list:
-        #         target_grasp_pos = grasp_data[grasp_idx]['target_pos']
-        #         target_grasp_quat = grasp_data[grasp_idx]['target_quat']
-        #         target_grasp_pos[:2] = target_grasp_pos[:2] + target_obj_pos[:2]
-        #         init2grasp_angels_temp = rac.grasp_verify(target_grasp_pos, target_grasp_quat)
-        #         grasp2init_angels_temp = rac.grasp_verify(target_grasp_pos + [0,0,0.02], target_grasp_quat)
-        #         if init2grasp_angels_temp is None or grasp2init_angels_temp is None:
-        #             skip_grasp += 1
-        #             assert skip_grasp < 15, "imposible grasp"
-        #             print("skip imposible grasp")
-        #             continue
-        #         # rac.check_collision_models(init2grasp_angels_temp, scene_info=scene_info)
+        while num_grasp == 0:
+            skip_grasp = 0
+            for grasp_idx in grasp_list:
+                target_grasp_pos = grasp_data[grasp_idx]['target_pos']
+                target_grasp_quat = grasp_data[grasp_idx]['target_quat']
+                target_grasp_pos[:2] = target_grasp_pos[:2] + target_obj_pos[:2]
+                init2grasp_angels_temp = rac.grasp_verify(target_grasp_pos, target_grasp_quat)
+                grasp2init_angels_temp = rac.grasp_verify(target_grasp_pos + [0,0,0.02], target_grasp_quat)
+                if init2grasp_angels_temp is None or grasp2init_angels_temp is None:
+                    skip_grasp += 1
+                    assert skip_grasp < 15, "imposible grasp"
+                    print("skip imposible grasp")
+                    continue
+                # rac.check_collision_models(init2grasp_angels_temp, scene_info=scene_info)
 
-        #         init2grasp_path_temp = RC.get_path2grasp(rac, init2grasp_angels_temp, scene_info, target_mesh=target_obj_mesh, time_limit=20)
-        #         temp_mod_bbox = rac.modify_grasp_bbox(init2grasp_angels_temp, target_obj_mesh, visualize=False)
-        #         grasp2init_path_temp = RC.get_path2start(rac, grasp2init_angels_temp, temp_mod_bbox, scene_info, time_limit=20)
-        #         if init2grasp_path_temp is None or grasp2init_path_temp is None:
-        #             print("No path generated\n")
-        #             continue
-        #         swept_volume1_temp, swept_verts1_temp = rac.get_swept_volume(init2grasp_path_temp, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
-        #         swept_volume2_temp, swept_verts2_temp = rac.get_swept_volume(grasp2init_path_temp, w_target=temp_mod_bbox, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
-        #         num_grasp += 1
-        #         print("\n----------grasp---------------\n")
+                init2grasp_path_temp = RC.get_path2grasp(rac, init2grasp_angels_temp, scene_info, target_mesh=target_obj_mesh, time_limit=60, given_static_model=object_collision_models)
+                if init2grasp_path_temp is None:
+                    print("No path generated\n")
+                    continue
 
-        #         # compare swept volumes
-        #         swept_center_temp, swept_verts_temp = rac.get_swept_center(swept_verts1_temp+swept_verts2_temp, scene_info, MAX_HEIGHT)
-        #         temp_swept_size = get_swept_volume_size(swept_verts_temp)
-        #         if temp_swept_size < swept_size:
-        #             swept_size = temp_swept_size
-        #             MAIN_swept_volume1 = swept_volume1_temp
-        #             MAIN_swept_volume2 = swept_volume2_temp
-        #             init2grasp_path = init2grasp_path_temp
-        #             grasp2init_path = grasp2init_path_temp
-        #             swept_center = swept_center_temp
-        #             swept_verts = swept_verts_temp
-        #             W_TARGET = temp_mod_bbox
-        #         if num_grasp == 1: #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        #             grasp_dof = rac.grasp_verify(target_grasp_pos, target_grasp_quat, new_offset=True)
-        #             init2grasp_path.append(grasp_dof)
+                grasp_dof = rac.grasp_verify(target_grasp_pos, target_grasp_quat, new_offset=True)
+                init2grasp_path_temp.append(grasp_dof)
+                temp_mod_bbox = rac.modify_grasp_bbox(grasp_dof, target_obj_mesh, visualize=False)
+                
+                grasp2init_path_temp = RC.get_path2start(rac, grasp2init_angels_temp, temp_mod_bbox, scene_info, time_limit=60, given_static_model=object_collision_models)
+                if init2grasp_path_temp is None or grasp2init_path_temp is None:
+                    print("No path generated\n")
+                    continue
 
-        #             np.save("test_data/test_real_experiment/target_path_saved/init2grasp_path.npy", np.array(init2grasp_path))
-        #             np.save("test_data/test_real_experiment/target_path_saved/grasp2init_path.npy", np.array(grasp2init_path))
-        #             np.save("test_data/test_real_experiment/target_path_saved/grasp_idx.npy", np.array(grasp_idx))
-        #             np.save("test_data/test_real_experiment/target_path_saved/grasp_bbox_verts.npy", temp_mod_bbox[0])
-        #             np.save("test_data/test_real_experiment/target_path_saved/grasp_bbox_faces.npy", temp_mod_bbox[1])
+                swept_volume1_temp, swept_verts1_temp = rac.get_swept_volume(init2grasp_path_temp, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
+                swept_volume2_temp, swept_verts2_temp = rac.get_swept_volume(grasp2init_path_temp, w_target=temp_mod_bbox, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
+                num_grasp += 1
+                print("\n----------grasp---------------\n")
 
-        #             pdb.set_trace()
-        #             break
-        #     if num_grasp > 0:
-        #         break
+                # compare swept volumes
+                swept_center_temp, swept_verts_temp = rac.get_swept_center(swept_verts1_temp+swept_verts2_temp, scene_info, MAX_HEIGHT)
+                temp_swept_size = get_swept_volume_size(swept_verts_temp)
+                if temp_swept_size < swept_size:
+                    swept_size = temp_swept_size
+                    MAIN_swept_volume1 = swept_volume1_temp
+                    MAIN_swept_volume2 = swept_volume2_temp
+                    init2grasp_path = init2grasp_path_temp
+                    grasp2init_path = grasp2init_path_temp
+                    swept_center = swept_center_temp
+                    swept_verts = swept_verts_temp
+                    W_TARGET = temp_mod_bbox
+                    break
 
+                if num_grasp > 1:
+                    break
 
-        init2grasp_path = np.load("test_data/test_real_experiment/target_path_saved/banana/grasp2init_path.npy", allow_pickle=True)
-        grasp2init_path = np.load("test_data/test_real_experiment/target_path_saved/banana/init2grasp_path.npy", allow_pickle=True)
-        
-        MAIN_swept_volume1, swept_verts1_temp = rac.get_swept_volume(init2grasp_path, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
-        W_TARGET = rac.modify_grasp_bbox(init2grasp_path[-1], target_obj_mesh, visualize=False)
-        MAIN_swept_volume2, swept_verts2_temp = rac.get_swept_volume(grasp2init_path, w_target=W_TARGET, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
+            if num_grasp > 0:
+                break
 
-        swept_center, swept_verts = rac.get_swept_center(swept_verts1_temp+swept_verts2_temp, scene_info, MAX_HEIGHT)
-        swept_size = get_swept_volume_size(swept_verts)
+        # MAIN_swept_volume1, swept_verts1_temp = rac.get_swept_volume(init2grasp_path, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
+        # W_TARGET = rac.modify_grasp_bbox(init2grasp_path[-1], target_obj_mesh, visualize=False)
+        # MAIN_swept_volume2, swept_verts2_temp = rac.get_swept_volume(grasp2init_path, w_target=W_TARGET, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
+
+        # swept_center, swept_verts = rac.get_swept_center(swept_verts1_temp+swept_verts2_temp, scene_info, MAX_HEIGHT)
+        # swept_size = get_swept_volume_size(swept_verts)
 
         s_time = time.time()
         num_in_swept = 0
@@ -1341,7 +1348,7 @@ if __name__ == '__main__':
     target_obj_mesh = None
     target_obj_pos = None
     obj_pcd = {}
-    MAX_HEIGHT = get_max_height(asset_root, object_asset_files, OBJ_FILE_IDX_LIST)
+    # MAX_HEIGHT = get_max_height(asset_root, object_asset_files, OBJ_FILE_IDX_LIST)
     valid_area_cluster = None
     potential_center_cluster = None
     is_tunnel_covered = False

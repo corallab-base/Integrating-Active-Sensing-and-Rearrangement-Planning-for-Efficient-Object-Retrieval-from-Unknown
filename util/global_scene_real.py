@@ -28,15 +28,16 @@ class global_scene_real:
             for j in range(self.y_left_, min(self.y_left_ + self.y_limit_, self.dim_y_)):
                 for k in range(self.g_height_, min(self.g_height_ + self.z_limit_, self.dim_z_)):
                     self.scene_[i][j][k] = 0
+        self.num_observation = 0
 
 
-
-
-    def register_camera_view(self, camera_rotation, camera_translation, depth_image, object_dict, file_prefix):
-        scene_name = file_prefix + '_scene.npy'
-        camera_name = file_prefix + '_camera.npy'
-        with open(scene_name, 'wb') as f:
-            np.save(f, self.scene_)
+    def register_camera_view(self, camera_rotation, camera_translation, depth_image, object_dict):
+        self.num_observation += 1
+    
+        # scene_name = file_prefix + '_scene.npy'
+        # camera_name = file_prefix + '_camera.npy'
+        # with open(scene_name, 'wb') as f:
+        #     np.save(f, self.scene_)
         
 
         for i in range(min(self.x_limit_, self.dim_x_)):
@@ -98,8 +99,8 @@ class global_scene_real:
         camera_data = camera_rotation + camera_translation + [score]
         camera_data = np.array(camera_data)
         print (score)
-        with open(camera_name, 'wb') as f:
-            np.save(f, camera_data)
+        # with open(camera_name, 'wb') as f:
+        #     np.save(f, camera_data)
         return score
 
     def get_surface_collision_mesh(self):
@@ -189,8 +190,8 @@ class global_scene_real:
         scene_pcd.points = o3d.utility.Vector3dVector(np.array(arr))
         scene_pcd.colors = o3d.utility.Vector3dVector(np.array(color))
 
-        with open(prefix + '_scene_pcd.npy', 'wb') as f:
-            np.save(f, np.array(arr))
+        # with open(prefix + '_scene_pcd.npy', 'wb') as f:
+        #     np.save(f, np.array(arr))
 
         mesh_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size = 0.4, origin = [0, 0, 0])
         o3d.visualization.draw_geometries([scene_pcd, mesh_frame, env_pc])

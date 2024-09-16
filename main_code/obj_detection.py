@@ -65,7 +65,7 @@ class detection():
         if text_promt is not None:
             self.text_promt = text_promt
         else:
-            self.text_promt = ["soup_can", "banana", "bottle", "snack_box"]
+            self.text_promt = ["soup_can", "banana", "bottle", "snack_box", "color_object"]
 
 
         self.yolo_model = None
@@ -129,8 +129,12 @@ class detection():
 
         self.sam_model.set_image(self.img)
 
+        input_point = input("obj_points :")
+        pdb.set_trace()
+        input_lable = [*range()]
+
         masks, scores, _ = self.sam_model.predict(
-            point_coords=None,
+            point_coords=input_point,
             point_labels=None,
             box=bound_boxs,
             multimask_output=False,

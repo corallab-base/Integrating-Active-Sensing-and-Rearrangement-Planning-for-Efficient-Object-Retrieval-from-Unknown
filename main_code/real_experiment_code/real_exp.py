@@ -7,12 +7,15 @@ from copy import deepcopy
 import numpy as np
 import rtde_control
 import rtde_receive
+
+
+sys.path.append('/home/j0k/Project/Imsa/main_code/real_experiment_code')
 import robotiq_gripper
 from rtde_control import RTDEControlInterface as RTDEControl
 import pdb
 # from rearrangement_planning_util_ICRA_backup import smart_LMP_motion_real
 sys.path.append('/home/j0k/Project/Imsa/main_code')
-import robot_arm_configuration as RC
+import robot_arm_configuration_copy as RC
 
 
 def power_off_pose(rtde_c):
@@ -529,7 +532,6 @@ def place_objects(rtde_c, gripper, move_map, drop_map, mct_plan_name, move = Tru
             #retrieve
             rtde_c.moveL_FK(grasp_end_config)
             rtde_c.moveJ(start_config_up_2)
-        
 
 def init_setup(ip_address):
     move_map = {}
@@ -574,6 +576,8 @@ def init_setup(ip_address):
     gripper = robotiq_gripper.RobotiqGripper()
     gripper.connect(ip_address, 63352)
     gripper.move(0, 100, 0)
+
+    gripper.activate()
     
     return move_map, place_map, drop_map, rtde_c, rtde_r, gripper
 
@@ -635,6 +639,7 @@ def main(ip_address, plan_file, plan_file2, mcts_plan, cam_dofs, place_obj_name)
     # reset_pose(rtde_c, move_map)
 
     gripper.activate()
+    pdb.set_trace()
 
     # sys.exit(1)
 
