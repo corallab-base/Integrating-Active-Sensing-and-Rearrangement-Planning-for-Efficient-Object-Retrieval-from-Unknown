@@ -167,7 +167,7 @@ class global_scene:
 
 
 
-    def vis_scene(self):
+    def vis_scene(self, swept_verts):
         arr = []
         color = []
         for i in range(self.dim_x_):
@@ -188,6 +188,17 @@ class global_scene:
                     #else:
                     #    color.append([0, 0, 1])
 
+        unobserved_verts = []
+        for verts in swept_verts:
+            idx = verts * 100
+            idx[0] -= 30
+            idx[1] += 60
+            idx = np.rint(idx).astype(int)
+
+            flag = self.scene_[idx[0], idx[1], idx[2]]
+            if flag == 0:
+                unobserved_verts.append(verts)
+
         environment_pc = []
         environment_colors = []
         for i in range(min(self.x_limit_, self.dim_x_)):
@@ -205,6 +216,11 @@ class global_scene:
                 environment_colors.append([0.5, 0.5, 0.5])
 
 
+        covered_pcd = o3d.geometry.PointCloud()
+        if unobserved_verts:
+            covered_pcd.points = o3d.utility.Vector3dVector(np.asarray(unobserved_verts))
+            covered_pcd.paint_uniform_color([0, 0, 1])
+
         env_pc = o3d.geometry.PointCloud()
         env_pc.points = o3d.utility.Vector3dVector(environment_pc)
         env_pc.colors = o3d.utility.Vector3dVector(environment_colors)
@@ -214,7 +230,7 @@ class global_scene:
         scene_pcd.colors = o3d.utility.Vector3dVector(np.array(color))
 
         mesh_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size = 0.4, origin = [0, 0, 0])
-        o3d.visualization.draw_geometries([mesh_frame, env_pc, scene_pcd])
+        o3d.visualization.draw_geometries([mesh_frame, env_pc, scene_pcd, covered_pcd])
 
 
     def visualize_scene(self, data_file):

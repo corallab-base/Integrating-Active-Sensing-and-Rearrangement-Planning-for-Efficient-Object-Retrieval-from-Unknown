@@ -186,6 +186,13 @@ class robot_arm_configuration:
             gri_max_y = max(gri_max_y, y)
             gri_max_z = max(gri_max_z, z)
         
+        # gri_min_x -= 0.025
+        # gri_min_y -= 0.025
+        # gri_min_z -= 0.025
+        # gri_max_x += 0.025
+        # gri_max_y += 0.025
+        # gri_max_z += 0.025
+        
         self.link_points_ = {}
         self.bounding_points_ = {}
 
@@ -297,7 +304,19 @@ class robot_arm_configuration:
 
         self.link_names_.append('gripper')
 
-        self.collision_models_['gripper'] = [gripper_vertices, gripper_faces.astype(int)]
+        temp_face = np.array([[0, 1, 2],
+                                [0, 2, 3],
+                                [4, 5, 6],
+                                [4, 6, 7],
+                                [0, 1, 5],
+                                [0, 5, 4],
+                                [3, 2, 6],
+                                [3, 6, 7],
+                                [1, 5, 6],
+                                [1, 6, 2],
+                                [0, 4, 7],
+                                [0, 7, 3]])
+        self.collision_models_['gripper'] = [self.bounding_points_['gripper'], temp_face]
 
         self.fcl_models_ = []
 
@@ -1242,7 +1261,7 @@ class robot_arm_configuration:
                 flex_collision_models[i][1] += ids
 
 
-    def arm_collision_free(self, dof_result, plane_model, static_env_models, flex_collision_models):    
+    def arm_collision_free(self, dof_result, plane_model, static_env_models, flex_collision_models=None):    
         pose_array = self.calculate_transform_from_angles(dof_result)
         ur5e_self_col = []
         #real_offset = np.array(state_tensor[0][:3])
@@ -1269,6 +1288,12 @@ class robot_arm_configuration:
                     if fcl.collide(ur5e_self_col[t], ur5e_self_col[q], request, result):
                         col_with_other_part = True
                         break
+            
+            if t != 6 and t != 7:
+                if fcl.collide(ur5e_self_col[t], ur5e_self_col[8], request, result):
+                    col_with_other_part = True
+                    # print("collision :", self.link_names_[t], self.link_names_[8])
+
             if col_with_other_part:
                 self_collision_flag = True
                 break
@@ -1282,8 +1307,10 @@ class robot_arm_configuration:
         manager2.registerObjects(static_env_models)
         manager2.setup()
 
+
         manager3 = fcl.DynamicAABBTreeCollisionManager()
-        manager3.registerObjects([x for x in flex_collision_models])
+        if flex_collision_models is not None:
+            manager3.registerObjects([x for x in flex_collision_models])
         #manager3.registerObjects(flex_collision_models)
         manager3.setup()
 
@@ -1949,7 +1976,7 @@ def get_path2grasp(rac, dof_result, scene_info, pcd_mesh=None, target_mesh=None,
 
     return path
 
-def get_patha2b(rac, start_dof, end_dof, scene_info=None, pcd_mesh=None, target_mesh=None, time_limit=10, given_static_model=None):
+def get_patha2b(rac, start_dof, end_dof, scene_info, pcd_mesh=None, target_mesh=None, time_limit=10, given_static_model=None):
     plane_normal = np.array([0,0,1.0])
     col_plane = fcl.Plane(plane_normal, 0)
     plane_obj = fcl.CollisionObject(col_plane, fcl.Transform())
@@ -2465,57 +2492,60 @@ def grasp_path_check(file_path, test_data_root, grasp_root, test_name, scene_inf
     mod_bbox = [bbox_verts, bbox_faces]
     # rac.check_collision_models(grasp2init_path[0], scene_info=scene_info)
 
+    # mod_bbox = rac.modify_grasp_mesh(grasp2init_path[0], target_mesh, visualize=True)
+
+
     rac.path_animation(grasp2init_path, test_name, grasp_idx=0, scene_info=scene_info, frame_rate=60, w_target=mod_bbox)
 
-    # vertices, faces = mod_bbox
-    # mod_fcl_gripper = fcl.BVHModel()
-    # mod_fcl_gripper.beginModel(len(vertices), len(faces))
-    # mod_fcl_gripper.addSubModel(vertices, faces)
-    # mod_fcl_gripper.endModel()
-    # temp_fcl = rac.fcl_models_[8]
-    # rac.fcl_models_[8] = mod_fcl_gripper
+    vertices, faces = mod_bbox
+    mod_fcl_gripper = fcl.BVHModel()
+    mod_fcl_gripper.beginModel(len(vertices), len(faces))
+    mod_fcl_gripper.addSubModel(vertices, faces)
+    mod_fcl_gripper.endModel()
+    temp_fcl = rac.fcl_models_[8]
+    rac.fcl_models_[8] = mod_fcl_gripper
 
-    # plane_normal = np.array([0,0,1.0])
-    # col_plane = fcl.Plane(plane_normal, 0)
-    # plane_obj = fcl.CollisionObject(col_plane, fcl.Transform())
-    # static_env_models = create_static_collision_model(scene_info, None, None)
+    plane_normal = np.array([0,0,1.0])
+    col_plane = fcl.Plane(plane_normal, 0)
+    plane_obj = fcl.CollisionObject(col_plane, fcl.Transform())
+    static_env_models = create_static_collision_model(scene_info, None, None)
 
-    # rac.collision_models_['gripper'] = vertices, faces
-    # pos_list = []
-    # for path_idx in range(1, len(grasp2init_path)):
-    #     start_pos = np.array(grasp2init_path[path_idx - 1])
-    #     end_pos = np.array(grasp2init_path[path_idx])
-    #     delta = (end_pos - start_pos) / 60
+    rac.collision_models_['gripper'] = vertices, faces
+    pos_list = []
+    for path_idx in range(1, len(grasp2init_path)):
+        start_pos = np.array(grasp2init_path[path_idx - 1])
+        end_pos = np.array(grasp2init_path[path_idx])
+        delta = (end_pos - start_pos) / 60
 
-    #     for i in range(60 + 1):
-    #         pos_list.append(start_pos + (delta * i))
+        for i in range(60 + 1):
+            pos_list.append(start_pos + (delta * i))
 
-    # for ang in pos_list:
-    #     flag = rac.arm_collision_free(ang, plane_obj, static_env_models, static_env_models)
-    #     if not flag:
-    #         rac.check_collision_models(ang, scene_info=scene_info)
-    #         pdb.set_trace()
+    for ang in pos_list:
+        flag = rac.arm_collision_free(ang, plane_obj, static_env_models, static_env_models)
+        if not flag:
+            rac.check_collision_models(ang, scene_info=scene_info)
+            pdb.set_trace()
 
-    # rac.check_collision_models(pos_list[30], scene_info=scene_info)
+    rac.check_collision_models(pos_list[30], scene_info=scene_info)
     
-    # new_grasp2init_path = get_path2start(rac, grasp2init_path[0], mod_bbox, scene_info)
-    # # rac.path_animation(new_grasp2init_path, test_name, grasp_idx=grasp_idx, scene_info=scene_info, frame_rate=100, w_target=mod_bbox)
+    new_grasp2init_path = get_path2start(rac, grasp2init_path[0], mod_bbox, scene_info)
+    # rac.path_animation(new_grasp2init_path, test_name, grasp_idx=grasp_idx, scene_info=scene_info, frame_rate=100, w_target=mod_bbox)
 
-    # rac.collision_models_['gripper'] = vertices, faces
-    # pos_list = []
-    # for path_idx in range(1, len(new_grasp2init_path)):
-    #     start_pos = np.array(new_grasp2init_path[path_idx - 1])
-    #     end_pos = np.array(new_grasp2init_path[path_idx])
-    #     delta = (end_pos - start_pos) / 60
+    rac.collision_models_['gripper'] = vertices, faces
+    pos_list = []
+    for path_idx in range(1, len(new_grasp2init_path)):
+        start_pos = np.array(new_grasp2init_path[path_idx - 1])
+        end_pos = np.array(new_grasp2init_path[path_idx])
+        delta = (end_pos - start_pos) / 60
 
-    #     for i in range(60 + 1):
-    #         pos_list.append(start_pos + (delta * i))
+        for i in range(60 + 1):
+            pos_list.append(start_pos + (delta * i))
 
-    # for ang in pos_list:
-    #     flag = rac.arm_collision_free(ang, plane_obj, static_env_models, static_env_models)
-    #     if not flag:
-    #         rac.check_collision_models(ang, scene_info=scene_info)
-    #         pdb.set_trace()
+    for ang in pos_list:
+        flag = rac.arm_collision_free(ang, plane_obj, static_env_models, static_env_models)
+        # if not flag:
+        #     rac.check_collision_models(ang, scene_info=scene_info)
+        #     pdb.set_trace()
 
     return
     num_saved = 0
@@ -2661,6 +2691,45 @@ def get_unobserved_area_w_height(scene, min_height):
 
     return unknown_area
 
+def swept_coverage_check(scene, swept_verts, rac, scene_info, max_height, visualize=False):
+    covered = 0
+    new_verts = []
+    covered_verts = []
+    for i, verts in enumerate(swept_verts):
+        idx = verts * 100
+        idx[0] -= 30
+        idx[1] += 60
+        idx = np.rint(idx).astype(int)
+        checked = scene.scene_[idx[0], idx[1], idx[2]]
+        if checked < 0:
+            swept_verts.pop(i)
+        if checked > 0:
+            covered += 1
+            covered_verts.append(verts)
+        else:
+            new_verts.append(verts)
+
+    if visualize:
+        covered_pcd = o3d.geometry.PointCloud()
+        toview_pcd = o3d.geometry.PointCloud()
+
+        print("covered_verts", len(covered_verts))
+        print("new_verts", len(new_verts))
+
+        if covered_verts:
+            covered_pcd.points = o3d.utility.Vector3dVector(np.asarray(covered_verts))
+
+        if new_verts:
+            toview_pcd.points = o3d.utility.Vector3dVector(np.asarray(new_verts))
+
+        covered_pcd.paint_uniform_color([1, 0, 0])
+        toview_pcd.paint_uniform_color([0, 0, 1])
+
+        o3d.visualization.draw_geometries([covered_pcd, toview_pcd])
+
+    next_center, _ = rac.get_swept_center([new_verts], scene_info, max_height)
+    return covered / len(swept_verts), next_center
+
 def check_MCTS(MCTS_root, MCTS_name, file_path=None):
     MCTS_path = MCTS_root + MCTS_name
     data = np.load(MCTS_path, allow_pickle=True)
@@ -2681,6 +2750,9 @@ def check_MCTS(MCTS_root, MCTS_name, file_path=None):
     valid_area = data[0]["valid_area"]
     potential_centers = data[0]["potential_centers"]
 
+
+    # global g_scene_info
+    # g_scene_info = scene_info
     # obstacles_num = 3
     # scene_info = [0.70, 1.1000001, 0.1, 0.5]
 
@@ -2691,15 +2763,45 @@ def check_MCTS(MCTS_root, MCTS_name, file_path=None):
     rac.obj_mesh = obj_mesh
     rac.obj_pos_list = obj_pos_list
 
-    for i in range(1, len(obj_pos_list)):
-        obstacles_mesh = obj_reader('../assets/urdf/ycb/036_wood_block/textured_vhacd.obj')
-        obstacles_mesh.add_offset([0.0074288357678113605, -0.004507257802105839, 0])
-        obstacles_mesh.add_offset(rac.obj_pos_list[i] + [scene_info[2]])
+    # rac.path_animation(grasp2init_path, ' ', grasp_idx=0, scene_info=scene_info, frame_rate=100, w_target=w_target)
 
-        rac.obj_mesh[i-1][0] = obstacles_mesh.get_vertices()
-        rac.obj_mesh[i-1][1] = obstacles_mesh.get_faces()
+    # plane_normal = np.array([0,0,1.0])
+    # col_plane = fcl.Plane(plane_normal, 0)
+    # plane_obj = fcl.CollisionObject(col_plane, fcl.Transform())
+    # static_env_models = create_static_collision_model(scene_info, None, None)
 
-    obj_pos_list.pop(0)
+    # pos_list = []
+    # for path_idx in range(1, len(grasp2init_path)):
+    #     start_pos = np.array(grasp2init_path[path_idx - 1])
+    #     end_pos = np.array(grasp2init_path[path_idx])
+    #     delta = (end_pos - start_pos) / 60
+
+    #     for i in range(60 + 1):
+    #         pos_list.append(start_pos + (delta * i))
+
+    # # pdb.set_trace()
+    # rac.collision_models_['gripper'] = w_target
+
+    # for i, ang in enumerate(pos_list):
+    #     # if i == 145:
+    #     #     rac.check_collision_models(ang, scene_info=scene_info)
+
+    #     flag = rac.arm_collision_free(ang, plane_obj, static_env_models, static_env_models)
+    #     if not flag:
+    #         rac.check_collision_models(ang, scene_info=scene_info)
+    #         # pdb.set_trace()
+    # return
+
+
+    # for i in range(1, len(obj_pos_list)):
+    #     obstacles_mesh = obj_reader('../assets/urdf/ycb/036_wood_block/textured_vhacd.obj')
+    #     obstacles_mesh.add_offset([0.0074288357678113605, -0.004507257802105839, 0])
+    #     obstacles_mesh.add_offset(rac.obj_pos_list[i] + [scene_info[2]])
+
+    #     rac.obj_mesh[i-1][0] = obstacles_mesh.get_vertices()
+    #     rac.obj_mesh[i-1][1] = obstacles_mesh.get_faces()
+
+    # obj_pos_list.pop(0)
     # rac.check_collision_models(grasp2init_path[0], scene_info=scene_info)
 
 
@@ -2710,20 +2812,54 @@ def check_MCTS(MCTS_root, MCTS_name, file_path=None):
     # calculate swept volume with bounding box
     swept_volume1, swept_verts1 = rac.get_swept_volume(init2grasp_path, test_name, idx, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False, with_scene=True)
     swept_volume2, swept_verts2 = rac.get_swept_volume(grasp2init_path, test_name, idx, w_target=w_target, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False, with_scene=True)
-    # swept_center, swept_verts = rac.get_swept_center(swept_verts1+swept_verts2, scene_info)
+    swept_center, swept_verts = rac.get_swept_center(swept_verts1+swept_verts2, scene_info, max_height=21)
+
     OFFSET = np.array([0.3, -0.6, 0.05])
     scene = global_scene(1.0, 1.2, 0.85, OFFSET, scene_info[0], scene_info[1] - 0.04, scene_info[3], scene_info[2] - 0.05)
 
-    cam_move_plan = np.load('test_data/test_real_experiment/real_test2/MCTS*/test_results/cam_dofs_3.npy')[1:]
-    for i, dofs in enumerate(cam_move_plan):
-        print("n", i)
-        new_cam_translation, new_cam_rotation = rac.calculate_cam_pose(dofs)
-        img_name = 'test_data/test_real_experiment/real_test2/MCTS*/real_image/'
-        new_depth_image = np.asarray(o3d.io.read_image(img_name + "test_depth_" + str(i + 1) + '.png'))
-        _ = scene.register_camera_view(list(new_cam_rotation), list(new_cam_translation), new_depth_image, {})
+    curr_config, target_pos_MCT = rac.get_MCT_config(rac.obj_pos_list, rac.obj_mesh, target_pos, target_mesh)
+
+    ML_MCTS_ins = mct.multi_level_MCTS_algo(copy.deepcopy(curr_config), copy.deepcopy(curr_config), scene_info=scene_info,
+                                            swept_volume1=swept_volume1, swept_volume2=swept_volume2, obj_mesh=rac.obj_mesh,
+                                            target_pos=copy.deepcopy(target_pos_MCT), unknown_area=unknown_area, valid_area=[],
+                                            potential_centers=[])
+
+    # ML_MCTS_ins = mct.multi_level_MCTS_algo(copy.deepcopy(curr_config), copy.deepcopy(curr_config), scene_info=scene_info,
+    #                                         swept_volume1=swept_volume1, swept_volume2=swept_volume2, obj_mesh=rac.obj_mesh,
+    #                                         target_pos=copy.deepcopy(target_pos_MCT))
+
+    # cam_move_plan = np.load(MCTS_root  + '/cam_dofs_2.npy')
+    # for i, dofs in enumerate(cam_move_plan):
+    #     print("n", i)
+    #     new_cam_translation, new_cam_rotation = rac.calculate_cam_pose(dofs)
+    #     img_name = 'test_data/test_real_experiment/m_good1/MCTS*/test_depth_image/'
+    #     new_depth_image = np.asarray(o3d.io.read_image(img_name + str(i) + '.png'))
+    #     _ = scene.register_camera_view(list(new_cam_rotation), list(new_cam_translation), new_depth_image, {})
+
+    #     rac.check_collision_models(dofs, scene_info=scene_info)
+
+
+    #     unknown_area = delete_obj_spots(curr_config, target_pos_MCT, unknown_area, visualize=False)
+    #     unknown_area, potential_center_cluster, valid_area_cluster = process_unknown_area(unknown_area, curr_config, target_pos_MCT, min_radius= 5, valid_center_num=5, visualize=False)
+    #     potential_centers = np.array(sum(potential_center_cluster, []))
+    #     valid_area = np.array(sum(valid_area_cluster, []))
+
+    #     ML_MCTS_ins.unknown_area = unknown_area
+    #     ML_MCTS_ins.potential_centers = potential_centers
+    #     ML_MCTS_ins.valid_area = valid_area
+
+    #     ML_MCTS_ins.init_MCTS()
+    #     # ML_MCTS_ins.MCTS_ins.MCTS_tree_.tunnel_and_normal_visualizer(unknown_show=True)
+
+    #     coverage_score, _ = swept_coverage_check(scene, swept_verts, rac, scene_info, 21, visualize=False)
+    #     scene.vis_scene(swept_verts)
+    #     print("----- Swept volume covered", coverage_score, '-----')
+
+    # return
+
 
     min_height = 22
-    unknown_area = get_unobserved_area_w_height(scene, min_height)
+    # unknown_area = get_unobserved_area_w_height(scene, min_height)
     
 
     # Replay -------------------------------------------------------------------------------------------------------------------
@@ -2752,16 +2888,16 @@ def check_MCTS(MCTS_root, MCTS_name, file_path=None):
     # ---------------------------------------------------------------------------------------------------------------------------
 
     # check collision
-    collision_obj_list = rac.check_collision_w_swept(swept_volume1, swept_volume2)
-    print("objects in collision: ", collision_obj_list)
+    # collision_obj_list = rac.check_collision_w_swept(swept_volume1, swept_volume2)
+    # print("objects in collision: ", collision_obj_list)
 
-    # get rearrange planning
-    curr_config, target_pos_MCT = rac.get_MCT_config(rac.obj_pos_list, rac.obj_mesh, target_pos, target_mesh)
+    # # get rearrange planning
+    # curr_config, target_pos_MCT = rac.get_MCT_config(rac.obj_pos_list, rac.obj_mesh, target_pos, target_mesh)
 
-    unknown_area = delete_obj_spots(curr_config, target_pos_MCT, unknown_area, visualize=False)
-    unknown_area, potential_center_cluster, valid_area_cluster = process_unknown_area(unknown_area, curr_config, target_pos_MCT, min_radius= 5, valid_center_num=5, visualize=False)
-    potential_centers = np.array(sum(potential_center_cluster, []))
-    valid_area = np.array(sum(valid_area_cluster, []))
+    # unknown_area = delete_obj_spots(curr_config, target_pos_MCT, unknown_area, visualize=False)
+    # unknown_area, potential_center_cluster, valid_area_cluster = process_unknown_area(unknown_area, curr_config, target_pos_MCT, min_radius= 5, valid_center_num=5, visualize=False)
+    # potential_centers = np.array(sum(potential_center_cluster, []))
+    # valid_area = np.array(sum(valid_area_cluster, []))
 
     # --------------------------------------------------------------------------------------------------------
     # ML_MCTS_ins = mct.multi_level_MCTS_algo(copy.deepcopy(curr_config), copy.deepcopy(curr_config), scene_info=scene_info,
@@ -2790,10 +2926,10 @@ def check_MCTS(MCTS_root, MCTS_name, file_path=None):
     print(curr_config)
 
 
-    ML_MCTS_ins = mct.multi_level_MCTS_algo(copy.deepcopy(curr_config), copy.deepcopy(curr_config), scene_info=scene_info,
-                                            swept_volume1=swept_volume1, swept_volume2=swept_volume2, obj_mesh=rac.obj_mesh,
-                                            target_pos=copy.deepcopy(target_pos_MCT), unknown_area=unknown_area, valid_area=valid_area,
-                                            potential_centers=potential_centers)
+    # ML_MCTS_ins = mct.multi_level_MCTS_algo(copy.deepcopy(curr_config), copy.deepcopy(curr_config), scene_info=scene_info,
+    #                                         swept_volume1=swept_volume1, swept_volume2=swept_volume2, obj_mesh=rac.obj_mesh,
+    #                                         target_pos=copy.deepcopy(target_pos_MCT), unknown_area=unknown_area, valid_area=valid_area,
+    #                                         potential_centers=potential_centers)
     # ML_MCTS_ins_OG = mct_OG.multi_level_MCTS_algo_OG(copy.deepcopy(curr_config), copy.deepcopy(curr_config), scene_info=scene_info,
     #                                         swept_volume1=swept_volume1, swept_volume2=swept_volume2, obj_mesh=rac.obj_mesh,
     #                                         target_pos=copy.deepcopy(target_pos_MCT), unknown_area=unknown_area, valid_area=valid_area,
@@ -2831,73 +2967,85 @@ def check_MCTS(MCTS_root, MCTS_name, file_path=None):
 
     ML_MCTS_ins.init_MCTS()
     ML_MCTS_ins.MCTS_ins.MCTS_tree_.tunnel_and_normal_visualizer(unknown_show=True)
-    is_plan_success, child_node_list = ML_MCTS_ins.run_mcts(30)
+    is_plan_success, child_node_list = ML_MCTS_ins.run_mcts(10)
+
+    if is_plan_success:
+        ML_MCTS_ins.global_optimization()
+        res_plan = ML_MCTS_ins.save_planning_results()
+        ML_MCTS_ins.animate_whole_sequence()
+
+        num_collision_obj_ = len(ML_MCTS_ins.track_level_steps_[0][0].check_collision_w_swept())
+        res_plan = ML_MCTS_ins.save_planning_results()
+        np.save(MCTS_root + "test_result_4.npy", res_plan)
+        # write_result(MCTS_root, '', view, len(curr_config), ML_MCTS_ins.time_consumption_, ML_MCTS_ins.total_steps_, ML_MCTS_ins.calculate_total_length_travelled(), ML_MCTS_ins.calculate_total_length_displacement(), num_collision_obj_, 0, 0, 0, 0, res_plan, extra_name="_w_num_obj")
+
+
 
     pdb.set_trace()
 
-    if not is_plan_success:
-        max_reward = -sys.maxsize
-        min_num_collision = sys.maxsize
-        max_node = None
-        for child in child_node_list:
-            if len(child.check_collision_w_swept()) < min_num_collision and len(child.check_collision_w_swept()) != 0:
-                max_node = child
-                max_reward = child.reward_
-            elif len(child.check_collision_w_swept()) == min_num_collision:
-                if child.reward_ > max_reward:
-                    max_reward = child.reward_
-                    max_node = child
+    # if not is_plan_success:
+    #     max_reward = -sys.maxsize
+    #     min_num_collision = sys.maxsize
+    #     max_node = None
+    #     for child in child_node_list:
+    #         if len(child.check_collision_w_swept()) < min_num_collision and len(child.check_collision_w_swept()) != 0:
+    #             max_node = child
+    #             max_reward = child.reward_
+    #         elif len(child.check_collision_w_swept()) == min_num_collision:
+    #             if child.reward_ > max_reward:
+    #                 max_reward = child.reward_
+    #                 max_node = child
 
-        collision_check_obj = []
-        swept_check_obj = []
-        swept_obj = max_node.check_collision_w_swept()
-        for obj_idx in swept_obj:
-            tunnel = max_node.get_tunnel(max_node.robot_, max_node.curr_config_[obj_idx][:2])
-            tunnel_collision_obj = max_node.collision_tunnel_object(tunnel)
-            tunnel_collision_obj.remove(obj_idx)
+    #     collision_check_obj = []
+    #     swept_check_obj = []
+    #     swept_obj = max_node.check_collision_w_swept()
+    #     for obj_idx in swept_obj:
+    #         tunnel = max_node.get_tunnel(max_node.robot_, max_node.curr_config_[obj_idx][:2])
+    #         tunnel_collision_obj = max_node.collision_tunnel_object(tunnel)
+    #         tunnel_collision_obj.remove(obj_idx)
 
-            if tunnel_collision_obj:
-                print(tunnel_collision_obj)
-                collision_check_obj += tunnel_collision_obj
-            else:
-                swept_check_obj.append(obj_idx)
+    #         if tunnel_collision_obj:
+    #             print(tunnel_collision_obj)
+    #             collision_check_obj += tunnel_collision_obj
+    #         else:
+    #             swept_check_obj.append(obj_idx)
 
-        check_obj = swept_check_obj + sorted(set(collision_check_obj))
-        # max_node.tunnel_and_normal_visualizer()
+    #     check_obj = swept_check_obj + sorted(set(collision_check_obj))
+    #     # max_node.tunnel_and_normal_visualizer()
 
-        max_region_dict = {}
-        for cluster_idx in range(len(valid_area_cluster)):
-            if len(valid_area_cluster[cluster_idx]) < 5:
-                continue
-            temp_valid_area = copy.deepcopy(valid_area_cluster)
-            temp_valid_area.pop(cluster_idx)
-            temp_valid_area = np.array(sum(temp_valid_area, []))
+    #     max_region_dict = {}
+    #     for cluster_idx in range(len(valid_area_cluster)):
+    #         if len(valid_area_cluster[cluster_idx]) < 5:
+    #             continue
+    #         temp_valid_area = copy.deepcopy(valid_area_cluster)
+    #         temp_valid_area.pop(cluster_idx)
+    #         temp_valid_area = np.array(sum(temp_valid_area, []))
 
-            total_new_region = 0
-            for obj_idx in check_obj:
-                total_new_region += max_node.region_counting(obj_idx, temp_valid_area)
-                max_region_dict[cluster_idx] = total_new_region
+    #         total_new_region = 0
+    #         for obj_idx in check_obj:
+    #             total_new_region += max_node.region_counting(obj_idx, temp_valid_area)
+    #             max_region_dict[cluster_idx] = total_new_region
 
-        region_list = [*dict(sorted(max_region_dict.items(), key=lambda item: item[1], reverse=True))]
-        mcts_out_angle = None
-        for idx in region_list:
-            mcts_out_angle = cal_cam_angle_for_area(valid_area_cluster[idx], ML_MCTS_ins.curr_config_ + [target_pos_MCT], scene_info, visualize=True)
-            if mcts_out_angle is not None:
-                break
+    #     region_list = [*dict(sorted(max_region_dict.items(), key=lambda item: item[1], reverse=True))]
+    #     mcts_out_angle = None
+    #     for idx in region_list:
+    #         mcts_out_angle = cal_cam_angle_for_area(valid_area_cluster[idx], ML_MCTS_ins.curr_config_ + [target_pos_MCT], scene_info, visualize=True)
+    #         if mcts_out_angle is not None:
+    #             break
 
-        if mcts_out_angle is None:
-            print("------ RUN FAILED WITH UNOBSERVABLE AREA ------")
+    #     if mcts_out_angle is None:
+    #         print("------ RUN FAILED WITH UNOBSERVABLE AREA ------")
 
-        mcts_selected_cluster = valid_area_cluster[idx]
-        run_mcts = False
+    #     mcts_selected_cluster = valid_area_cluster[idx]
+    #     run_mcts = False
 
-    else:
-        ML_MCTS_ins.animate_whole_sequence()
+    # else:
+    #     ML_MCTS_ins.animate_whole_sequence()
     # if is_plan_success:
-        # num_collision_obj_ = len(ML_MCTS_ins.track_level_steps_[0][0].check_collision_w_swept())
-        # ML_MCTS_ins.global_optimization()
-        # res_plan = ML_MCTS_ins.save_planning_results()
-        # write_result(new_folder, 'test_results/complete_sensing/MCTS*', view, len(curr_config), ML_MCTS_ins.time_consumption_, ML_MCTS_ins.total_steps_, ML_MCTS_ins.calculate_total_length_travelled(), ML_MCTS_ins.calculate_total_length_displacement(), num_collision_obj_, 0, 0, 0, 0, res_plan, extra_name="_w_num_obj")
+    #     num_collision_obj_ = len(ML_MCTS_ins.track_level_steps_[0][0].check_collision_w_swept())
+    #     ML_MCTS_ins.global_optimization()
+    #     res_plan = ML_MCTS_ins.save_planning_results()
+    #     write_result(new_folder, 'test_results/complete_sensing/MCTS*', view, len(curr_config), ML_MCTS_ins.time_consumption_, ML_MCTS_ins.total_steps_, ML_MCTS_ins.calculate_total_length_travelled(), ML_MCTS_ins.calculate_total_length_displacement(), num_collision_obj_, 0, 0, 0, 0, res_plan, extra_name="_w_num_obj")
 
     # else:
     #     write_result(new_folder, 'test_results/complete_sensing/MCTS*', view, len(curr_config), ML_MCTS_ins.time_consumption_, "Failed", "Failed", "Failed", num_collision_obj_, 0, 0, 0, 0, None, "_w_num_obj")
@@ -3017,7 +3165,7 @@ if __name__ == '__main__':
     
 
     # grasp_generation()
-    scene_info = [0.68,  0.9, 0.05, 0.48]
+    scene_info = [0.68,  0.9, 0.05, 0.49]
     file_path = '../assets/urdf/ur5e/meshes/collision/'
     rac = robot_arm_configuration(file_path, np.array([0.0, 0, 0]), scene_info=scene_info)
     # rac.update_bounding_box()
@@ -3179,13 +3327,14 @@ if __name__ == '__main__':
     # scene_name = "203/complete_sensing/BASE2/test_results/"
     # mcts_name = "temp_scene4_failed.npy"
 
-    data_root = "test_data/test_real_experiment/real_test2/"
+    data_root = "test_data/test_real_time/test1/9.18.10.49/"
     scene_name = "MCTS*/test_results/"
-    mcts_name = "temp_scene3_success.npy"
+    mcts_name = "temp_scene3_failed.npy"
 
     mcts_root = data_root + scene_name
     # mcts_name = "groud_truth_scene.npy"
     check_MCTS(mcts_root, mcts_name, file_path) 
+    sys.exit(1)
 
     scene_name = "8.7.18.40_!!/"
     mcts_name = "temp_scene1None.npy" # unsolve

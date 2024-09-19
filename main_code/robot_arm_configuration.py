@@ -3076,9 +3076,9 @@ if __name__ == '__main__':
     # scene_name = "203/complete_sensing/BASE2/test_results/"
     # mcts_name = "temp_scene4_failed.npy"
 
-    data_root = "test_data/test_real_experiment/real_test2/"
+    data_root = "test_data/test_real_experiment/m_good1/"
     scene_name = "MCTS*/test_results/"
-    mcts_name = "temp_scene3_success.npy"
+    mcts_name = "temp_scene2_success.npy"
 
     mcts_root = data_root + scene_name
     # mcts_name = "groud_truth_scene.npy"

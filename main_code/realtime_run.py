@@ -52,9 +52,10 @@ import ompl.util as ou
 import ompl.geometric as og
 from stl_reader import stl_reader
 from obj_reader import obj_reader
-# from global_scene import global_scene
-from global_scene_real import global_scene_real as global_scene
-# from grasp_util.global_scene_real import global_scene
+from global_scene import global_scene
+# from global_scene_real import global_scene_real as global_scene
+from grasp_util.global_scene import global_scene
+
 from grasp_util.pc_extractor_grasp import pc_extractor_grasp
 
 from test_module.camera_view import camera
@@ -437,9 +438,118 @@ def swept_coverage_check(scene, swept_verts, rac, scene_info, max_height):
         if checked > 0:
             covered += 1
         else:
-            new_verts.append(verts)
+            # check soundings
+            checked1 = scene.scene_[idx[0] - 1, idx[1], idx[2]]
+            checked2 = scene.scene_[idx[0] + 1, idx[1], idx[2]]
+            checked3 = scene.scene_[idx[0], idx[1] - 1, idx[2]]
+            checked4 = scene.scene_[idx[0], idx[1] + 1, idx[2]]
+            checked5 = scene.scene_[idx[0], idx[1], idx[2] - 1]
+            checked6 = scene.scene_[idx[0], idx[1], idx[2] + 1]
+            checked7 = scene.scene_[idx[0] + 1, idx[1] + 1, idx[2]]
+            checked8 = scene.scene_[idx[0] + 1, idx[1] - 1, idx[2]]
+            checked9 = scene.scene_[idx[0] - 1, idx[1] + 1, idx[2]]
+            checked10 = scene.scene_[idx[0] - 1, idx[1] - 1, idx[2]]
+            checked11 = scene.scene_[idx[0], idx[1] - 1, idx[2] - 1]
+            checked12 = scene.scene_[idx[0], idx[1] - 1, idx[2] + 1]
+            checked13 = scene.scene_[idx[0], idx[1] + 1, idx[2] - 1]
+            checked14 = scene.scene_[idx[0], idx[1] + 1, idx[2] + 1]
+            checked15 = scene.scene_[idx[0] + 1, idx[1], idx[2] + 1]
+            checked16 = scene.scene_[idx[0] + 1, idx[1], idx[2] - 1]
+            checked17 = scene.scene_[idx[0] - 1, idx[1], idx[2] + 1]
+            checked18 = scene.scene_[idx[0] - 1, idx[1], idx[2] - 1]
+            checked19 = scene.scene_[idx[0] - 1, idx[1] - 1, idx[2] - 1]
+            checked20 = scene.scene_[idx[0] - 1, idx[1] - 1, idx[2] + 1]
+            checked21 = scene.scene_[idx[0] - 1, idx[1] + 1, idx[2] - 1]
+            checked22 = scene.scene_[idx[0] - 1, idx[1] + 1, idx[2] + 1]
+            checked23 = scene.scene_[idx[0] + 1, idx[1] - 1, idx[2] - 1]
+            checked24 = scene.scene_[idx[0] + 1, idx[1] - 1, idx[2] + 1]
+            checked25 = scene.scene_[idx[0] + 1, idx[1] + 1, idx[2] - 1]
+            checked26 = scene.scene_[idx[0] + 1, idx[1] + 1, idx[2] + 1]
+
+            if checked1 > 0:
+                covered += 1
+                continue
+            elif checked2 > 0:
+                covered += 1
+                continue
+            elif checked3 > 0:
+                covered += 1
+                continue
+            elif checked4 > 0:
+                covered += 1
+                continue
+            elif checked5 > 0:
+                covered += 1
+                continue
+            elif checked6 > 0:
+                covered += 1
+                continue
+            elif checked7 > 0:
+                covered += 1
+                continue
+            elif checked8 > 0:
+                covered += 1
+                continue
+            elif checked9 > 0:
+                covered += 1
+                continue
+            elif checked10 > 0:
+                covered += 1
+                continue
+            elif checked11 > 0:
+                covered += 1
+                continue
+            elif checked12 > 0:
+                covered += 1
+                continue
+            elif checked13 > 0:
+                covered += 1
+                continue
+            elif checked14 > 0:
+                covered += 1
+                continue
+            elif checked15 > 0:
+                covered += 1
+                continue
+            elif checked16 > 0:
+                covered += 1
+                continue
+            elif checked17 > 0:
+                covered += 1
+                continue
+            elif checked18 > 0:
+                covered += 1
+                continue
+            elif checked19 > 0:
+                covered += 1
+                continue
+            elif checked20 > 0:
+                covered += 1
+                continue
+            elif checked21 > 0:
+                covered += 1
+                continue
+            elif checked22 > 0:
+                covered += 1
+                continue
+            elif checked23 > 0:
+                covered += 1
+                continue
+            elif checked24 > 0:
+                covered += 1
+                continue
+            elif checked25 > 0:
+                covered += 1
+                continue
+            elif checked26 > 0:
+                covered += 1
+                continue
+            else:
+                new_verts.append(verts)
 
     next_center, _ = rac.get_swept_center([new_verts], scene_info, max_height)
+    print("swept covered", covered)
+    print("swept uncovered", len(swept_verts))
     return covered / len(swept_verts), next_center
 
 def get_swept_volume_size(main_swept):
@@ -510,7 +620,7 @@ def get_min_height(asset_root, object_asset_files, OBJ_FILE_IDX_LIST):
 
 def get_unobserved_area_w_height(scene, asset_root, object_asset_files, OBJ_FILE_IDX_LIST):
     # min_height = get_min_height(asset_root, object_asset_files, OBJ_FILE_IDX_LIST)
-    min_height = 26
+    min_height = MIN_HEIGHT
     floor = scene.scene_[:scene.x_limit_, scene.y_left_+1 :(scene.y_left_ + scene.y_limit_-1), scene.g_height_: scene.g_height_ + min_height]
 
     unknown_layer = set(map(tuple, np.argwhere(floor[:,:,0] == 0)[:,:2]))
@@ -553,7 +663,7 @@ def scale_config(config):
 
 def save_scene(init2grasp_path, grasp2init_path, obj_pos_list, gt_obj_pos_list, NUM_OF_OBJECTS, scene_info,
                target_mesh, obj_mesh, target_pos, gt_target_pos, obstacles_num, w_target,
-               unknown_area, valid_area, potential_centers, method, MCTS_result=None):
+               unknown_area, valid_area, potential_centers, method, MCTS_result=None, sequence_count=None):
     gt_save_info = {"idx" : 0,
                     "init2grasp_path" : init2grasp_path,
                     "grasp2init_path" : grasp2init_path,
@@ -615,7 +725,7 @@ def update_rac_val(rac, target_obj_mesh, obj_mesh_MCTS, obj_pos_MCTS):
     rac.obstacles_num = len(rac.obj_pos_list)
 
 
-def run_sim_and_real():
+def run_sim_and_real(swept_verts, swept_center):
     print("\n\n--------------------------- Complete Sensing MCTS* ---------------------------")
     test_name = "MCTS*/"
     save_scene_folder = test_name +"test_results/"
@@ -651,7 +761,7 @@ def run_sim_and_real():
     target_obj_mesh = None
     target_obj_pos = None
     obj_pcd = {}
-    MAX_HEIGHT = get_max_height(asset_root, object_asset_files, OBJ_FILE_IDX_LIST)
+    # MAX_HEIGHT = get_max_height(asset_root, object_asset_files, OBJ_FILE_IDX_LIST)
     valid_area_cluster = None
     potential_center_cluster = None
     is_tunnel_covered = False
@@ -661,6 +771,9 @@ def run_sim_and_real():
     mcts_out_angle = None
     start_time = time.time()
     prev_dof = [0.7, -2, 2.5, -0.3, 0.7, 0]
+    
+    init_sensing_idx = 0
+    swept_sensing_idx = 0
 
     while not gym.query_viewer_has_closed(viewer):
         if run_mcts and is_target_detected and not need_acquire:
@@ -673,7 +786,7 @@ def run_sim_and_real():
 
             save_scene(init2grasp_path, grasp2init_path, rac.obj_pos_list, GT_OBJ_POS_LIST, NUM_OF_OBJECTS, scene_info,
                            rac.target_mesh, rac.obj_mesh, target_obj_pos, GT_TARGET_POS, rac.obstacles_num, W_TARGET,
-                           ML_MCTS_ins.unknown_area, ML_MCTS_ins.valid_area, ML_MCTS_ins.potential_centers, save_scene_folder, is_plan_success)
+                           ML_MCTS_ins.unknown_area, ML_MCTS_ins.valid_area, ML_MCTS_ins.potential_centers, save_scene_folder, is_plan_success, sequence_count)
 
             if is_plan_success:
                 print("!!!!!!!!!!!!!!MCTS* planning Success!!!!!!!!!!!!!!!!!!!!!")
@@ -805,8 +918,12 @@ def run_sim_and_real():
                             # new_depth_image = convert_depth_image(depth_image)
 
                             print ('----- start point cloud extraction -----')
-                            print("Previous")
-                            input_info = input("input observed objects index :")
+                            # ['#00fffb', '#ff00dd', '#bf00ff', '#ffae00', '#59ff00', '#FFFF00']
+                            #    cyan     pink     purple     orange     green     yellow
+                            #     1         2        3          4          5         6
+                            print("    cyan     pink     purple     orange     green     yellow")
+                            print("     1         2        3          4          5         6")
+                            input_info = input("(target idx == " + str(NUM_OF_OBJECTS) + ")\n" + 'input observed objects index :')
                             input_list = input_info.split(",")
                             object_dict = [int(i) for i in input_list]
                             print("object_dict :", object_dict)
@@ -822,12 +939,12 @@ def run_sim_and_real():
                                     is_target_detected = True
 
                             _ = scene.register_camera_view(list(new_cam_rotation), list(new_cam_translation), depth_image, {})
-                            # scene.vis_scene(None)
                             print("Num view", scene.num_observation)
 
                             if is_target_detected:
                                 coverage_score, _ = swept_coverage_check(scene, swept_verts, rac, scene_info, MAX_HEIGHT)
                                 print("----- Swept volume covered", coverage_score, '-----')
+                                # scene.vis_scene(swept_verts)
                                 
                                 # get obj pose
                                 obj_mesh_MCTS = dict(sorted(obj_mesh_MCTS.items()))
@@ -886,38 +1003,201 @@ def run_sim_and_real():
 
             end_state_collision_free = False
             while not end_state_collision_free:
-                if coverage_score >=0.85 and is_tunnel_covered: # swept volume observed
-                    # if not is_tunnel_covered:
-                    #     obj_idx, collision_points = ML_MCTS_ins.unknown_tunnel_check()
+                # # saved dectection points---------------------------------------------------------------
+                # if coverage_score >=0.85 and is_tunnel_covered: # swept volume observed
+                #     run_mcts = True
+                #     if len(ML_MCTS_ins.valid_area) == 0:
+                #         print("\n----- No unknown areas -----")
+                #         is_cluster_covered = True
+                #         continue
 
-                    #     if not collision_points:
-                    #         print("\n----- Tunnel Covered -----")
-                    #         is_tunnel_covered = True
-                    #         run_mcts = True
-                    #         break
+                #     print("\n----- Checking suggested unknown_area from MCTS -----")
+                #     cluster_angles = mcts_out_angle
+                #     cluster_to_view = mcts_selected_cluster
+
+                #     # choosing biggest cluster
+                #     end_points = cluster_angles['loc']
+                #     focus_point = cluster_angles['foc'][0]
+                #     camera_loc, camera_focus, dof_result = cam_loc_selection_for_clusters(sim, envs[-1], test_cam, focus_point, end_points, scene_info, cluster_to_view)
+                #     cam_time += time.time() - cam_time_start
+
+                #     gym.set_camera_location(test_cam, envs[-1], camera_loc, camera_focus)
+                #     target_pos = gym.get_camera_transform(sim, envs[-1], test_cam).p
+                #     target_quat = gym.get_camera_transform(sim, envs[-1], test_cam).r
                         
-                    #     print("\n----- covering grasp tunnel -----")
-                    #     for cluster in valid_area_cluster:
-                    #         exist = np.any(np.isin(cluster, collision_points).all(1))
-                    #         if exist:
-                    #             check_cluster = cluster
-                    #             break
-                    #     if check_cluster is None:
-                    #         print("ERROR!!!!!!!!!!!!!!!!!!!!!!")
-                    #         pdb.set_trace()
+                # elif not is_target_detected: # target is not detected, normal active sensing
+                #     # use given init sensing
+                #     try:
+                #         dof_result = init_sensing_path.tolist()[init_sensing_idx]
+                #         init_sensing_idx += 1
+                #     except:
+                #         print("Init sensing should be done by last view")
+                #         pdb.set_trace()
+                    
+                #     cam_pos, cam_quat = rac.calculate_cam_pose(dof_result)
 
-                    #     cluster_to_view = check_cluster
-                    #     cluster_angles = RC.cal_cam_angle_for_area(check_cluster, curr_config + [target_pos_MCT], scene_info, visualize=False)
+                #     target_pos = gym.get_camera_transform(sim, envs[-1], test_cam).p
+                #     target_pos.x = cam_pos[0]
+                #     target_pos.y = cam_pos[1]
+                #     target_pos.z = cam_pos[2]
 
-                    run_mcts = True
-                    if len(ML_MCTS_ins.valid_area) == 0:
-                        print("\n----- No unknown areas -----")
-                        is_cluster_covered = True
+                #     target_quat = gym.get_camera_transform(sim, envs[-1], test_cam).r
+                #     target_quat.x = cam_quat[0]
+                #     target_quat.y = cam_quat[1]
+                #     target_quat.z = cam_quat[2]
+                #     target_quat.w = cam_quat[3]
+
+
+                # else: # target is detected, covering swept volume
+                #     try:
+                #         dof_result = swept_sensing_path.tolist()[swept_sensing_idx]
+                #         swept_sensing_idx += 1
+                #     except:
+                #         print("Swept sensing should be done by last view")
+                #         pdb.set_trace()
+
+                #     cam_pos, cam_quat = rac.calculate_cam_pose(dof_result)
+
+                #     target_pos = gym.get_camera_transform(sim, envs[-1], test_cam).p
+                #     target_pos.x = cam_pos[0]
+                #     target_pos.y = cam_pos[1]
+                #     target_pos.z = cam_pos[2]
+
+                #     target_quat = gym.get_camera_transform(sim, envs[-1], test_cam).r
+                #     target_quat.x = cam_quat[0]
+                #     target_quat.y = cam_quat[1]
+                #     target_quat.z = cam_quat[2]
+                #     target_quat.w = cam_quat[3]
+                # # ----------------------------------------------------------------------------------------------------------
+
+                # # Everything on fly except init sensing-----------------------------------------------------------------------------------------
+                # if coverage_score >=0.85: # swept volume observed
+                #     cam_time_start = time.time()
+                #     if not is_tunnel_covered:
+                #         obj_idx, collision_points = ML_MCTS_ins.unknown_tunnel_check()
+
+                #         if not collision_points:
+                #             print("\n----- Tunnel Covered -----")
+                #             is_tunnel_covered = True
+                #             run_mcts = True
+                #             break
+                        
+                #         print("\n----- covering grasp tunnel -----")
+                #         for cluster in valid_area_cluster:
+                #             exist = np.any(np.isin(cluster, collision_points).all(1))
+                #             if exist:
+                #                 check_cluster = cluster
+                #                 break
+                #         if check_cluster is None:
+                #             print("ERROR!!!!!!!!!!!!!!!!!!!!!!")
+                #             pdb.set_trace()
+
+                #         cluster_to_view = check_cluster
+                #         cluster_angles = RC.cal_cam_angle_for_area(check_cluster, curr_config + [target_pos_MCT], scene_info, visualize=False)
+
+                #     elif not is_cluster_covered:
+                #         run_mcts = True
+                #         if len(ML_MCTS_ins.valid_area) == 0:
+                #             print("\n----- No unknown areas -----")
+                #             is_cluster_covered = True
+                #             continue
+
+                #         print("\n----- Checking suggested unknown_area from MCTS -----")
+                #         cluster_angles = mcts_out_angle
+                #         cluster_to_view = mcts_selected_cluster
+
+                #     else:
+                #         print("\n----- No observation needed -----")
+                #         run_mcts = True
+                #         continue
+
+                #     # choosing biggest cluster
+                #     end_points = cluster_angles['loc']
+                #     focus_point = cluster_angles['foc'][0]
+                #     camera_loc, camera_focus, dof_result = cam_loc_selection_for_clusters(sim, envs[-1], test_cam, focus_point, end_points, scene_info, cluster_to_view)
+                #     cam_time += time.time() - cam_time_start
+
+                #     gym.set_camera_location(test_cam, envs[-1], camera_loc, camera_focus)
+                #     target_pos = gym.get_camera_transform(sim, envs[-1], test_cam).p
+                #     target_quat = gym.get_camera_transform(sim, envs[-1], test_cam).r
+                        
+                # elif not is_target_detected: # target is not detected, normal active sensing
+                #     # cam_time_start = time.time()
+                #     # camera_loc, camera_focus, dof_result = random_sample_guided_selection(sim, envs[-1], test_cam, scene)
+                #     # cam_time += time.time() - cam_time_start
+
+                #     # use given init sensing
+                #     dof_result = init_sensing_path.tolist()[init_sensing_idx]
+                #     init_sensing_idx += 1
+                #     cam_pos, cam_quat = rac.calculate_cam_pose(dof_result)
+
+                #     target_pos = gym.get_camera_transform(sim, envs[-1], test_cam).p
+                #     target_pos.x = cam_pos[0]
+                #     target_pos.y = cam_pos[1]
+                #     target_pos.z = cam_pos[2]
+
+                #     target_quat = gym.get_camera_transform(sim, envs[-1], test_cam).r
+                #     target_quat.x = cam_quat[0]
+                #     target_quat.y = cam_quat[1]
+                #     target_quat.z = cam_quat[2]
+                #     target_quat.w = cam_quat[3]
+
+                # else: # target is detected, covering swept volume
+                #     cam_time_start = time.time()
+                #     if swept_center is not None:
+                #         focus_point = swept_center
+                #         swept_center = None
+                #     else: # continue tracking swept volume
+                #         _, focus_point = swept_coverage_check(scene, swept_verts, rac, scene_info, MAX_HEIGHT)
+                    
+                #     camera_loc, camera_focus, dof_result = random_sample_swept_volume_selection(sim, envs[-1], test_cam, focus_point, swept_verts)
+                #     cam_time += time.time() - cam_time_start
+
+                #     gym.set_camera_location(test_cam, envs[-1], camera_loc, camera_focus)
+                #     target_pos = gym.get_camera_transform(sim, envs[-1], test_cam).p
+                #     target_quat = gym.get_camera_transform(sim, envs[-1], test_cam).r
+                # # ---------------------------------------------------------------------------------------------------------------------
+
+                # Everything on fly except init & target swept volume sensing-----------------------------------------------------------------------------------------
+                if coverage_score >=0.85: # swept volume observed
+                    cam_time_start = time.time()
+                    if not is_tunnel_covered:
+                        obj_idx, collision_points = ML_MCTS_ins.unknown_tunnel_check()
+
+                        if not collision_points:
+                            print("\n----- Tunnel Covered -----")
+                            is_tunnel_covered = True
+                            run_mcts = True
+                            break
+                        
+                        print("\n----- covering grasp tunnel -----")
+                        for cluster in valid_area_cluster:
+                            exist = np.any(np.isin(cluster, collision_points).all(1))
+                            if exist:
+                                check_cluster = cluster
+                                break
+                        if check_cluster is None:
+                            print("ERROR!!!!!!!!!!!!!!!!!!!!!!")
+                            pdb.set_trace()
+
+                        cluster_to_view = check_cluster
+                        cluster_angles = RC.cal_cam_angle_for_area(check_cluster, curr_config + [target_pos_MCT], scene_info, visualize=False)
+
+                    elif not is_cluster_covered:
+                        run_mcts = True
+                        if len(ML_MCTS_ins.valid_area) == 0:
+                            print("\n----- No unknown areas -----")
+                            is_cluster_covered = True
+                            continue
+
+                        print("\n----- Checking suggested unknown_area from MCTS -----")
+                        cluster_angles = mcts_out_angle
+                        cluster_to_view = mcts_selected_cluster
+
+                    else:
+                        print("\n----- No observation needed -----")
+                        run_mcts = True
                         continue
-
-                    print("\n----- Checking suggested unknown_area from MCTS -----")
-                    cluster_angles = mcts_out_angle
-                    cluster_to_view = mcts_selected_cluster
 
                     # choosing biggest cluster
                     end_points = cluster_angles['loc']
@@ -929,9 +1209,14 @@ def run_sim_and_real():
                     target_pos = gym.get_camera_transform(sim, envs[-1], test_cam).p
                     target_quat = gym.get_camera_transform(sim, envs[-1], test_cam).r
                         
-                elif not is_target_detected: # target is not detected, normal active sensing
+                elif not is_target_detected: # target is not detected, normal active sensing (init sensing)
+                    # cam_time_start = time.time()
+                    # camera_loc, camera_focus, dof_result = random_sample_guided_selection(sim, envs[-1], test_cam, scene)
+                    # cam_time += time.time() - cam_time_start
+
                     # use given init sensing
-                    dof_result = init_sensing_path.tolist()
+                    dof_result = init_sensing_path.tolist()[init_sensing_idx]
+                    init_sensing_idx += 1
                     cam_pos, cam_quat = rac.calculate_cam_pose(dof_result)
 
                     target_pos = gym.get_camera_transform(sim, envs[-1], test_cam).p
@@ -944,28 +1229,33 @@ def run_sim_and_real():
                     target_quat.y = cam_quat[1]
                     target_quat.z = cam_quat[2]
                     target_quat.w = cam_quat[3]
-
 
                 else: # target is detected, covering swept volume
-                    dof_result = swept_sensing_path.tolist()
-                    cam_pos, cam_quat = rac.calculate_cam_pose(dof_result)
+                        try:
+                            dof_result = swept_sensing_path.tolist()[swept_sensing_idx]
+                            swept_sensing_idx += 1
+                        except:
+                            print("Swept sensing should be done by last view")
+                            pdb.set_trace()
 
-                    target_pos = gym.get_camera_transform(sim, envs[-1], test_cam).p
-                    target_pos.x = cam_pos[0]
-                    target_pos.y = cam_pos[1]
-                    target_pos.z = cam_pos[2]
+                        cam_pos, cam_quat = rac.calculate_cam_pose(dof_result)
 
-                    target_quat = gym.get_camera_transform(sim, envs[-1], test_cam).r
-                    target_quat.x = cam_quat[0]
-                    target_quat.y = cam_quat[1]
-                    target_quat.z = cam_quat[2]
-                    target_quat.w = cam_quat[3]
+                        target_pos = gym.get_camera_transform(sim, envs[-1], test_cam).p
+                        target_pos.x = cam_pos[0]
+                        target_pos.y = cam_pos[1]
+                        target_pos.z = cam_pos[2]
 
+                        target_quat = gym.get_camera_transform(sim, envs[-1], test_cam).r
+                        target_quat.x = cam_quat[0]
+                        target_quat.y = cam_quat[1]
+                        target_quat.z = cam_quat[2]
+                        target_quat.w = cam_quat[3]
+                # ---------------------------------------------------------------------------------------------------------------------
                 if dof_result:
                     end_state_collision_free = rac.arm_collision_free(dof_result, plane_obj, object_collision_models, flexible_collision_models)
 
                     if end_state_collision_free:
-                        cam_move_path_temp = RC.get_patha2b(rac, prev_dof, dof_result, target_mesh=None, time_limit=60, given_static_model=object_collision_models)
+                        cam_move_path_temp = RC.get_patha2b(rac, prev_dof, dof_result, scene_info, target_mesh=None, time_limit=60, given_static_model=object_collision_models)
 
                         if cam_move_path_temp is not None:
                             print("Plan success!!!!")
@@ -999,6 +1289,8 @@ def run_sim_and_real():
     print('Done')
     gym.destroy_viewer(viewer)
     gym.destroy_sim(sim)
+
+    return res_plan
 
 #*************************************************************************************************#
 
@@ -1379,8 +1671,8 @@ if __name__ == '__main__':
         converted_quat = quaternion_multiply(gymapi.Quat(-math.sqrt(2)/2, 0, 0, math.sqrt(2)/2), target_quat)
         file_path = '../assets/urdf/ur5e/meshes/collision/'
         scene_info = [table_dims.x, table_dims.y, table_dims.z, drawer_height]
-        MAX_HEIGHT = get_max_height(asset_root, object_asset_files, OBJ_FILE_IDX_LIST)
-        # MAX_HEIGHT = 21
+        # MAX_HEIGHT = get_max_height(asset_root, object_asset_files, OBJ_FILE_IDX_LIST)
+        MAX_HEIGHT = 21
 
         rac = RC.robot_arm_configuration(file_path, np.array([ur5e_pose.p.x, ur5e_pose.p.y, ur5e_pose.p.z]), scene_info)
         target_obj_pos = copy.deepcopy(GT_TARGET_POS)
@@ -1481,12 +1773,25 @@ if __name__ == '__main__':
         gym.sync_frame_time(sim)
     #*************************************************************************************************#
 
-    test_name = 'real_test3/'
-    init2grasp_path = np.load("test_data/test_real_experiment/target_path_saved/banana/init2grasp_path.npy", allow_pickle=True)
-    grasp2init_path = np.load("test_data/test_real_experiment/target_path_saved/banana/grasp2init_path.npy", allow_pickle=True)
+    # Change file names-------------------------------------------------------------------------------------------------------------
+    test_folder = 'test1/'
+    test_name = 'temp_scene3_success.npy'
+    data_name = 'test_data/test_real_experiment/' + test_folder +'MCTS*/test_results/' + test_name
 
-    saved_data = np.load('test_data/test_real_experiment/' + test_name +'MCTS*/test_results/temp_scene3_success.npy', allow_pickle=True)[0]
+    # load view points
+    init_sensing_path = np.load('test_data/test_real_experiment/' + test_folder +'MCTS*/test_cam_info/init_sensing_dofs.npy', allow_pickle=True)
+    swept_sensing_path = np.load('test_data/test_real_experiment/' + test_folder +'MCTS*/test_cam_info/swept_sensing_dofs.npy', allow_pickle=True)
+
+    # change minimum height of the object for unknown area
+    MIN_HEIGHT = 26
+    # ------------------------------------------------------------------------------------------------------------------------------
+
+    saved_data = np.load(data_name, allow_pickle=True)[0]
     scene_info = saved_data['scene_info']
+    
+    init2grasp_path = saved_data['init2grasp_path']
+    grasp2init_path = saved_data['grasp2init_path']
+
     GT_OBJ_POS_LIST = saved_data['obj_pos_list']
     GT_TARGET_POS = saved_data['target_pos']
     GT_OBJ_POS_LIST.append(GT_TARGET_POS)
@@ -1497,9 +1802,6 @@ if __name__ == '__main__':
 
     NUM_OF_OBJECTS = saved_data['obstacles_num'] + 1
     W_TARGET = saved_data['w_target']
-
-    # MIN_HEIGHT = 21
-    # pdb.set_trace()
 
     # generate flexible_collision model
     flexible_collision_models = []
@@ -1512,7 +1814,6 @@ if __name__ == '__main__':
         flexible_collision_models.append(fcl.CollisionObject(m))
 
     MAIN_swept_volume1, swept_verts1_temp = rac.get_swept_volume(init2grasp_path, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
-    W_TARGET = rac.modify_grasp_bbox(init2grasp_path[-1], target_obj_mesh, visualize=False)
     MAIN_swept_volume2, swept_verts2_temp = rac.get_swept_volume(grasp2init_path, w_target=W_TARGET, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
 
     swept_center, swept_verts = rac.get_swept_center(swept_verts1_temp+swept_verts2_temp, scene_info, MAX_HEIGHT)
@@ -1522,34 +1823,64 @@ if __name__ == '__main__':
     ip_address = '192.168.0.123'
     move_map, place_map, drop_map, rtde_c, rtde_r, gripper = re.init_setup(ip_address)
 
-    # real robot to init pose
-    init_joints = [0.7, -2, 2.5, -0.3, 0.7, 0] 
-    rtde_c.moveJ([0.7, -2, 2.5, -0.3, 0.7, 0])
+    # # real robot to init pose
+    # init_joints = [0.7, -2, 2.5, -0.3, 0.7, 0] 
+    # rtde_c.moveJ([0.7, -2, 2.5, -0.3, 0.7, 0])
 
-    # # place objects
-    # pdb.set_trace()
-    # place_obj_name = 'test_data/test_real_experiment/' + test_name +'MCTS*/test_results/temp_scene3_success.npy'
-    # re.place_objects(rtde_c, gripper, move_map, drop_map, place_obj_name, True)
+    # # place objects-----------------------------------------------------------------------------------------------------
+    # re.place_objects(rtde_c, gripper, move_map, drop_map, data_name, True)
     # currt_joint = rtde_r.getActualQ()
     # time.sleep(2)
     # rtde_c.moveJ([0.7, -2, 2.5, -0.3, 0.7, 0])
+    # ------------------------------------------------------------------------------------------------------------------
 
-    # creating new folder
-    curr_time = time.localtime()
-    new_folder = 'test_data/test_real_experiment/real_time/' + str(curr_time[1]) + '.' + str(curr_time[2]) + '.' + str(curr_time[3]) + '.' + str(curr_time[4]) + '/'
-    os.makedirs(new_folder + 'MCTS*/test_results/')
-    os.makedirs(new_folder + 'MCTS*/test_image/')
-    os.makedirs(new_folder + 'MCTS*/test_seg_image/')
-    os.makedirs(new_folder + 'MCTS*/test_depth_image/')
-    os.makedirs(new_folder + 'MCTS*/test_cam_info/')
-
-    # load view points
-    init_sensing_path = np.load('test_data/test_real_experiment/' + test_name +'MCTS*/test_cam_info/cam_path0.npy', allow_pickle=True)
-    swept_sensing_path = np.load('test_data/test_real_experiment/' + test_name +'MCTS*/test_cam_info/cam_path1.npy', allow_pickle=True)
+    # # creating new folder
+    # curr_time = time.localtime()
+    # new_folder = 'test_data/test_real_time/' + test_folder + '/' + str(curr_time[1]) + '.' + str(curr_time[2]) + '.' + str(curr_time[3]) + '.' + str(curr_time[4]) + '/'
+    # os.makedirs(new_folder + 'MCTS*/test_results/')
+    # os.makedirs(new_folder + 'MCTS*/test_image/')
+    # os.makedirs(new_folder + 'MCTS*/test_seg_image/')
+    # os.makedirs(new_folder + 'MCTS*/test_depth_image/')
+    # os.makedirs(new_folder + 'MCTS*/test_cam_info/')
 
     # run active sensing + MCTS
-    run_sim_and_real()
+    # res_plan = run_sim_and_real(swept_verts, swept_center)
+    # plan = re.get_plan_res_plan(res_plan)
 
+    # load saved rearrangement plan
+    mcts_plan = 'test_data/test_real_time/' + test_folder +'9.18.10.49/MCTS*/test_results/test_result_4.npy'
+    plan = re.get_plan_npy(mcts_plan)
 
+    # path planning to linear_motion_planner
+    sx, sy, tx, ty = plan[0]
+    rx = 0
+    ry = -0.19
+    sy += 0.07
+    ty += 0.07
+    angle1 = -math.atan2(sx - rx, sy - ry)
+    grasp_start_config = [angle1 - 0.7776] + place_map[0][1:]
+    curr_dofs = rtde_r.getActualQ()
+    while True:
+        grasp_start_plan = RC.get_patha2b(rac, curr_dofs, grasp_start_config, scene_info, target_mesh=None, time_limit=60, given_static_model=object_collision_models)
+        if grasp_start_plan is not None:
+            print("Plan success!!!!")
+            break
+    
+    for angle in grasp_start_plan:
+        rtde_c.moveJ(angle, speed=0.4, acceleration=0.4)
+
+    # rearrangement start
+    re.linear_motion_planner_old(rtde_c, gripper,  plan, move_map, place_map, drop_map, True)
+
+    # object retrival
+    for angle in init2grasp_path:
+        rtde_c.moveJ(angle, speed=0.4, acceleration=0.4)
+
+    time.sleep(5)
+    gripper.move(230, 100, 0)
+    time.sleep(5)
+
+    for angle in grasp2init_path:
+        rtde_c.moveJ(angle, speed=0.4, acceleration=0.4)
 
     sys.exit(1)

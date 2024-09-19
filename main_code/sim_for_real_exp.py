@@ -89,7 +89,7 @@ else:
     min_drawer_height = 0.49
     TARGET_OBJ_INDEX = [3] # mustard
 
-NUM_OF_OBJECTS = 6
+NUM_OF_OBJECTS = 7
 NUM_SWEPT_COLLISION = 2
 # TARGET_OBJ_INDEX = [3] # mustard
 # TARGET_OBJ_INDEX = [3, 5]
@@ -429,9 +429,10 @@ def random_sample_guided_selection(sim, env, test_cam, scene):
     best_cam_pose_index = get_best_cam_pose(scene, camera_pose_list)
     return camera_setting_list[best_cam_pose_index][0], camera_setting_list[best_cam_pose_index][1], camera_setting_list[best_cam_pose_index][2]
 
-def swept_coverage_check(scene, swept_verts, rac, scene_info, max_height):
+def swept_coverage_check(scene, swept_verts, rac, scene_info, max_height, visualize=False):
     covered = 0
     new_verts = []
+    covered_verts = []
     for i, verts in enumerate(swept_verts):
         idx = verts * 100
         idx[0] -= 30
@@ -439,11 +440,30 @@ def swept_coverage_check(scene, swept_verts, rac, scene_info, max_height):
         idx = np.rint(idx).astype(int)
         checked = scene.scene_[idx[0], idx[1], idx[2]]
         if checked < 0:
+            covered_verts.append(verts)
             swept_verts.pop(i)
         if checked > 0:
             covered += 1
         else:
             new_verts.append(verts)
+    
+    if visualize:
+        covered_pcd = o3d.geometry.PointCloud()
+        toview_pcd = o3d.geometry.PointCloud()
+
+        print("covered_verts", len(covered_verts))
+        print("new_verts", len(new_verts))
+
+        if covered_verts:
+            covered_pcd.points = o3d.utility.Vector3dVector(np.asarray(covered_verts))
+
+        if new_verts:
+            toview_pcd.points = o3d.utility.Vector3dVector(np.asarray(new_verts))
+
+        covered_pcd.paint_uniform_color([1, 0, 0])
+        toview_pcd.paint_uniform_color([0, 0, 1])
+
+        o3d.visualization.draw_geometries([covered_pcd, toview_pcd])
 
     next_center, _ = rac.get_swept_center([new_verts], scene_info, max_height)
     return covered / len(swept_verts), next_center
@@ -1019,7 +1039,7 @@ if __name__ == '__main__':
 
         target_obj_mesh = obj_reader(obj_name)
         target_obj_mesh.add_offset(object_offset[OBJ_FILE_IDX_LIST[-1]][:2] + [0])
-        target_obj_mesh.add_offset([target_obj_pos[0], target_obj_pos[1], 0.1])
+        target_obj_mesh.add_offset([target_obj_pos[0], target_obj_pos[1], table_dims.z])
         target_obj_mesh = [target_obj_mesh.get_vertices(), target_obj_mesh.get_faces()]
 
         # read grasp data
@@ -1045,7 +1065,13 @@ if __name__ == '__main__':
                     assert skip_grasp < 15, "imposible grasp"
                     print("skip imposible grasp")
                     continue
-                # rac.check_collision_models(init2grasp_angels_temp, scene_info=scene_info)
+                
+                flag1 = rac.arm_collision_free(init2grasp_angels_temp, plane_obj, object_collision_models, None)
+                flag2 = rac.arm_collision_free(grasp2init_angels_temp, plane_obj, object_collision_models, None)
+
+                if not flag1 or not flag2:
+                    print("collision from goal state or start state")
+                    continue
 
                 init2grasp_path_temp = RC.get_path2grasp(rac, init2grasp_angels_temp, scene_info, target_mesh=target_obj_mesh, time_limit=60, given_static_model=object_collision_models)
                 if init2grasp_path_temp is None:
@@ -1053,6 +1079,10 @@ if __name__ == '__main__':
                     continue
 
                 grasp_dof = rac.grasp_verify(target_grasp_pos, target_grasp_quat, new_offset=True)
+                if grasp_dof is None:
+                    print("invalid grasp dofs")
+                    continue
+
                 init2grasp_path_temp.append(grasp_dof)
                 temp_mod_bbox = rac.modify_grasp_bbox(grasp_dof, target_obj_mesh, visualize=False)
                 
@@ -1085,13 +1115,6 @@ if __name__ == '__main__':
 
             if num_grasp > 0:
                 break
-
-        # MAIN_swept_volume1, swept_verts1_temp = rac.get_swept_volume(init2grasp_path, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
-        # W_TARGET = rac.modify_grasp_bbox(init2grasp_path[-1], target_obj_mesh, visualize=False)
-        # MAIN_swept_volume2, swept_verts2_temp = rac.get_swept_volume(grasp2init_path, w_target=W_TARGET, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False)
-
-        # swept_center, swept_verts = rac.get_swept_center(swept_verts1_temp+swept_verts2_temp, scene_info, MAX_HEIGHT)
-        # swept_size = get_swept_volume_size(swept_verts)
 
         s_time = time.time()
         num_in_swept = 0
@@ -1136,7 +1159,7 @@ if __name__ == '__main__':
                 collision_mesh = obj_reader(asset_root + file_path)
                 collision_mesh.set_scale(object_scaling_factor[k])
                 collision_mesh.add_offset(object_offset[OBJ_FILE_IDX_LIST[k]][:2] + [0])
-                collision_mesh.add_offset([tx,ty,0.1])
+                collision_mesh.add_offset([tx,ty,table_dims.z])
 
                 # obstacle_obj_mesh = copy.deepcopy(collision_mesh.add_offset([tx,tz,0.1]))
                 
@@ -1214,6 +1237,7 @@ if __name__ == '__main__':
     # rac.target_mesh = copy.deepcopy(GT_OBJ_MESH_LIST[-1])
     # rac.obj_mesh = copy.deepcopy(GT_OBJ_MESH_LIST[:-1])
     # rac.obj_pos_list = copy.deepcopy(GT_OBJ_POS_LIST[:-1])
+    # rac.obstacle_num = len(rac.obj_mesh)
     # rac.check_collision_models(init2grasp_angels_temp, scene_info=scene_info)
 
     # os.makedirs('test_data/test_real_experiment/target_path_saved/')
@@ -1358,6 +1382,9 @@ if __name__ == '__main__':
     mcts_out_angle = None
     start_time = time.time()
     prev_dof = [0.7, -2, 2.5, -0.3, 0.7, 0]
+
+    init_sensing_dofs = []
+    swept_sensing_dofs = []
 
     while not gym.query_viewer_has_closed(viewer):
         if run_mcts and is_target_detected and not need_acquire:
@@ -1605,6 +1632,7 @@ if __name__ == '__main__':
                             if is_target_detected:
                                 coverage_score, _ = swept_coverage_check(scene, swept_verts, rac, scene_info, MAX_HEIGHT)
                                 print("----- Swept volume covered", coverage_score, '-----')
+                                # scene.vis_scene(swept_verts)
                                 
                                 # get obj pose
                                 obj_mesh_MCTS = dict(sorted(obj_mesh_MCTS.items()))
@@ -1727,6 +1755,8 @@ if __name__ == '__main__':
                     cam_time_start = time.time()
                     camera_loc, camera_focus, dof_result = random_sample_guided_selection(sim, envs[-1], test_cam, scene)
                     cam_time += time.time() - cam_time_start
+                    target_sensing = True
+                    swept_sensing = False
 
                 else: # target is detected, covering swept volume
                     cam_time_start = time.time()
@@ -1739,6 +1769,9 @@ if __name__ == '__main__':
                     camera_loc, camera_focus, dof_result = random_sample_swept_volume_selection(sim, envs[-1], test_cam, focus_point, swept_verts)
                     cam_time += time.time() - cam_time_start
 
+                    target_sensing = False
+                    swept_sensing = True
+
                 gym.set_camera_location(test_cam, envs[-1], camera_loc, camera_focus)
                 target_pos = gym.get_camera_transform(sim, envs[-1], test_cam).p
                 target_quat = gym.get_camera_transform(sim, envs[-1], test_cam).r
@@ -1747,10 +1780,18 @@ if __name__ == '__main__':
                     end_state_collision_free = rac.arm_collision_free(dof_result, plane_obj, object_collision_models, flexible_collision_models)
 
                     if end_state_collision_free:
-                        cam_move_temp = RC.get_patha2b(rac, prev_dof, dof_result, target_mesh=None, time_limit=60, given_static_model=object_collision_models)
+                        cam_move_temp = RC.get_patha2b(rac, prev_dof, dof_result, scene_info, target_mesh=None, time_limit=60, given_static_model=object_collision_models)
 
                         if cam_move_temp is not None:
                             print("Plan success!!!!")
+
+                            if target_sensing:
+                                init_sensing_dofs.append(dof_result)
+                                np.save(new_folder + "MCTS*/test_cam_info/init_sensing_dofs.npy", init_sensing_dofs)
+
+                            if swept_sensing:
+                                swept_sensing_dofs.append(dof_result)
+                                np.save(new_folder + "MCTS*/test_cam_info/swept_sensing_dofs.npy", swept_sensing_dofs)
 
                             final_translation = np.array([target_pos.x, target_pos.y, target_pos.z])
                             final_rotation = np.array([target_quat.x, target_quat.y, target_quat.z, target_quat.w])
@@ -1763,7 +1804,7 @@ if __name__ == '__main__':
                             need_acquire = True
                             cam_dofs.append(dof_result)
                             prev_dof = dof_result
-                            np.save(new_folder + "MCTS*/test_cam_info/cam_path" + str(scene.num_observation) + ".npy", dof_result)
+                            np.save(new_folder + "MCTS*/test_cam_info/cam_path" + str(scene.num_observation) + ".npy", cam_move_temp)
                         else:
                             end_state_collision_free = False
 
@@ -1776,6 +1817,10 @@ if __name__ == '__main__':
         gym.step_graphics(sim)
         gym.draw_viewer(viewer, sim, True)
         gym.sync_frame_time(sim)
+
+
+    np.save(new_folder + "MCTS*/test_cam_info/init_sensing_dofs.npy", init_sensing_dofs)
+    np.save(new_folder + "MCTS*/test_cam_info/swept_sensing_dofs.npy", swept_sensing_dofs)
 
     print('Done')
     gym.destroy_viewer(viewer)

@@ -7,6 +7,7 @@ from copy import deepcopy
 import numpy as np
 import rtde_control
 import rtde_receive
+from rearrangement_planning_util_ICRA_backup import smart_LMP_motion_real
 
 
 sys.path.append('/home/j0k/Project/Imsa/main_code/real_experiment_code')
@@ -22,6 +23,52 @@ def power_off_pose(rtde_c):
     print('Reset to initial upstraight pose')
     rtde_c.moveJ([0, -math.pi/2, 0, -math.pi/2, 0, 0])
 
+def get_plan_res_plan(res_plan):
+    plan = []
+    for config in res_plan:
+        new_config = []
+        for i in config:
+            # print(i)
+            new_config.append([float(i[0])/100, float(i[1])/100, float(i[2])/100])
+        plan.append(new_config)
+        
+
+    # plan = plan.tolist()
+    print(plan)
+
+    #sanity check
+    #for element in plan:
+    #    print(element)
+
+    #sys.exit(1)
+    
+    move_plan = []
+
+    distance = 0.0
+
+    for t in range(len(plan)-1):
+        source = plan[t]
+        target = plan[t+1]
+        if len(source) != len(target):
+            continue
+        else:
+            counter = 0
+            for k in range(len(source)):
+                if source[k] != target[k]:
+                    sx, sy = source[k][0], source[k][1]
+                    tx, ty = target[k][0], target[k][1]
+
+                    move_plan.append([sx, sy, tx, ty])
+                    distance += math.sqrt((sx - sy)**2 + (tx - ty)**2)
+                    counter += 1
+            if counter != 1:
+                print('something wrong\n')
+                sys.exit(1)
+    print(move_plan)
+    print(distance)
+    # sys.exit(1)
+
+    return move_plan
 
 def get_plan_npy(plan_file):
     new_plan = np.load(plan_file)
@@ -72,23 +119,27 @@ def get_plan_npy(plan_file):
 
     return move_plan
 
-def get_plan(plan_file):
+def get_plan_smart(plan_file, scene_info):
+    new_scene_info = [int(scene_info[0] * 100), int(scene_info[1] * 100)]
+    new_plan = np.load(plan_file)
+
     plan = []
-    with open(plan_file, 'r') as f:
-        raw_data = f.readlines()
-        for line in raw_data:
-            new_str = ''
-            for char in line:
-                if char.isdigit() or char.isalpha() or char == ' ' or char == '.':
-                    new_str += char
-            sp = new_str.split()
-            #print(sp)
-            subplan = []
-            for t in range(len(sp)//4):
-                subplan.append(sp[t*4:(t+1)*4])
-            plan.append(subplan)
+    for config in new_plan:
+        new_config = []
+        for i in config:
+            # print(i)
+            new_config.append([float(i[0])/100, float(i[1])/100, float(i[2])/100, 'r'])
+        plan.append(new_config)
+        
 
+    # plan = plan.tolist()
+    print(plan)
 
+    #sanity check
+    #for element in plan:
+    #    print(element)
+
+    #sys.exit(1)
 
     #sanity check
     #for element in plan:
@@ -100,7 +151,7 @@ def get_plan(plan_file):
 
     distance = 0.0
 
-    old_loc_x, old_loc_y = 20, 0
+    old_loc_x, old_loc_y = 0, -0.19
 
     for t in range(len(plan)-1):
         source = plan[t]
@@ -127,8 +178,12 @@ def get_plan(plan_file):
                     print(dummy_source, dummy_target)
                     sx, sy = float(source[k][0]), float(source[k][1])
                     tx, ty = float(target[k][0]), float(target[k][1])
-                    grasp_depth = smart_LMP_motion_real(dummy_source, dummy_target)
-                    sweep_depth = smart_LMP_motion_real(source, target)
+                    print('******************************')
+                    print(sx, sy, tx, ty)
+                    print('******************************')
+
+                    grasp_depth = smart_LMP_motion_real(dummy_source, dummy_target, new_scene_info)
+                    sweep_depth = smart_LMP_motion_real(source, target, new_scene_info)
                     move_plan.append([sx, sy, tx, ty, grasp_depth,  sweep_depth])
                     distance += math.sqrt((sx*0.038 - sy*0.038)**2 + (tx*0.038 - ty*0.038)**2)
                     counter += 1
@@ -193,7 +248,7 @@ def linear_motion_planner_old(rtde_c, gripper, plan, move_map, place_map, drop_m
 
     rx = 0
     #rx = 0.038*10
-    ry = -0.12
+    ry = -0.19
 
 
     start_config_up_2 = move_map[0]
@@ -319,7 +374,7 @@ def linear_motion_planner(rtde_c, gripper, plan, move_map, place_map, drop_map, 
 
     rx = 0
     #rx = 0.038*10
-    ry = -0.12
+    ry = -0.19
 
     start_config_up_2 = move_map[0]
     start_config_down_2 = place_map[0]
@@ -330,14 +385,16 @@ def linear_motion_planner(rtde_c, gripper, plan, move_map, place_map, drop_map, 
         #print(x, y, z, angle)
         return x, y, z
 
-    old_loc_x, old_loc_y = 20, 0
+    old_loc_x, old_loc_y = -0.19, 0
     old_angle = 0
 
 
     for i in range(len(plan)):
         element = plan[i]
         sx, sy, tx, ty, grasp_depth, depth = element
+        print('************4545********************')
         print(element)
+        print('*********4545***********************')
         # sx *= 0.038
         # sy *= 0.038
         # tx *= 0.038
@@ -362,7 +419,10 @@ def linear_motion_planner(rtde_c, gripper, plan, move_map, place_map, drop_map, 
         grasp_place_config = place_map[grasp_index][:]
         grasp_place_config[0] += angle1
 
-        retract_index = max(0, math.floor((grasp_depth*0.038 - 0.55)/0.01))
+        print(grasp_index)
+        print(grasp_depth)
+
+        retract_index = max(0, math.floor((grasp_depth - 0.55)/0.01))
         #retract_index = min(retract_index, min(relocate_index, grasp_index))
         #if abs(relocate_index - retract_index <= 2): retract_index = relocate_index
         retract_move_config = place_map[retract_index][:]
@@ -371,6 +431,7 @@ def linear_motion_planner(rtde_c, gripper, plan, move_map, place_map, drop_map, 
         swipe_config = place_map[retract_index][:]
         swipe_config[0] += angle1
 
+        print(grasp_depth, retract_index, retract_move_config)
 
         if move:
             rtde_c.moveL_FK(retract_move_config)
@@ -403,7 +464,7 @@ def linear_motion_planner(rtde_c, gripper, plan, move_map, place_map, drop_map, 
 
         end_config = [angle2 - 0.7776] + move_map[0][1:]
 
-        retract_index = max(0, math.floor((depth*0.038 - 0.46)/0.01))
+        retract_index = max(0, math.floor((depth - 0.46)/0.01))
         retract_index = min(retract_index, min(relocate_index, grasp_index))
         if abs(relocate_index - retract_index <= 2 and relocate_index <= grasp_index): retract_index = relocate_index
         retract_move_config = move_map[retract_index][:]
@@ -412,7 +473,7 @@ def linear_motion_planner(rtde_c, gripper, plan, move_map, place_map, drop_map, 
         swipe_config = move_map[retract_index][:]
         swipe_config[0] += angle2
 
-        print(relocate_index, retract_index, grasp_index)
+        print(depth, relocate_index, retract_index, grasp_index)
 
         if move:
             #rtde_c.moveJ(relocate_start_config)
@@ -488,7 +549,7 @@ def place_objects(rtde_c, gripper, move_map, drop_map, mct_plan_name, move = Tru
 
     rx = 0
     #rx = 0.038*10
-    ry = -0.12
+    ry = -0.19
 
     for cx, cy in curr_config:
         print(cx, cy)
@@ -631,15 +692,15 @@ def main(ip_address, plan_file, plan_file2, mcts_plan, cam_dofs, place_obj_name)
     #current_config = rtde_r.getActualQ()
 
     # power_off_pose(rtde_c)
-    rtde_c.moveJ([0.7, -2, 2.5, -0.3, 0.7, 0])
-    # rtde_c.moveJ(place_map[0])
-
+    #rtde_c.moveJ([0.7, -2, 2.5, -0.3, 0.7, 0])
+    #rtde_c.moveJ(place_map[20])
+    rtde_c.moveJ(place_map[0])
     # sys.exit(1)
 
     # reset_pose(rtde_c, move_map)
 
     gripper.activate()
-    pdb.set_trace()
+    # pdb.set_trace()
 
     # sys.exit(1)
 
@@ -648,12 +709,12 @@ def main(ip_address, plan_file, plan_file2, mcts_plan, cam_dofs, place_obj_name)
 
     # for i in cam_dofs:
     #     cam_move_plan = RC.get_patha2b(rac, [0.7, -2, 2.5, -0.3, 0.7, 0], i, scene_info)
-    pdb.set_trace()
+    # pdb.set_trace()
 
-    for angles in cam_dofs:
-        for angle in angles:
-            rtde_c.moveJ(angle, speed=0.4, acceleration=0.4)
-        pdb.set_trace()
+    # for angles in cam_dofs:
+    #     for angle in angles:
+    #         rtde_c.moveJ(angle, speed=0.4, acceleration=0.4)
+    #     pdb.set_trace()
 
     # sys.exit(1)
     # rtde_c.moveJ(place_map[0])
@@ -662,17 +723,17 @@ def main(ip_address, plan_file, plan_file2, mcts_plan, cam_dofs, place_obj_name)
     # pdb.set_trace()
     plan = get_plan_npy(mcts_plan)
     linear_motion_planner_old(rtde_c, gripper,  plan, move_map, place_map, drop_map, True)
-
-
+    #linear_motion_planner(rtde_c, gripper,  plan, move_map, place_map, drop_map, False)
 
     for angle in plan_file:
-        rtde_c.moveJ(angle, speed=0.4, acceleration=0.4)
+       rtde_c.moveJ(angle, speed=0.5, acceleration=0.5)
 
+    time.sleep(4)
     gripper.move(230, 100, 0)
-    time.sleep(5)
+    time.sleep(4)
 
     for angle in plan_file2:
-        rtde_c.moveJ(angle, speed=0.4, acceleration=0.4)
+       rtde_c.moveJ(angle, speed=0.5, acceleration=0.5)
 
 
     # reset_pose(rtde_c, move_map)
@@ -687,27 +748,45 @@ if __name__ == '__main__':
     test_name = 'real_test2/'
 
 
-    init2grasp_path = np.load("test_data/test_real_experiment/target_path_saved/banana/init2grasp_path.npy", allow_pickle=True)
-    grasp2init_path = np.load("test_data/test_real_experiment/target_path_saved/banana/grasp2init_path.npy", allow_pickle=True)
-    scene_info = np.load('test_data/test_real_experiment/' + test_name +'MCTS*/test_results/temp_scene3_success.npy', allow_pickle=True)[0]['scene_info']
+    # init2grasp_path = np.load("test_data/test_real_experiment/target_path_saved/banana/init2grasp_path.npy", allow_pickle=True)
+    # grasp2init_path = np.load("test_data/test_real_experiment/target_path_saved/banana/grasp2init_path.npy", allow_pickle=True)
+
+
+    # scene_info = np.load('test_data/test_real_experiment/' + test_name +'MCTS*/test_results/temp_scene3_success.npy', allow_pickle=True)[0]['scene_info']
     # cam_move_plan = np.load('test_data/test_real_experiment/' + test_name + 'MCTS*/test_results/cam_dofs_3.npy')
     
-    rearrangement_plan = 'test_data/test_real_experiment/' + test_name +'MCTS*/test_results/test_result_4.npy'
-    place_obj_name = 'test_data/test_real_experiment/' + test_name +'MCTS*/test_results/temp_scene3_success.npy'
+    test_folder = 'test1/9.18.10.49/'
+    test_name = 'temp_scene3_failed.npy'
+    test_type = 'test_real_time/'
+    data_name = 'test_data/' + test_type + test_folder +'MCTS*/test_results/' + test_name
 
-    cam_move_plan = []
-    f = open('test_data/test_real_experiment/' + test_name + 'MCTS*/test_results/cam_plan.txt', "r")
-    rawdata = f.readlines()
-    for line in rawdata:
-        view_list = []
-        div = line[1:-2].split(',[] ')
-        div = div[0][1:-1].split('], [')
-        for l in div:
-            new_list = l.split(',')
-            new_list = [float(i) for i in new_list]
-            view_list.append(new_list)
-        cam_move_plan.append(view_list)
-        print(div)
+    # load view points
+    # init_sensing_path = np.load('test_data/' + test_type + test_folder +'MCTS*/test_cam_info/init_sensing_dofs.npy', allow_pickle=True)
+    # swept_sensing_path = np.load('test_data/' + test_type + test_folder +'MCTS*/test_cam_info/swept_sensing_dofs.npy', allow_pickle=True)
+
+    saved_data = np.load(data_name, allow_pickle=True)[0]
+    scene_info = saved_data['scene_info']
+    
+    init2grasp_path = saved_data['init2grasp_path']
+    grasp2init_path = saved_data['grasp2init_path']
+
+    rearrangement_plan = 'test_data/' + test_type + test_folder +'MCTS*/test_results/test_result_4.npy'
+
+    # place_obj_name = 'test_data/test_real_experiment/' + test_name +'MCTS*/test_results/temp_scene3_success.npy'
+
+    # cam_move_plan = []
+    # f = open('test_data/test_real_experiment/' + test_name + 'MCTS*/test_results/cam_plan.txt', "r")
+    # rawdata = f.readlines()
+    # for line in rawdata:
+    #     view_list = []
+    #     div = line[1:-2].split(',[] ')
+    #     div = div[0][1:-1].split('], [')
+    #     for l in div:
+    #         new_list = l.split(',')
+    #         new_list = [float(i) for i in new_list]
+    #         view_list.append(new_list)
+    #     cam_move_plan.append(view_list)
+    #     print(div)
 
     # rac = RC.robot_arm_configuration('../assets/urdf/ur5e/meshes/collision/', np.array([-0.12, 0, 0]), scene_info)
     # place_objects()
@@ -737,5 +816,4 @@ if __name__ == '__main__':
     
     # plan_file = init2grasp_path
     # plan_file = sys.argv[1]
-
-    main(ip_address, init2grasp_path, grasp2init_path, rearrangement_plan, cam_move_plan, place_obj_name)
+    main(ip_address, init2grasp_path, grasp2init_path, rearrangement_plan, None, data_name)
