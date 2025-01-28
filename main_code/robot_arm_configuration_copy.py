@@ -2979,8 +2979,6 @@ def check_MCTS(MCTS_root, MCTS_name, file_path=None):
         np.save(MCTS_root + "test_result_4.npy", res_plan)
         # write_result(MCTS_root, '', view, len(curr_config), ML_MCTS_ins.time_consumption_, ML_MCTS_ins.total_steps_, ML_MCTS_ins.calculate_total_length_travelled(), ML_MCTS_ins.calculate_total_length_displacement(), num_collision_obj_, 0, 0, 0, 0, res_plan, extra_name="_w_num_obj")
 
-
-
     pdb.set_trace()
 
     # if not is_plan_success:

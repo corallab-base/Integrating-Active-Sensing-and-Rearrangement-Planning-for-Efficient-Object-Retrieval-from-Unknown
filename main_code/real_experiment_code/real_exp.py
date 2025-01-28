@@ -8,6 +8,7 @@ import numpy as np
 import rtde_control
 import rtde_receive
 from rearrangement_planning_util_ICRA_backup import smart_LMP_motion_real
+import align_depth2color as a_d2c
 
 
 sys.path.append('/home/j0k/Project/Imsa/main_code/real_experiment_code')
@@ -642,6 +643,10 @@ def init_setup(ip_address):
     
     return move_map, place_map, drop_map, rtde_c, rtde_r, gripper
 
+def move_path(rtde_c, path):
+    for angle in path:
+       rtde_c.moveJ(angle, speed=0.5, acceleration=0.5)
+
 def main(ip_address, plan_file, plan_file2, mcts_plan, cam_dofs, place_obj_name):
 
     move_map = {}
@@ -692,9 +697,9 @@ def main(ip_address, plan_file, plan_file2, mcts_plan, cam_dofs, place_obj_name)
     #current_config = rtde_r.getActualQ()
 
     # power_off_pose(rtde_c)
-    #rtde_c.moveJ([0.7, -2, 2.5, -0.3, 0.7, 0])
+    rtde_c.moveJ([0.7, -2, 2.5, -0.3, 0.7, 0])
     #rtde_c.moveJ(place_map[20])
-    rtde_c.moveJ(place_map[0])
+    # rtde_c.moveJ(place_map[0])
     # sys.exit(1)
 
     # reset_pose(rtde_c, move_map)
@@ -704,17 +709,19 @@ def main(ip_address, plan_file, plan_file2, mcts_plan, cam_dofs, place_obj_name)
 
     # sys.exit(1)
 
-    place_objects(rtde_c, gripper, move_map, drop_map, place_obj_name, True)
+    # place_objects(rtde_c, gripper, move_map, drop_map, place_obj_name, True)
+    # pdb.set_trace()
     # sys.exit(1)
 
-    # for i in cam_dofs:
-    #     cam_move_plan = RC.get_patha2b(rac, [0.7, -2, 2.5, -0.3, 0.7, 0], i, scene_info)
-    # pdb.set_trace()
+    for i, path in enumerate(view_paths):
+        move_path(rtde_c, path)
 
-    # for angles in cam_dofs:
-    #     for angle in angles:
-    #         rtde_c.moveJ(angle, speed=0.4, acceleration=0.4)
-    #     pdb.set_trace()
+        # pdb.set_trace()
+        # pipeline, align, clipping_distance = a_d2c.cam_setup()
+        # color_image, depth_image = a_d2c.capture(pipeline, align, clipping_distance, i, save_addr='/home/j0k/Project/Imsa/main_code/test_data/test_real_time/test1/9.18.10.49/MCTS*/')
+        # pdb.set_trace()
+
+        time.sleep(10)
 
     # sys.exit(1)
     # rtde_c.moveJ(place_map[0])
@@ -725,15 +732,16 @@ def main(ip_address, plan_file, plan_file2, mcts_plan, cam_dofs, place_obj_name)
     linear_motion_planner_old(rtde_c, gripper,  plan, move_map, place_map, drop_map, True)
     #linear_motion_planner(rtde_c, gripper,  plan, move_map, place_map, drop_map, False)
 
+
     for angle in plan_file:
-       rtde_c.moveJ(angle, speed=0.5, acceleration=0.5)
+       rtde_c.moveJ(angle, speed=0.7, acceleration=0.7)
 
     time.sleep(4)
     gripper.move(230, 100, 0)
     time.sleep(4)
 
     for angle in plan_file2:
-       rtde_c.moveJ(angle, speed=0.5, acceleration=0.5)
+       rtde_c.moveJ(angle, speed=0.7, acceleration=0.7)
 
 
     # reset_pose(rtde_c, move_map)
@@ -755,9 +763,11 @@ if __name__ == '__main__':
     # scene_info = np.load('test_data/test_real_experiment/' + test_name +'MCTS*/test_results/temp_scene3_success.npy', allow_pickle=True)[0]['scene_info']
     # cam_move_plan = np.load('test_data/test_real_experiment/' + test_name + 'MCTS*/test_results/cam_dofs_3.npy')
     
-    test_folder = 'test1/9.18.10.49/'
-    test_name = 'temp_scene3_failed.npy'
+    test_folder = 'test2/9.19.15.23/'
+    # test_folder = 'test2/'
+    test_name = 'temp_scene3_success.npy'
     test_type = 'test_real_time/'
+    # test_type = 'test_real_experiment/'
     data_name = 'test_data/' + test_type + test_folder +'MCTS*/test_results/' + test_name
 
     # load view points
@@ -770,7 +780,15 @@ if __name__ == '__main__':
     init2grasp_path = saved_data['init2grasp_path']
     grasp2init_path = saved_data['grasp2init_path']
 
-    rearrangement_plan = 'test_data/' + test_type + test_folder +'MCTS*/test_results/test_result_4.npy'
+    rearrangement_plan = 'test_data/' + test_type + test_folder +'MCTS*/test_results/test_result_3.npy'
+
+    view_paths = []
+    num_views = 3
+    for i in range(num_views):
+        temp_path = np.load('test_data/' + test_type + test_folder +'MCTS*/test_cam_info/cam_path' + str(i) + '.npy')
+        view_paths.append([temp_path])
+
+    re_path = np.load('test_data/' + test_type + test_folder +'MCTS*/test_cam_info/cam_path_to_og.npy')
 
     # place_obj_name = 'test_data/test_real_experiment/' + test_name +'MCTS*/test_results/temp_scene3_success.npy'
 

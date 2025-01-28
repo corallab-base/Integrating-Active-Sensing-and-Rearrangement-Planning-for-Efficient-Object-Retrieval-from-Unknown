@@ -1774,7 +1774,7 @@ if __name__ == '__main__':
     #*************************************************************************************************#
 
     # Change file names-------------------------------------------------------------------------------------------------------------
-    test_folder = 'test1/'
+    test_folder = 'test2/'
     test_name = 'temp_scene3_success.npy'
     data_name = 'test_data/test_real_experiment/' + test_folder +'MCTS*/test_results/' + test_name
 
@@ -1832,9 +1832,9 @@ if __name__ == '__main__':
     # currt_joint = rtde_r.getActualQ()
     # time.sleep(2)
     # rtde_c.moveJ([0.7, -2, 2.5, -0.3, 0.7, 0])
-    # ------------------------------------------------------------------------------------------------------------------
+    # # ------------------------------------------------------------------------------------------------------------------
 
-    # # creating new folder
+    # creating new folder
     # curr_time = time.localtime()
     # new_folder = 'test_data/test_real_time/' + test_folder + '/' + str(curr_time[1]) + '.' + str(curr_time[2]) + '.' + str(curr_time[3]) + '.' + str(curr_time[4]) + '/'
     # os.makedirs(new_folder + 'MCTS*/test_results/')
@@ -1843,12 +1843,12 @@ if __name__ == '__main__':
     # os.makedirs(new_folder + 'MCTS*/test_depth_image/')
     # os.makedirs(new_folder + 'MCTS*/test_cam_info/')
 
-    # run active sensing + MCTS
+    # # run active sensing + MCTS
     # res_plan = run_sim_and_real(swept_verts, swept_center)
     # plan = re.get_plan_res_plan(res_plan)
 
     # load saved rearrangement plan
-    mcts_plan = 'test_data/test_real_time/' + test_folder +'9.18.10.49/MCTS*/test_results/test_result_4.npy'
+    mcts_plan = 'test_data/test_real_time/' + test_folder +'9.19.15.23/MCTS*/test_results/test_result_3.npy'
     plan = re.get_plan_npy(mcts_plan)
 
     # path planning to linear_motion_planner
@@ -1859,28 +1859,34 @@ if __name__ == '__main__':
     ty += 0.07
     angle1 = -math.atan2(sx - rx, sy - ry)
     grasp_start_config = [angle1 - 0.7776] + place_map[0][1:]
-    curr_dofs = rtde_r.getActualQ()
+    # curr_dofs = rtde_r.getActualQ()
+    curr_dofs = np.load("/home/j0k/Project/Imsa/main_code/test_data/test_real_time/test2/9.19.15.23/MCTS*/test_cam_info/cam_path2.npy")
+    pdb.set_trace()
+    # rtde_c.moveJ(curr_dofs, speed=0.6, acceleration=0.6)
     while True:
         grasp_start_plan = RC.get_patha2b(rac, curr_dofs, grasp_start_config, scene_info, target_mesh=None, time_limit=60, given_static_model=object_collision_models)
         if grasp_start_plan is not None:
             print("Plan success!!!!")
             break
     
-    for angle in grasp_start_plan:
-        rtde_c.moveJ(angle, speed=0.4, acceleration=0.4)
+    # for angle in grasp_start_plan:
+    #     rtde_c.moveJ(angle, speed=0.4, acceleration=0.4)
 
-    # rearrangement start
-    re.linear_motion_planner_old(rtde_c, gripper,  plan, move_map, place_map, drop_map, True)
+    pdb.set_trace()
+    np.save('test_data/test_real_time/' + test_folder + "9.19.15.23/MCTS*/test_cam_info/cam_path_to_og.npy", grasp_start_plan)
 
-    # object retrival
-    for angle in init2grasp_path:
-        rtde_c.moveJ(angle, speed=0.4, acceleration=0.4)
+    # # rearrangement start
+    # re.linear_motion_planner_old(rtde_c, gripper,  plan, move_map, place_map, drop_map, True)
 
-    time.sleep(5)
-    gripper.move(230, 100, 0)
-    time.sleep(5)
+    # # object retrival
+    # for angle in init2grasp_path:
+    #     rtde_c.moveJ(angle, speed=0.4, acceleration=0.4)
 
-    for angle in grasp2init_path:
-        rtde_c.moveJ(angle, speed=0.4, acceleration=0.4)
+    # time.sleep(5)
+    # gripper.move(230, 100, 0)
+    # time.sleep(5)
+
+    # for angle in grasp2init_path:
+    #     rtde_c.moveJ(angle, speed=0.4, acceleration=0.4)
 
     sys.exit(1)

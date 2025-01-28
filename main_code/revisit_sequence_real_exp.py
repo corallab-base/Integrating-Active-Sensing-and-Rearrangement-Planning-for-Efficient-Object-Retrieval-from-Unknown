@@ -9,20 +9,20 @@ file_dir = os.path.dirname(__file__)
 util_dir = os.path.join(file_dir, '../util')
 learning_dir = os.path.join(file_dir, '../learning')
 sys.path.append(util_dir)
-sys.path.append('/home/j0k/coral/ompl-1.5.2/py-bindings')
-sys.path.append(learning_dir)
-import ompl.base as ob
-import ompl.util as ou
-import ompl.geometric as og
-from stl_reader import stl_reader
-from obj_reader import obj_reader
+# sys.path.append('/home/j0k/coral/ompl-1.5.2/py-bindings')
+# sys.path.append(learning_dir)
+# import ompl.base as ob
+# import ompl.util as ou
+# import ompl.geometric as og
+# from stl_reader import stl_reader
+# from obj_reader import obj_reader
 from pc_extractor_real_cam import pc_extractor_real_cam
 from pc_extractor_real_cam import visualize_scene
 from pc_extractor_real_cam import save_object
 # from pc_extractor_real_cam import save_object_ind
-from pc_extractor_real_cam import save_object_no_bg
+# from pc_extractor_real_cam import save_object_no_bg
 from global_scene_real import global_scene_real
-from runner import feed_forward
+# from runner import feed_forward
 
 def get_real_rotation(rx, ry, rz):
 
@@ -76,7 +76,7 @@ if __name__ == '__main__':
     sequence_count = 0
 
     get_real_rotation(3.86, 1.781, -0.908)
-    root = "test_data/collected_data/7/complete_sensing/MCTS*"
+    root = "test_data/revisit_data_example/3"
     while True:
         next_id = input('Enter the next id: ')
 

@@ -1764,6 +1764,8 @@ if __name__ == '__main__':
                         focus_point = swept_center
                         swept_center = None
                     else: # continue tracking swept volume
+                        assert sequence_count < 6, "Swept volume can not be observed"
+
                         _, focus_point = swept_coverage_check(scene, swept_verts, rac, scene_info, MAX_HEIGHT)
                     
                     camera_loc, camera_focus, dof_result = random_sample_swept_volume_selection(sim, envs[-1], test_cam, focus_point, swept_verts)
