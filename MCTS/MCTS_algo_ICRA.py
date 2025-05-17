@@ -17,7 +17,6 @@ import matplotlib.patches as mpatches
 from rearrangement_planning_util_ICRA import Tree_Node
 from rearrangement_planning_util_ICRA import smart_LMP_motion
 import fcl
-import pdb
 
 
 #main 2D ML-MCTS class that internally calls MCTS class
@@ -495,14 +494,8 @@ class multi_level_MCTS_algo():
         else:
             plt.figure(figsize = (len(self.grid_[0]), len(self.grid_)))
             step_size = 1.0
-
-        # for tree_nodes in self.track_level_steps_:
-        #     for node in tree_nodes:
-        #         node.unknown_area = self.unknown_area
-        #         node.valid_points = self.valid_area
         
         for tree_nodes in self.track_level_steps_:
-            # pdb.set_trace()
             plt.clf()
 
             tree_nodes[0].tunnel_and_normal_visualizer(animation = True)
@@ -510,10 +503,6 @@ class multi_level_MCTS_algo():
                 start_config = deepcopy(tree_nodes[i].curr_config_[:])
                 end_config = deepcopy(tree_nodes[i+1].curr_config_[:])
                 static_config = deepcopy(tree_nodes[i].static_config_[:])
-
-                #if len(start_config) != len(end_config):
-                #    end_config = [static_config[-1]] + end_config
-                #    static_config = static_config[:-1]
 
                 move_index = None
                 for t in range(len(start_config)):
@@ -624,9 +613,6 @@ class MCTS_algo():
         else:
             scale = max_radius
 
-        # grid_x = int(scene_info[1] / scale) - 2
-        # grid_y = int(scene_info[0] / scale + 0.3 / scale)
-        # pdb.set_trace()
         grid_x = int(scene_info[1] / scale)
         grid_y = int(scene_info[0] / scale + 0.3 / scale)
         print("x axis:", grid_y)
@@ -978,43 +964,6 @@ if __name__ == '__main__':
                    [0.38488997462182534 , -0.1468114942372023   , 0.05153550000000001, 'r']]
     
     scene_info = [0.56, 0.86000001, 0.1, 0.5]
-    # obj_mesh = 
 
-    # collision_objs = [0, 1, 2, 3, 4]
-    # pdb.set_trace()
     ML_MCTS_ins = multi_level_MCTS_algo(curr_config, goal_config, scene_info=scene_info)
     ML_MCTS_ins.animate_whole_sequence()
-    
-
-    # if mode == 1:
-    #     curr_config, goal_config = regression_test(case_index)
-    #     # pdb.set_trace()
-    #     ML_MCTS_ins = multi_level_MCTS_algo(curr_config, goal_config)
-    #     #ML_MCTS_ins.vis_whole_sequence()
-    #     #ML_MCTS_ins.global_optimization()
-    #     print(animation_flag)
-    #     if animation_flag == 1:
-    #         if LMP_motion == 'smart':
-    #             ML_MCTS_ins.animate_whole_sequence_IROS()
-    #         else:
-    #             ML_MCTS_ins.animate_whole_sequence()
-    #     print("Total length travelled: {0}".format(ML_MCTS_ins.calculate_total_length_travelled())) 
-    # # elif mode == 2:
-    #     curr_config, goal_config = test_case_reader(case_index)
-
-    #     ML_MCTS_ins = multi_level_MCTS_algo(curr_config, goal_config)
-    #     #ML_MCTS_ins.vis_whole_sequence()
-    #     #ML_MCTS_ins.global_optimization()
-    #     #ML_MCTS_ins.animate_whole_sequence()
-    #     print("Time consumption: {0}".format(ML_MCTS_ins.time_consumption_)) 
-    #     print("Total steps: {0}".format(ML_MCTS_ins.total_steps_)) 
-    #     print("Total length travelled: {0}".format(ML_MCTS_ins.calculate_total_length_travelled_ICRA())) 
-    #     print("Total length displacement: {0}".format(ML_MCTS_ins.calculate_total_length_displacement_ICRA()))
-    #     res_plan = ML_MCTS_ins.save_planning_results()
-
-    #     write_result('MS_MCTS_DIS_FINAL_2', case_index, len(curr_config), ML_MCTS_ins.time_consumption_, ML_MCTS_ins.total_steps_, ML_MCTS_ins.calculate_total_length_travelled_ICRA(), ML_MCTS_ins.calculate_total_length_displacement_ICRA(), res_plan)
-    # else:
-    #     for t in range(1, 10):
-    #         curr_config, goal_config = regression_test(t)
-    #         ML_MCTS_ins = multi_level_MCTS_algo(curr_config, goal_config)
-    #         print("Total length travelled: {0}".format(ML_MCTS_ins.calculate_total_length_travelled())) 
