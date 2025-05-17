@@ -8,7 +8,6 @@ file_dir = os.path.dirname(__file__)
 root_dir = os.path.join(file_dir, '../../')
 sys.path.append(root_dir)
 from test_module.camera_view import camera
-import pdb
 
 class global_scene:
 

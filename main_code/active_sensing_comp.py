@@ -1,9 +1,9 @@
 #
-# File:          ur5e_refactor.py
-# Brief:         main program for ur5e simulation
-# Author:        Hanwen Ren -- ren221@purdue.edu
-# Date:          2022-01-04
-# Last Modified: 2022-02-28
+# File:          active_sensing_comp.py
+# Brief:         Comparison test on active sensing methods and rearrangement methods
+# Author:        Junyoung Kim -- kim3722@purdue.edu, Hanwen Ren -- ren221@purdue.edu
+# Date:          2024-05-04
+# Last Modified: 2025-05-17
 #
 
 from scipy.spatial.transform import Rotation as R
@@ -21,11 +21,7 @@ import open3d as o3d
 import fcl
 import cv2
 import copy
-# from grasp_util.robot_arm_configuration import robot_arm_configuration
-from grasp_util.robot_arm_configuration import path_planner
-from grasp_util.robot_arm_configuration import ur5e_valid
 
-import pdb
 import robot_arm_configuration as RC
 
 import MCTS_algo_ICRA as mct
@@ -38,17 +34,25 @@ from rearrangement_planning_util_ICRA import write_result
 file_dir = os.path.dirname(__file__)
 util_dir = os.path.join(file_dir, '../util')
 grasp_util_dir = os.path.join(file_dir, './grasp_util')
-#learning_dir = os.path.join(file_dir, './object_selection_learning')
 scorenet_dir = os.path.join(file_dir, '../learning')
-#sys.path.append(learning_dir)
 sys.path.append(util_dir)
 sys.path.append(scorenet_dir)
 sys.path.append(grasp_util_dir)
-sys.path.append('/home/j0k/coral/ompl-1.5.2/py-bindings')
 
-import ompl.base as ob
-import ompl.util as ou
-import ompl.geometric as og
+try:
+    import ompl.base as ob
+    import ompl.util as ou
+    import ompl.geometric as og
+except ImportError:
+    # if the ompl module is not in the PYTHONPATH assume it is installed in a
+    # subdirectory of the parent directory called "py-bindings."
+    from os.path import abspath, dirname, join
+    sys.path.insert(
+        0, join(dirname(dirname(dirname(abspath(__file__)))), 'py-bindings'))
+    from ompl import util as ou
+    from ompl import base as ob
+    from ompl import geometric as og
+
 from stl_reader import stl_reader
 from obj_reader import obj_reader
 from global_scene import global_scene
@@ -57,7 +61,6 @@ from grasp_util.pc_extractor_grasp import pc_extractor_grasp
 
 from test_module.camera_view import camera
 from runner import feed_forward
-#from object_selection_learning.runner import feed_forward
 
 #define parameters
 #*************************************************************************************************#
@@ -66,35 +69,36 @@ num_of_envs = 1
 row_num_of_envs = int(math.sqrt(num_of_envs))
 
 #env settings
-#x_dim [0.8, 1.0]
-#y_dim [1.2, 1.5]
-#z_dim [0.05, 0.2]
-#table_dims = gymapi.Vec3(np.random.rand()*0.2 + 0.8, np.random.rand()*0.2 + 1.0,
-#                         np.random.rand()*0.05 + 0.05)
-# table_dims = gymapi.Vec3(0.56, 0.56, 0.10) # S
-# table_dims = gymapi.Vec3(0.56, 0.86, 0.10) # M
-table_dims = gymapi.Vec3(0.76, 1.16, 0.10) # L
+choose = np.random.randint(2)
+if choose == 0:
+    max_drawer_height = 0.40
+    min_drawer_height = 0.40
+    MIN_NUM_OBSTACLES = 5
+    MAX_NUM_OBSTACLES = 8
+    # table_dims = gymapi.Vec3(0.56, 0.86, 0.10) # S
+    table_dims = gymapi.Vec3(np.random.uniform(0.5, 0.7), np.random.uniform(0.8, 1.0), 0.10)
 
-# table_dims = gymapi.Vec3(np.random.uniform(0.7, 0.9), np.random.uniform(1, 1.2), 0.10)
-# max -> 1.0, 1.2
-# For testing X: 0.7 + 0~0.2    Y: 1 + 0~0.2 
+else:
+    max_drawer_height = 0.55
+    min_drawer_height = 0.55
+    MIN_NUM_OBSTACLES = 7
+    MAX_NUM_OBSTACLES = 11
+    # table_dims = gymapi.Vec3(0.76, 1.16, 0.10) # L
+    table_dims = gymapi.Vec3(np.random.uniform(0.7, 0.9), np.random.uniform(1.0, 1.2), 0.10)
+
 piece_width = 0.03
-# min_num_of_objects = 15
-# max_num_of_objects = 20
 max_scaling_factor = 0
 fall_height = table_dims.z
-max_drawer_height = 0.5
-min_drawer_height = 0.5
 ADD_COVER = True
 
 TARGET_OBJ_INDEX = [3, 5]
 OBSTACLE_OBJ_INDEX = [0, 2]
 MIN_RADIUS = 0.03471716871486391
 
-MIN_NUM_OBSTACLES = 5
-MAX_NUM_OBSTACLES = 8
-NUM_OF_OBJECTS = 11
-# NUM_OF_OBJECTS = np.random.randint(MIN_NUM_OBSTACLES + 1, MAX_NUM_OBSTACLES + 1)
+# MIN_NUM_OBSTACLES = 5
+# MAX_NUM_OBSTACLES = 8
+# NUM_OF_OBJECTS = 11
+NUM_OF_OBJECTS = np.random.randint(MIN_NUM_OBSTACLES + 1, MAX_NUM_OBSTACLES + 1)
 
 #*************************************************************************************************#
 
@@ -180,7 +184,6 @@ def convert_depth_image(raw_image):
     for i in range(x_dim):
         for j in range(y_dim):
             if raw_image[i][j] != mini:
-                # new_image[i][j][0] = - int(raw_image[i][j]*1000)
                 new_image[i][j][0] = -(raw_image[i][j]*1000).astype(int)
             else:
                 new_image[i][j][0] = 65535
@@ -438,7 +441,6 @@ def get_swept_volume_size(main_swept):
         max_z = max(max_z, tz)
 
     return max_y - min_y
-    # return max_x - min_x, max_y - min_y, max_z - min_z
 
 
 def get_unobserved_area(scene):
@@ -485,7 +487,7 @@ def get_min_height(asset_root, object_asset_files, OBJ_FILE_IDX_LIST):
         for tx, ty, tz in verts:
             min_z = min(min_z, tz)
             max_z = max(max_z, tz)
-        height = int((max_z - min_z) * 100) # 15, 0.14119999739341438
+        height = int((max_z - min_z) * 100)
 
         if min_height > height:
             min_height = height
@@ -641,13 +643,11 @@ def move_objs(gym, object_collision_files, gymapi, new_obj_pos_list):
                     dist = np.sqrt((tx - GT_TARGET_POS[0])**2 + (ty - GT_TARGET_POS[1])**2)
                     if dist <= 0.2:
                         is_collision = True
-                        print("target contact recalc")
                         continue
                     for obj in new_obj_pos_list:
                         dist = np.sqrt((tx - obj[0])**2 + (ty - obj[1])**2)
                         if dist <= 0.16:
                             is_collision = True
-                            print("recalc")
                             continue
         new_obj_pos_list.append([object_pose.p.x, object_pose.p.y])
         object_handles.append(gym.create_actor(envs[-1], 
@@ -1174,7 +1174,7 @@ if __name__ == '__main__':
     converted_quat = quaternion_multiply(gymapi.Quat(-math.sqrt(2)/2, 0, 0, math.sqrt(2)/2), target_quat)
     file_path = '../assets/urdf/ur5e/meshes/collision/'
 
-    scene_info = [table_dims.x, table_dims.y, table_dims.z, 0.5]
+    scene_info = [table_dims.x, table_dims.y, table_dims.z, drawer_height]
     obstacle_files = asset_root + "urdf/ycb/002_master_chef_can/textured_vhacd.obj"
     rac = RC.robot_arm_configuration(file_path, np.array([ur5e_pose.p.x, ur5e_pose.p.y, ur5e_pose.p.z]), scene_info)
 
@@ -1199,7 +1199,6 @@ if __name__ == '__main__':
     os.makedirs(new_folder + 'test_image/')
     os.makedirs(new_folder + 'test_seg_image/')
     os.makedirs(new_folder + 'test_depth_image/')
-    # os.makedirs(new_folder + 'test_npy/')
     os.makedirs(new_folder + 'test_results/init_sensing/')
     os.makedirs(new_folder + 'test_results/init_w_swept/')
     os.makedirs(new_folder + 'test_results/init_w_feed_back/')
@@ -1327,7 +1326,6 @@ if __name__ == '__main__':
                                     obj_pcd[i] = pcd
                                 # find matching object mesh file
                                 downpcd = obj_pcd[i].voxel_down_sample(voxel_size=0.005) # downsampe pcd
-                                # downpcd = obj_pcd[i]
                                 if i != NUM_OF_OBJECTS:
                                     # obstacle object matching
                                     obstacle_obj_mesh, obj_pos, dist, obj_name = RC.get_matching_mesh(downpcd, OBSTACLE_OBJ_INDEX, visualize=False)
@@ -1368,6 +1366,15 @@ if __name__ == '__main__':
                                             if init2grasp_angels_temp is None or grasp2init_angels_temp is None:
                                                 print("skip imposible grasp")
                                                 continue
+                                            
+                                            init2grasp_collision = rac.arm_collision_free(init2grasp_angels_temp, plane_obj, object_collision_models, [])
+                                            grasp2init_collision = rac.arm_collision_free(grasp2init_angels_temp, plane_obj, object_collision_models, [])
+                                            if not init2grasp_collision or not grasp2init_collision:
+                                                # rac.check_collision_models(init2grasp_angels_temp, scene_info=scene_info)
+                                                # rac.check_collision_models(grasp2init_angels_temp, scene_info=scene_info)
+                                                print("skip collision grasp")
+                                                continue
+        
                                             init2grasp_path_temp = RC.get_path2grasp(rac, init2grasp_angels_temp, scene_info, target_mesh=target_obj_mesh, time_limit=30)
                                             temp_mod_bbox = rac.modify_grasp_bbox(init2grasp_angels_temp, target_obj_mesh, visualize=False)
                                             grasp2init_path_temp = RC.get_path2start(rac, grasp2init_angels_temp, temp_mod_bbox, scene_info, time_limit=30)
@@ -1451,7 +1458,7 @@ if __name__ == '__main__':
                     m.addSubModel(object_vertices, object_faces)
                     m.endModel()
                     flexible_collision_models.append(fcl.CollisionObject(m))
-            # print ('finish adding flexible collision model')
+
             end_state_collision_free = False
             while not end_state_collision_free:
                 if not is_target_detected: # target is not detected, normal active sensing
@@ -1819,8 +1826,6 @@ if __name__ == '__main__':
 
                     flexible_collision_models.append(fcl.CollisionObject(m))
 
-            # print ('finish adding flexible collision model')
-
             end_state_collision_free = False
             while not end_state_collision_free:
                 if coverage_score >=0.85: # swept volume observed
@@ -1842,9 +1847,6 @@ if __name__ == '__main__':
                                 max_match = exist
                                 check_cluster = cluster
 
-                        if check_cluster is None:
-                            print("ERROR!!!!!!!!!!!!!!!!!!!!!!")
-                            pdb.set_trace()
                         cluster_to_view = check_cluster
                         cluster_angles = RC.cal_cam_angle_for_area(check_cluster, curr_config + [target_pos_MCT], scene_info, visualize=False)
 
@@ -3046,9 +3048,6 @@ if __name__ == '__main__':
                             if exist:
                                 check_cluster = cluster
                                 break
-                        if check_cluster is None:
-                            print("ERROR!!!!!!!!!!!!!!!!!!!!!!")
-                            pdb.set_trace()
 
                         cluster_to_view = check_cluster
                         cluster_angles = RC.cal_cam_angle_for_area(check_cluster, curr_config + [target_pos_MCT], scene_info, visualize=False)
@@ -3503,9 +3502,6 @@ if __name__ == '__main__':
                             if exist:
                                 check_cluster = cluster
                                 break
-                        if check_cluster is None:
-                            print("ERROR!!!!!!!!!!!!!!!!!!!!!!")
-                            pdb.set_trace()
 
                         cluster_to_view = check_cluster
                         cluster_angles = RC.cal_cam_angle_for_area(check_cluster, curr_config + [target_pos_MCT], scene_info, visualize=False)
@@ -3960,9 +3956,6 @@ if __name__ == '__main__':
                             if exist:
                                 check_cluster = cluster
                                 break
-                        if check_cluster is None:
-                            print("ERROR!!!!!!!!!!!!!!!!!!!!!!")
-                            pdb.set_trace()
 
                         cluster_to_view = check_cluster
                         cluster_angles = RC.cal_cam_angle_for_area(check_cluster, curr_config + [target_pos_MCT], scene_info, visualize=False)
@@ -4396,8 +4389,6 @@ if __name__ == '__main__':
 
                     flexible_collision_models.append(fcl.CollisionObject(m))
 
-            # print ('finish adding flexible collision model')
-
             end_state_collision_free = False
             while not end_state_collision_free:
                 if coverage_score >=0.85: # swept volume observed
@@ -4417,9 +4408,6 @@ if __name__ == '__main__':
                             if exist:
                                 check_cluster = cluster
                                 break
-                        if check_cluster is None:
-                            print("ERROR!!!!!!!!!!!!!!!!!!!!!!")
-                            pdb.set_trace()
 
                         cluster_to_view = check_cluster
                         cluster_angles = RC.cal_cam_angle_for_area(check_cluster, curr_config + [target_pos_MCT], scene_info, visualize=False)
@@ -4491,7 +4479,7 @@ if __name__ == '__main__':
         gym.sync_frame_time(sim)
 
 
-    print('Done')
+    print('Test Completed Successfully!!')
     gym.destroy_viewer(viewer)
     gym.destroy_sim(sim)
     sys.exit(1)

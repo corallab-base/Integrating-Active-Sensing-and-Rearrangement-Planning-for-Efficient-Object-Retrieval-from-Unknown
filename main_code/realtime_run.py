@@ -1,9 +1,9 @@
 #
-# File:          ur5e_refactor.py
-# Brief:         main program for ur5e simulation
-# Author:        Hanwen Ren -- ren221@purdue.edu
-# Date:          2022-01-04
-# Last Modified: 2022-02-28
+# File:          realtime_run.py
+# Brief:         real time experiments
+# Author:        Junyoung Kim -- kim3722@purdue.edu, Hanwen Ren -- ren221@purdue.edu
+# Date:          2024-05-04
+# Last Modified: 2025-05-17
 #
 
 from scipy.spatial.transform import Rotation as R
@@ -1272,7 +1272,7 @@ def run_sim_and_real(swept_verts, swept_center):
                             need_acquire = True
                             cam_dofs.append(dof_result)
                             prev_dof = dof_result
-                            np.save(new_folder + "MCTS*/test_cam_info/cam_path" + str(scene.num_observation) + ".npy", dof_result)
+                            np.save(new_folder + "MCTS*/test_cam_info/cam_path" + str(scene.num_observation) + ".npy", cam_move_path)
                         else:
                             end_state_collision_free = False
 
@@ -1774,19 +1774,21 @@ if __name__ == '__main__':
     #*************************************************************************************************#
 
     # Change file names-------------------------------------------------------------------------------------------------------------
-    test_folder = 'test2/'
+    test_folder = 'test1/video1'
     test_name = 'temp_scene3_success.npy'
-    data_name = 'test_data/test_real_experiment/' + test_folder +'MCTS*/test_results/' + test_name
+    data_name = 'test_data/test_real_time/' + test_folder +'/MCTS*/test_results/' + test_name
 
     # load view points
-    init_sensing_path = np.load('test_data/test_real_experiment/' + test_folder +'MCTS*/test_cam_info/init_sensing_dofs.npy', allow_pickle=True)
-    swept_sensing_path = np.load('test_data/test_real_experiment/' + test_folder +'MCTS*/test_cam_info/swept_sensing_dofs.npy', allow_pickle=True)
+    init_sensing_path = np.load('test_data/test_real_time/' + test_folder +'/MCTS*/test_cam_info/init_sensing_dofs.npy', allow_pickle=True)
+    swept_sensing_path = np.load('test_data/test_real_time/' + test_folder +'/MCTS*/test_cam_info/swept_sensing_dofs.npy', allow_pickle=True)
 
     # change minimum height of the object for unknown area
     MIN_HEIGHT = 26
     # ------------------------------------------------------------------------------------------------------------------------------
 
     saved_data = np.load(data_name, allow_pickle=True)[0]
+    mcts_file = 'test_data/test_real_time/' + test_folder +'/MCTS*/test_results/temp_scene3_success.npy'
+    saved_data = np.load(mcts_file, allow_pickle=True)[0]
     scene_info = saved_data['scene_info']
     
     init2grasp_path = saved_data['init2grasp_path']
@@ -1820,73 +1822,81 @@ if __name__ == '__main__':
     swept_size = get_swept_volume_size(swept_verts)
 
     # real robot config
-    ip_address = '192.168.0.123'
+    ip_address = '192.168.1.126'
     move_map, place_map, drop_map, rtde_c, rtde_r, gripper = re.init_setup(ip_address)
 
     # # real robot to init pose
-    # init_joints = [0.7, -2, 2.5, -0.3, 0.7, 0] 
-    # rtde_c.moveJ([0.7, -2, 2.5, -0.3, 0.7, 0])
+    # init_joints = [0.7, -2, 2.5, -0.3, 0.7, 0]
+    rtde_c.moveJ([0.7, -2, 2.5, -0.3, 0.7, 0])
+    # breakpoint()
 
-    # # place objects-----------------------------------------------------------------------------------------------------
-    # re.place_objects(rtde_c, gripper, move_map, drop_map, data_name, True)
-    # currt_joint = rtde_r.getActualQ()
-    # time.sleep(2)
-    # rtde_c.moveJ([0.7, -2, 2.5, -0.3, 0.7, 0])
-    # # ------------------------------------------------------------------------------------------------------------------
+    # place objects-----------------------------------------------------------------------------------------------------
+    re.place_objects(rtde_c, gripper, move_map, drop_map, data_name, True)
+    currt_joint = rtde_r.getActualQ()
+    time.sleep(2)
+    rtde_c.moveJ([0.7, -2, 2.5, -0.3, 0.7, 0])
+    breakpoint()
+    # ------------------------------------------------------------------------------------------------------------------
 
-    # creating new folder
-    # curr_time = time.localtime()
-    # new_folder = 'test_data/test_real_time/' + test_folder + '/' + str(curr_time[1]) + '.' + str(curr_time[2]) + '.' + str(curr_time[3]) + '.' + str(curr_time[4]) + '/'
-    # os.makedirs(new_folder + 'MCTS*/test_results/')
-    # os.makedirs(new_folder + 'MCTS*/test_image/')
-    # os.makedirs(new_folder + 'MCTS*/test_seg_image/')
-    # os.makedirs(new_folder + 'MCTS*/test_depth_image/')
-    # os.makedirs(new_folder + 'MCTS*/test_cam_info/')
-
-    # # run active sensing + MCTS
+    # run active sensing + MCTS in sim
     # res_plan = run_sim_and_real(swept_verts, swept_center)
     # plan = re.get_plan_res_plan(res_plan)
 
+    # run saved active sensing
+    prev_joint = [0.7, -2, 2.5, -0.3, 0.7, 0]
+    cam_plan_path = 'test_data/test_real_time/' + test_folder +'/MCTS*/test_cam_info'
+    for i in range(4):
+        ac_path = cam_plan_path + "/cam_path" + str(i) + ".npy"
+        plan = np.load(ac_path)
+
+        for angle in plan[1:]:
+            rtde_c.moveJ(angle, speed=0.6, acceleration=0.4)
+        
+        time.sleep(4)
+    
+    grasp_start_plan = np.load(cam_plan_path + "/cam_path_to_og.npy")
+    for angle in grasp_start_plan:
+        rtde_c.moveJ(angle, speed=0.6, acceleration=0.4)
+
     # load saved rearrangement plan
-    mcts_plan = 'test_data/test_real_time/' + test_folder +'9.19.15.23/MCTS*/test_results/test_result_3.npy'
+    # mcts_plan = 'test_data/test_real_time/' + test_folder +'9.19.15.23/MCTS*/test_results/test_result_3.npy'
+    mcts_plan = 'test_data/test_real_time/' + test_folder +'/MCTS*/test_results/test_result_3.npy'
     plan = re.get_plan_npy(mcts_plan)
 
-    # path planning to linear_motion_planner
-    sx, sy, tx, ty = plan[0]
-    rx = 0
-    ry = -0.19
-    sy += 0.07
-    ty += 0.07
-    angle1 = -math.atan2(sx - rx, sy - ry)
-    grasp_start_config = [angle1 - 0.7776] + place_map[0][1:]
-    # curr_dofs = rtde_r.getActualQ()
-    curr_dofs = np.load("/home/j0k/Project/Imsa/main_code/test_data/test_real_time/test2/9.19.15.23/MCTS*/test_cam_info/cam_path2.npy")
-    pdb.set_trace()
+    # # path planning to linear_motion_planner
+    # sx, sy, tx, ty = plan[0]
+    # rx = 0
+    # ry = -0.19
+    # sy += 0.07
+    # ty += 0.07
+    # angle1 = -math.atan2(sx - rx, sy - ry)
+    # grasp_start_config = [angle1 - 0.7776] + place_map[0][1:]
+    # # curr_dofs = rtde_r.getActualQ()
+    # last_pos_name = '/cam_path3.npy' # set to last observation pos
+    # curr_dofs = np.load(cam_plan_path + last_pos_name)[-1]
     # rtde_c.moveJ(curr_dofs, speed=0.6, acceleration=0.6)
-    while True:
-        grasp_start_plan = RC.get_patha2b(rac, curr_dofs, grasp_start_config, scene_info, target_mesh=None, time_limit=60, given_static_model=object_collision_models)
-        if grasp_start_plan is not None:
-            print("Plan success!!!!")
-            break
+    # while True:
+    #     grasp_start_plan = RC.get_patha2b(rac, curr_dofs, grasp_start_config, scene_info, target_mesh=None, time_limit=60, given_static_model=object_collision_models)
+    #     if grasp_start_plan is not None:
+    #         print("Plan success!!!!")
+    #         break
     
-    # for angle in grasp_start_plan:
-    #     rtde_c.moveJ(angle, speed=0.4, acceleration=0.4)
 
-    pdb.set_trace()
-    np.save('test_data/test_real_time/' + test_folder + "9.19.15.23/MCTS*/test_cam_info/cam_path_to_og.npy", grasp_start_plan)
+    # np.save(cam_plan_path + "/cam_path_to_og.npy", grasp_start_plan)
+    # np.save('test_data/test_real_time/' + test_folder + "9.19.15.23/MCTS*/test_cam_info/cam_path_to_og.npy", grasp_start_plan)
 
-    # # rearrangement start
-    # re.linear_motion_planner_old(rtde_c, gripper,  plan, move_map, place_map, drop_map, True)
+    # rearrangement start
+    re.linear_motion_planner_old(rtde_c, gripper,  plan, move_map, place_map, drop_map, True)
 
-    # # object retrival
-    # for angle in init2grasp_path:
-    #     rtde_c.moveJ(angle, speed=0.4, acceleration=0.4)
+    # object retrival
+    for angle in init2grasp_path:
+        rtde_c.moveJ(angle, speed=0.5, acceleration=0.4)
 
-    # time.sleep(5)
-    # gripper.move(230, 100, 0)
-    # time.sleep(5)
+    time.sleep(5)
+    gripper.move(230, 100, 0)
+    time.sleep(5)
 
-    # for angle in grasp2init_path:
-    #     rtde_c.moveJ(angle, speed=0.4, acceleration=0.4)
+    for angle in grasp2init_path:
+        rtde_c.moveJ(angle, speed=0.5, acceleration=0.4)
 
     sys.exit(1)
