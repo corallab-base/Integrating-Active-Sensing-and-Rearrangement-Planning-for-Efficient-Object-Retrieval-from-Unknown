@@ -3,6 +3,18 @@ Code for
 # [Integrating Active Sensing and Rearrangement Planning for Efficient Object Retrieval from Unknown, Confined, Cluttered Environments](https://arxiv.org/pdf/2411.11733)
 ### Junyoung Kim, Hanwen Ren, and Ahmed H. Qureshi
 
+```Bibtex
+@misc{kim2024integratingactivesensingrearrangement,
+      title={Integrating Active Sensing and Rearrangement Planning for Efficient Object Retrieval from Unknown, Confined, Cluttered Environments},
+      author={Junyong Kim and Hanwen Ren and Ahmed H. Qureshi},
+      year={2024},
+      eprint={2411.11733},
+      archivePrefix={arXiv},
+      primaryClass={cs.RO},
+      url={https://arxiv.org/abs/2411.11733},
+}
+```
+
 ### IEEE ICRA 2025, Atlanta, Georgia
 
 [![Video Title](https://img.youtube.com/vi/tea7I-3RtV0/0.jpg)](https://www.youtube.com/watch?v=tea7I-3RtV0)
