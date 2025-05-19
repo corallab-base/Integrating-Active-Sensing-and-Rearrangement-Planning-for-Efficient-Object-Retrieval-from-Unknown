@@ -15,7 +15,7 @@ Code for
 }
 ```
 
-### IEEE ICRA 2025, Atlanta, Georgia
+### This paper is presented at IEEE ICRA 2025, Atlanta, Georgia.
 
 [![Video Title](https://img.youtube.com/vi/tea7I-3RtV0/0.jpg)](https://www.youtube.com/watch?v=tea7I-3RtV0)
 
