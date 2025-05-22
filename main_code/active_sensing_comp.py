@@ -2000,6 +2000,7 @@ if __name__ == '__main__':
                         if len(child.check_collision_w_swept()) < min_num_collision:
                             max_node = child
                             max_reward = child.reward_
+                            min_num_collision = len(child.check_collision_w_swept())
                         elif len(child.check_collision_w_swept()) == min_num_collision:
                             if child.reward_ > max_reward:
                                 max_reward = child.reward_
@@ -2764,6 +2765,7 @@ if __name__ == '__main__':
                         if len(child.check_collision_w_swept()) < min_num_collision:
                             max_node = child
                             max_reward = child.reward_
+                            min_num_collision = len(child.check_collision_w_swept())
                         elif len(child.check_collision_w_swept()) == min_num_collision:
                             if child.reward_ > max_reward:
                                 max_reward = child.reward_
@@ -3218,6 +3220,7 @@ if __name__ == '__main__':
                         if len(child.check_collision_w_swept()) < min_num_collision:
                             max_node = child
                             max_reward = child.reward_
+                            min_num_collision = len(child.check_collision_w_swept())
                         elif len(child.check_collision_w_swept()) == min_num_collision:
                             if child.reward_ > max_reward:
                                 max_reward = child.reward_
@@ -3672,6 +3675,7 @@ if __name__ == '__main__':
                         if len(child.check_collision_w_swept()) < min_num_collision:
                             max_node = child
                             max_reward = child.reward_
+                            min_num_collision = len(child.check_collision_w_swept())
                         elif len(child.check_collision_w_swept()) == min_num_collision:
                             if child.reward_ > max_reward:
                                 max_reward = child.reward_
@@ -4126,6 +4130,7 @@ if __name__ == '__main__':
                         if len(child.check_collision_w_swept()) < min_num_collision:
                             max_node = child
                             max_reward = child.reward_
+                            min_num_collision = len(child.check_collision_w_swept())
                         elif len(child.check_collision_w_swept()) == min_num_collision:
                             if child.reward_ > max_reward:
                                 max_reward = child.reward_
