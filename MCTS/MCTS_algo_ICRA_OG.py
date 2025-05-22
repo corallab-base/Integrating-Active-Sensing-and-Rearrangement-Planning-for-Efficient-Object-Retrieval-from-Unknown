@@ -1,8 +1,8 @@
 #
-# file:   MCTS_algo.py
-# Brief:  Implementation of ML-MCTS algorithm
-# Author: Hanwen Ren --- Jun
-# Date:   2023-03-02
+# file:   MCTS_algo_ICRA_OG.py
+# Brief:  OG-MCTS rearrangement planner
+# Author: Junyoung Kim -- kim3722@purdue.edu, Hanwen Ren -- ren221@purdue.edu
+# Date:   2024-06-02
 #
 
 import os
@@ -301,7 +301,6 @@ class multi_level_MCTS_algo_OG():
         #print([x[0] for x in new_recover_plan])
         if self.obj_mesh is not None:
             for tree in new_recover_plan:
-                # pdb.set_trace()
                 for root in tree:
                     if type(root) == type(self.track_level_steps_[0][0]):
                         self.insert_swept(root)
@@ -499,14 +498,8 @@ class multi_level_MCTS_algo_OG():
         else:
             plt.figure(figsize = (len(self.grid_[0]), len(self.grid_)))
             step_size = 1.0
-
-        # for tree_nodes in self.track_level_steps_:
-        #     for node in tree_nodes:
-        #         node.unknown_area = self.unknown_area
-        #         node.valid_points = self.valid_area
         
         for tree_nodes in self.track_level_steps_:
-            # pdb.set_trace()
             plt.clf()
 
             tree_nodes[0].tunnel_and_normal_visualizer(animation = True)
@@ -630,7 +623,6 @@ class MCTS_algo_OG():
 
         # grid_x = int(scene_info[1] / scale) - 2
         # grid_y = int(scene_info[0] / scale + 0.3 / scale)
-        # pdb.set_trace()
         grid_x = int(scene_info[1] / scale)
         grid_y = int(scene_info[0] / scale + 0.3 / scale)
         print("x axis:", grid_y)
@@ -728,7 +720,6 @@ class MCTS_algo_OG():
                             else:
                                 #propose two target regions
                                 new_regions = []
-                                # pdb.set_trace()
                                 for upper_index in range(index, -1, -1):
                                     is_overrun = self.check_time()
                                     if is_overrun:
@@ -851,15 +842,7 @@ class MCTS_algo_OG():
                     break
                 else:
                     current_list = list(new_current_list)
-                    # print("update", new_current_list)
                     if search_depth == 4:
-                        #print('reach here'); 
-                        #print(selected_leaf_node.curr_config_[0])
-                        #print(selected_leaf_node.goal_config_[0])
-                        #print(new_current_list)
-                        #grasp_tunnel = selected_leaf_node.get_tunnel(selected_leaf_node.robot_, selected_leaf_node.curr_config_[0])
-                        #relocate_tunnel = selected_leaf_node.get_tunnel(selected_leaf_node.robot_, selected_leaf_node.goal_config_[0])
-                        #selected_leaf_node.tunnel_and_normal_visualizer([grasp_tunnel, relocate_tunnel]); 
                         break
                     if search_depth >= 2:
                         current_list = selected_leaf_node.random_object_selection()
@@ -880,8 +863,6 @@ class MCTS_algo_OG():
             if rollout_flag:
                 print("return rollout5")
                 return new_node
-
-        # pdb.set_trace()
 
         if selected_leaf_node.children_:
             # print("return children")
@@ -928,13 +909,6 @@ class MCTS_algo_OG():
 
         old_collision = self.check_collision_w_swept(node.obj_mesh)
         new_collision = self.check_collision_w_swept(new_obj_mesh)
-        # print("OLD:", old_collision, "idx", idx)
-        # print("NEW:", new_collision, "idx", idx)
-        # problem = False
-        # if idx in new_collision:
-        #     problem = True
-        # if idx in old_collision and set([idx] + new_collision) != set(old_collision):
-        #     problem = True
 
         return new_obj_mesh
 
@@ -943,7 +917,6 @@ class MCTS_algo_OG():
             return 10000
         #little bit smarter here instead of random
         if rollout_leaf_node.is_goal_config():
-            #print ('rollout finished\n')
             return rollout_leaf_node.total_distance_
         else:
             new_node = self.expansion(rollout_leaf_node, True)
@@ -1045,7 +1018,6 @@ if __name__ == '__main__':
     # obj_mesh = 
 
     # collision_objs = [0, 1, 2, 3, 4]
-    # pdb.set_trace()
     ML_MCTS_ins = multi_level_MCTS_algo(curr_config, goal_config, scene_info=scene_info)
     ML_MCTS_ins.animate_whole_sequence()
     

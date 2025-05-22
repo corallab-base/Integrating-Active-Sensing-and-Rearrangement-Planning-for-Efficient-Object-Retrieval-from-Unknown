@@ -1,8 +1,8 @@
 #
-# file:   MCTS_algo.py
-# Brief:  Implementation of ML-MCTS algorithm
-# Author: Hanwen Ren --- Jun
-# Date:   2023-03-02
+# file:   MCTS_algo_ICRA_base1.py
+# Brief:  TSAD rearrangement planner
+# Author: Junyoung Kim -- kim3722@purdue.edu, Hanwen Ren -- ren221@purdue.edu
+# Date:   2024-06-02
 #
 
 import os
@@ -21,7 +21,6 @@ from rearrangement_planning_util_ICRA import smart_LMP_motion
 from test_case_generator import RP_test_case_generator
 from test_case_generator import test_case_reader
 import fcl
-import pdb
 
 
 #main 2D ML-MCTS class that internally calls MCTS class

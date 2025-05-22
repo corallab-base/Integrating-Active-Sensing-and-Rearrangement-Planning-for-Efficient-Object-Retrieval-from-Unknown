@@ -1,4 +1,4 @@
-name: sim
+name: sim4
 channels:
   - defaults
 dependencies:

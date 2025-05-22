@@ -1,8 +1,8 @@
 #
-# file:   MCTS_algo.py
-# Brief:  Implementation of ML-MCTS algorithm
-# Author: Hanwen Ren --- Jun
-# Date:   2023-03-02
+# file:   MCTS_algo_ICRA_base2.py
+# Brief:  WTR rearrangement planner
+# Author: Junyoung Kim -- kim3722@purdue.edu, Hanwen Ren -- ren221@purdue.edu
+# Date:   2024-06-02
 #
 
 import os
@@ -23,7 +23,6 @@ from test_case_generator import test_case_reader
 import fcl
 from obj_reader import obj_reader
 import copy
-import pdb
 
 
 #main 2D ML-MCTS class that internally calls MCTS class

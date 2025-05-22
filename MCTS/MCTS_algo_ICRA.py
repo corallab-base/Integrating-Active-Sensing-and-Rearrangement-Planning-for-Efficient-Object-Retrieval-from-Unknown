@@ -1,8 +1,8 @@
 #
-# file:   MCTS_algo.py
-# Brief:  Implementation of ML-MCTS algorithm
-# Author: Hanwen Ren --- Jun
-# Date:   2023-03-02
+# file:   MCTS_algo_ICRA.py
+# Brief:  OR-MCTS(proposed method) rearrangement planner
+# Author: Junyoung Kim -- kim3722@purdue.edu, Hanwen Ren -- ren221@purdue.edu
+# Date:   2024-06-02
 #
 
 import os
