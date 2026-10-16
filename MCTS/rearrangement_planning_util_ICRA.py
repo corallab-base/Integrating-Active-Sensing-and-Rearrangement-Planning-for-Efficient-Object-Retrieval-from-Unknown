@@ -513,6 +513,16 @@ class Tree_Node():
                 temp_circle = mpatches.Circle((cx, cy), radius, color = color)
                 plt.gca().add_patch(temp_circle)
 
+        if len(self.unknown_area) > 0:
+            plt.scatter(np.array(self.unknown_area)[:, 0], np.array(self.unknown_area)[:, 1], color='black')
+            # for cluster in self.unknown_area:
+            #     plt.scatter(np.array(cluster)[:, 0], np.array(cluster)[:, 1])
+        if len(self.valid_area) > 0:
+            plt.scatter(self.valid_area[:, 0], self.valid_area[:, 1], c='green')
+
+        if len(self.potential_centers) > 0:
+                plt.scatter(self.potential_centers[:, 0], self.potential_centers[:, 1], c='red')
+
         robot = mpatches.Rectangle((self.robot_[0] - 0.023 / self.scale, self.robot_[1] - 0.023 / self.scale), self.radius, self.radius)
         plt.gca().add_patch(robot)
 

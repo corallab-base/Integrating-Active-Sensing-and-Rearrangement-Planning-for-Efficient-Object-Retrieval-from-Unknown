@@ -489,7 +489,7 @@ class multi_level_MCTS_algo():
     def animate_whole_sequence(self):
         #create a global canvas
         if self.scale == 0.01:
-            plt.figure(figsize = (len(self.grid_[0])/5, len(self.grid_)/5))
+            plt.figure(figsize = (len(self.grid_[0])/5-2, len(self.grid_)/5))
             step_size = 5.0
         else:
             plt.figure(figsize = (len(self.grid_[0]), len(self.grid_)))
