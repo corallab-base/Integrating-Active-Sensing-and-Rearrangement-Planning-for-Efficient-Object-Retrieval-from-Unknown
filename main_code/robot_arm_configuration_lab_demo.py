@@ -2986,14 +2986,14 @@ def _save_scenario(root, scene_info, targets, grasps, obs_pos, obs_mesh, obs_idx
 def real_exp_senario_gen(scene_info=[0.5600000023841858, 0.8399999737739563,
                                      0.05000000074505806, 0.49],
                          num_obs=5,
-                         obs_obj_idx=[2],                  # master_chef_can
+                         obs_obj_idx=[4],                  # master_chef_can = 0
                          # two targets: the repo's own TARGET_OBJ_INDEX, and the two most
                          # reachable at this depth (banana 47 free grasps at every x tested,
                          # mustard 34-70; sugar_box drops to 9 by x=0.66).
                          # pass [1, 3] for sugar_box + mustard_bottle instead.
                          target_obj_idx=[3, 5],            # mustard_bottle, banana
                          min_dist=0.2,
-                         target_x_range=(0.58, 0.66),
+                         target_x_range=(0.65, 0.80),
                          # measured: reachability is strongly asymmetric in y and the
                          # asymmetry is per-object (mustard has 0 free grasps at y=+0.32,
                          # banana 0 at y=-0.32). [-0.20, 0.20] is the band where both work.
@@ -3004,7 +3004,7 @@ def real_exp_senario_gen(scene_info=[0.5600000023841858, 0.8399999737739563,
                          # failures at either value. The module default stays 0.0001 so the
                          # other callers in this file are untouched.
                          path_resolution=0.001,
-                         obs_x_range=(0.33, 0.54),
+                         obs_x_range=(0.33, 0.60),
                          mcts_time_limit=90,
                          # measured: every successful path came in <=48s (approach+retreat
                          # yield 3/10 grasps for mustard, 4/10 for banana), so a bigger
