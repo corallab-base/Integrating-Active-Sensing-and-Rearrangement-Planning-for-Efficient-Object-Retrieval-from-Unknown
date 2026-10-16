@@ -577,7 +577,7 @@ class robot_arm_configuration:
                 obstac_mesh = pv.PolyData(np.array(obstac_verts), np.array(obstac_faces))
                 plotter.add_mesh(obstac_mesh, color= self.obj_color[i])
 
-    def check_collision_models(self, angles, obj_collision_model=None, scene_info=None, show_obj_axes=False):
+    def check_collision_models(self, angles, obj_collision_model=None, scene_info=None, show_obj_axes=False, target_mesh=None):
         plotter = pv.Plotter()
         plotter.camera_position = [5.0, 0.0, 0.5]
         plotter.set_background('white')
@@ -599,6 +599,10 @@ class robot_arm_configuration:
                 obj_mesh = pv.Cube((cx, cy, cz), dx, dy, dz)
                 plotter.add_mesh(obj_mesh)
                 color_index += 1
+
+        if target_mesh is not None:
+            temp_mesh = pv.PolyData(target_mesh[0], target_mesh[1])
+            plotter.add_mesh(temp_mesh, color = "#FF0D00")
 
         #construct robot mesh
         _ = self.construct_robot_meshs(angles, plotter)
@@ -763,7 +767,7 @@ class robot_arm_configuration:
 
         return bbox_list, mesh_list, verts_list
     
-    def modify_grasp_bbox(self, dof_result,target_mesh, visualize=False):
+    def modify_grasp_bbox(self, dof_result, target_mesh, visualize=False):
         # calculate inverse transform
         transform_data = self.calculate_transform_from_angles(dof_result)
         griper_trans = transform_data[-1][0]
@@ -1308,7 +1312,7 @@ class robot_arm_configuration:
 
         return target_pos, target_quat
     
-    def grasp_verify(self, target_pos, target_quat, new_offset=False):
+    def grasp_verify(self, target_pos, target_quat, new_offset=False, seed=None):
         # target_pos, target_quat = self.calc_grasp_pos(grasp_mat, cam_rot, cam_tran, offset)
 
         # calc ik
@@ -1325,7 +1329,10 @@ class robot_arm_configuration:
                                                  self.offset_[2])
         converted_quat = rotation_concat([-math.sqrt(2)/2, 0, 0, math.sqrt(2)/2], target_quat)
     
-        seed_state = [0.0]*self.ik_solver_.number_of_joints
+        if seed is not None:
+            seed_state = list(seed)
+        else:
+            seed_state = [0.0]*self.ik_solver_.number_of_joints
         dof_result = self.ik_solver_.get_ik(seed_state, 
                                        converted_coord[0],
                                        converted_coord[1],
@@ -1832,6 +1839,472 @@ def create_static_collision_model(scene_info, pcd_mesh, obj_mesh):
         return_list.append(source_obj)
 
     return return_list
+
+#**************************************************************************************************
+# Linear Motion Planning (LMP) for the target grasp / retrieval
+#
+# The OMPL planners above return curvy joint-space paths whose swept volume is large and irregular.
+# Because OR-MCTS decides which objects to relocate purely from that swept volume
+# (rearrangement_planning_util_ICRA.py: check_collision_w_swept / is_goal_config_swept), a fat sweep
+# means more blockers and more rearrangement steps.
+#
+# The rearrangement side already models every motion as a radial "grasp tunnel"
+# (Tree_Node.get_tunnel). The functions below plan the target grasp/retrieval the same way: a pure
+# radial straight line in Cartesian space, IK-sampled, so the executed sweep IS that tunnel.
+#**************************************************************************************************
+
+# world-frame origin of the MCTS grasp tunnel.
+# Tree_Node.robot_ = [0, -19] in grid cells at scale 0.01, and convert2global([0,-19]) -> [-0.19, 0].
+# Same point as DEMO_ROBOT_OFFSET in robot_arm_configuration_lab_demo.py and rx/ry in real_exp.py.
+MCTS_ROBOT_BASE_XY = np.array([-0.19, 0.0])
+
+BOX_FRONT_X       = 0.3   # cabinet opening plane; cf. create_static_collision_model / get_swept_center
+LMP_STEP          = 0.01  # Cartesian sample spacing along the tunnel [m]
+LMP_TRANSIT_STEP  = 0.02  # joint-space resolution for validating the transit segment [rad]
+LMP_JUMP_LIMIT    = 0.3   # reject an IK branch flip larger than this [rad]
+LMP_MIN_INSERTION = 0.05  # a candidate needs at least this much straight line to be worth taking [m]
+
+# The arm cannot hold the tunnel orientation all the way back to the opening plane: IK runs out
+# around a TCP radius of 0.5 m, and at large radii the forearm climbs into the cabinet's upper
+# cover, so the feasible band is bounded on both sides. find_lmp_start therefore walks outward from
+# the opening instead of backing off by a fixed margin.
+LMP_MAX_START_SEARCH = 0.25  # how far outward from the opening to look for a feasible start [m]
+
+# same home config the OMPL wrappers hard-code
+UR5E_START_DOF = [0.7, -2, 2.5, -0.3, 0.7, 0]
+
+# Posture (joints 1..5) the base joint swings in, the automatic equivalent of real_exp.py's
+# hand-tuned start_config_up_2 / middle_config_up staging poses. Chosen by sweeping joint 0 over its
+# whole legal range and keeping the collision-free posture that reaches least far forward (0.398 m
+# at worst, vs 0.449 m for UR5E_START_DOF itself), so the swing still crosses the cabinet opening
+# and the transit contributes roughly 0.16 m of lateral sweep.
+#
+# Postures that avoid the cabinet entirely DO exist -- a search over the joint-0 range found 515
+# that keep all in-cabinet link geometry above the object height band get_swept_center clips to, and
+# many that never cross x = BOX_FRONT_X at any yaw (e.g. [-2.0, 1.0, 0.0, -1.5, 0.0]). They are not
+# usable here: they are lifted and folded back, so the straight joint-space leg from such a posture
+# down to a pre-grasp -- which sits low and already a few cm inside the opening -- sweeps through the
+# shelf and fails validation. Reaching one would need a fourth transit leg that descends outside the
+# cabinet before inserting. (Note the constraint is "stay out of x > 0.3 over the yaw range
+# travelled", not "stay within 0.3 m of the base axis" -- every posture satisfying the latter
+# self-collides, which is a different and much stronger condition.)
+LMP_TUCK_POSTURE = [-2.1, 2.5, -0.4, -0.4, 0.0]
+
+# optional extra intermediate configs for the transit, tried last. Analogous to real_exp.py's
+# start_config_up_3 / max_config_reach_7.
+LMP_STAGING_DOFS = []
+
+# mirrors path_planner.__init__'s state-space bounds so LMP and OMPL configs live in the same joint
+# envelope and the comparison stays fair
+UR5E_JOINT_BOUNDS = [(-0.48 - 1.26, -0.48 + 1.26),
+                     (-1.19 - 0.98, -1.19 + 0.98),
+                     (1.67 - 1.8,   1.67 + 1.8),
+                     (-3.14, 3.14),
+                     (-0.25 - 1.54, -0.25 + 1.54),
+                     (-3.14, 3.14)]
+
+
+def in_joint_bounds(dof):
+    for value, (low, high) in zip(dof, UR5E_JOINT_BOUNDS):
+        if value < low or value > high:
+            return False
+    return True
+
+
+def radial_tunnel_axis(grasp_pos):
+    """Tunnel axis through a grasp point: (unit 2d direction, theta, radius) from the tunnel origin.
+
+    The axis runs through the GRASP POINT rather than the object centre, which leaves the grasp
+    position untouched -- projecting it onto the object-centre axis instead would shift the gripper
+    off the grasp the network proposed, and in a real scene that loses essentially every candidate
+    to IK failure or collision with the object. The two axes differ by less than the object radius,
+    so the motion still matches the tunnel Tree_Node.get_tunnel models, and the swept volume handed
+    to OR-MCTS is measured from the real path either way.
+    """
+    base = MCTS_ROBOT_BASE_XY
+    axis2d = np.asarray(grasp_pos[:2], dtype=float) - base
+    norm = float(np.linalg.norm(axis2d))
+    if norm < 1e-9:
+        return None, None, None
+    return axis2d / norm, math.atan2(axis2d[1], axis2d[0]), norm
+
+
+def radial_grasp_roll(grasp_pos, grasp_quat):
+    """Roll about the tunnel axis that best preserves a candidate's finger-closing direction."""
+    _, theta, _ = radial_tunnel_axis(grasp_pos)
+    if theta is None:
+        return 0.0
+    yaw = R.from_euler('z', theta)
+    closing = R.from_quat(grasp_quat).apply([0, 1, 0])
+    return math.atan2(float(np.dot(closing, yaw.apply([0, 0, 1]))),
+                      float(np.dot(closing, yaw.apply([0, 1, 0]))))
+
+
+def roll_candidates(phi):
+    """Rolls about the approach axis to try, preferred one first."""
+    return [phi, 0.0, math.pi/2, -math.pi/2, math.pi]
+
+
+def radial_grasp_pose_with_roll(grasp_pos, phi):
+    """Grasp pose reoriented so the gripper approaches along the tunnel axis.
+
+    The position is the candidate's own grasp point, unchanged. Only the orientation is rebuilt:
+    identity quaternion means "approach along world +x" (cf. constrained_linear_motion_planner), so
+    a z-rotation by theta aims the gripper's approach axis (local +x, per calc_grasp_pos) straight
+    down the tunnel, and phi rolls the fingers about it.
+
+    Returns (pos, quat, theta, r_grasp).
+    """
+    _, theta, r_grasp = radial_tunnel_axis(grasp_pos)
+    if theta is None:
+        return None, None, None, None
+    pos = np.asarray(grasp_pos, dtype=float).copy()
+    quat = (R.from_euler('z', theta) * R.from_euler('x', phi)).as_quat()
+    return pos, quat, theta, r_grasp
+
+
+def object_axis_grasp_pose(target_obj_pos, grasp_pos, phi):
+    """Grasp projected onto the tunnel axis through the OBJECT CENTRE, reoriented along it.
+
+    Unlike radial_grasp_pose_with_roll this moves the grasp point, which is what
+    Tree_Node.get_tunnel assumes (its tunnel runs base -> object centre). Shifting the gripper off
+    the proposed grasp costs candidates to IK failure and collision, but it gains others, so both
+    axes are offered -- see radial_grasp_candidates.
+
+    Returns (pos, quat, theta, r_grasp).
+    """
+    base = MCTS_ROBOT_BASE_XY
+    axis2d = np.asarray(target_obj_pos[:2], dtype=float) - base
+    norm = float(np.linalg.norm(axis2d))
+    if norm < 1e-9:
+        return None, None, None, None
+    axis2d = axis2d / norm
+    theta = math.atan2(axis2d[1], axis2d[0])
+    r_grasp = float(np.dot(np.asarray(grasp_pos[:2], dtype=float) - base, axis2d))
+    pos = np.array([base[0] + r_grasp * axis2d[0],
+                    base[1] + r_grasp * axis2d[1],
+                    grasp_pos[2]])
+    quat = (R.from_euler('z', theta) * R.from_euler('x', phi)).as_quat()
+    return pos, quat, theta, r_grasp
+
+
+def radial_grasp_candidates(target_obj_pos, grasp_pos, grasp_quat):
+    """Radial (pos, quat) poses to try for one Contact-GraspNet candidate, best first.
+
+    Two tunnel axes are offered, through the grasp point and through the object centre, each at the
+    roll that best preserves the candidate's finger-closing direction plus four fallback rolls.
+
+    Offering both matters: on 200 candidates across 7 target placements the grasp-point axis yielded
+    135 complete linear paths and the object-centre axis 113, but they overlap little and taking
+    either gives 200. Neither dominates -- at one placement the counts were 10 vs 56, at another
+    34 vs 0 -- so dropping one loses roughly a third of all usable grasps, and at some placements
+    all of them. The grasp-point axis comes first because it leaves the grasp position untouched and
+    sweeps slightly tighter.
+    """
+    out = []
+    for phi in roll_candidates(radial_grasp_roll(grasp_pos, grasp_quat)):
+        pos, quat, _, _ = radial_grasp_pose_with_roll(grasp_pos, phi)
+        if pos is not None:
+            out.append((pos, quat))
+    for phi in roll_candidates(radial_grasp_roll(target_obj_pos, grasp_quat)):
+        pos, quat, _, _ = object_axis_grasp_pose(target_obj_pos, grasp_pos, phi)
+        if pos is not None:
+            out.append((pos, quat))
+    return out
+
+
+def lmp_start_radius(theta):
+    """Tunnel radius at which the TCP crosses the cabinet opening plane."""
+    cos_theta = math.cos(theta)
+    reach = BOX_FRONT_X - MCTS_ROBOT_BASE_XY[0]
+    if cos_theta < 1e-6:
+        return reach
+    return reach / cos_theta
+
+
+def lmp_config_at(rac, theta, z, quat, r, plane_obj, static_env_models, seed=None):
+    """IK + feasibility for a single point on the tunnel axis. Returns the config or None."""
+    base = MCTS_ROBOT_BASE_XY
+    pos = np.array([base[0] + r * math.cos(theta), base[1] + r * math.sin(theta), z])
+    dof = rac.grasp_verify(pos, quat, seed=seed)
+    if dof is None:
+        return None
+    dof = list(dof)
+    if not in_joint_bounds(dof):
+        return None
+    if not rac.arm_collision_free(dof, plane_obj, static_env_models, []):
+        return None
+    return dof
+
+
+def find_lmp_start(rac, theta, z, quat, r_grasp, plane_obj, static_env_models, step=LMP_STEP):
+    """Innermost feasible radius at or outside the cabinet opening.
+
+    Walks outward from the opening plane until the arm can actually hold the tunnel orientation,
+    and stops once less than LMP_MIN_INSERTION of straight line would be left. Returns
+    (r_start, dof_start) or (None, None).
+    """
+    r_open = lmp_start_radius(theta)
+    r_limit = min(r_open + LMP_MAX_START_SEARCH, r_grasp - LMP_MIN_INSERTION)
+    if r_limit < r_open:
+        return None, None
+
+    num_steps = max(int(math.ceil((r_limit - r_open) / step)), 1)
+    for i in range(num_steps + 1):
+        r = r_open + (r_limit - r_open) * i / float(num_steps)
+        dof = lmp_config_at(rac, theta, z, quat, r, plane_obj, static_env_models)
+        if dof is not None:
+            return r, dof
+    return None, None
+
+
+def sample_radial_line(rac, theta, z, quat, r_from, r_to, plane_obj, static_env_models,
+                       step=LMP_STEP, seed=None):
+    """IK-sample a straight radial segment of the tunnel.
+
+    Walks the TCP from radius r_from to r_to along the tunnel axis at constant height and
+    orientation. Returns the list of joint configs, or None if any sample is unreachable, leaves the
+    joint envelope, flips IK branch, or collides with the static environment.
+    """
+    base = MCTS_ROBOT_BASE_XY
+    axis2d = np.array([math.cos(theta), math.sin(theta)])
+
+    span = r_to - r_from
+    num_steps = max(int(math.ceil(abs(span) / step)), 1)
+
+    path = []
+    prev = seed
+    for i in range(num_steps + 1):
+        r = r_from + span * i / float(num_steps)
+        pos = np.array([base[0] + r * axis2d[0], base[1] + r * axis2d[1], z])
+
+        dof = rac.grasp_verify(pos, quat, seed=prev)
+        if dof is None:
+            return None
+        dof = list(dof)
+
+        if not in_joint_bounds(dof):
+            return None
+        if prev is not None and max(abs(a - b) for a, b in zip(dof, prev)) > LMP_JUMP_LIMIT:
+            return None
+        if not rac.arm_collision_free(dof, plane_obj, static_env_models, []):
+            return None
+
+        path.append(dof)
+        prev = dof
+
+    return path
+
+
+def link_bbox_verts(rac, dof):
+    """World-frame bounding-box vertices of every link, without building FCL objects.
+
+    Same geometry update_bounding_box produces, but it skips the 9 BVHModel builds, which makes it
+    cheap enough to score candidate transits with.
+    """
+    transform_data = rac.calculate_transform_from_angles(dof)
+    out = []
+    for i, link_name in enumerate(rac.link_names_):
+        rot = R.from_quat(transform_data[i][1])
+        out.append(rot.apply(rac.bounding_points_[link_name]) + transform_data[i][0])
+    return out
+
+
+def in_cabinet_lateral_span(rac, path):
+    """Lateral (y) span the arm sweeps inside the cabinet over a whole path; 0 if fully outside.
+
+    This is the union over every config, which is exactly what get_swept_center +
+    get_swept_volume_size measure downstream -- a per-config maximum would badly understate a
+    motion that stays narrow but drifts sideways. Minimizing it is what shrinks the object set
+    OR-MCTS has to clear.
+    """
+    lo, hi = None, None
+    for dof in path:
+        for verts in link_bbox_verts(rac, dof):
+            inside = verts[verts[:, 0] > BOX_FRONT_X]
+            if len(inside) == 0:
+                continue
+            ylo, yhi = float(inside[:, 1].min()), float(inside[:, 1].max())
+            lo = ylo if lo is None else min(lo, ylo)
+            hi = yhi if hi is None else max(hi, yhi)
+    return 0.0 if lo is None else hi - lo
+
+
+def densify_joint_segment(dof_start, dof_end, step=LMP_TRANSIT_STEP):
+    """Sample a joint-space linear segment, excluding dof_start and including dof_end.
+
+    The returned path is dense enough that get_swept_volume reproduces the whole motion at
+    frame_rate=1 -- the transit has to be sampled as finely as the insertion, or the swept volume
+    handed to OR-MCTS would miss objects the arm actually passes through.
+    """
+    delta = [b - a for a, b in zip(dof_start, dof_end)]
+    travel = max(abs(x) for x in delta) if delta else 0.0
+    num_steps = max(int(math.ceil(travel / step)), 1)
+    return [[a + d * i / float(num_steps) for a, d in zip(dof_start, delta)]
+            for i in range(1, num_steps + 1)]
+
+
+def validate_joint_segment(rac, dof_start, dof_end, plane_obj, static_env_models,
+                           step=LMP_TRANSIT_STEP):
+    """Check a joint-space linear segment for collision. Returns True if every sample is free."""
+    if not rac.arm_collision_free(dof_start, plane_obj, static_env_models, []):
+        return False
+    for dof in densify_joint_segment(dof_start, dof_end, step=step):
+        if not rac.arm_collision_free(dof, plane_obj, static_env_models, []):
+            return False
+    return True
+
+
+def plan_transit(rac, dof_start, dof_end, plane_obj, static_env_models):
+    """Joint-space transit from dof_start to dof_end, in front of the cabinet.
+
+    Returns densely sampled waypoints after dof_start (inclusive of dof_end), or None.
+
+    Every route follows the real robot's retract -> rotate -> send order (cf. smart_LMP_motion and
+    real_exp.linear_motion_planner, which builds grasp_start_config as [angle] + start_config[1:]):
+    the base only swings while the arm is pulled back, never while it is extended into the cabinet,
+    because an extended swing clips the side covers. Which posture counts as pulled back depends on
+    the direction of travel, so the two single-pivot routes are tried first, then the direct
+    segment, then the explicit tuck posture, then any staging configs.
+    """
+    pivots = [
+        # rotate the base to the target angle while holding the start posture (good for home -> pre-grasp)
+        [dof_end[0]] + list(dof_start[1:]),
+        # reshape to the target posture at the start angle, then rotate (good for retract -> home)
+        [dof_start[0]] + list(dof_end[1:]),
+    ]
+    # tuck -> rotate -> extend: reshape in place, swing the base while tucked, then extend along
+    # the target yaw, which puts that extension inside the tunnel
+    tuck_start = [dof_start[0]] + list(LMP_TUCK_POSTURE)
+    tuck_end = [dof_end[0]] + list(LMP_TUCK_POSTURE)
+
+    routes = [pivots[0:1], pivots[1:2], [], [tuck_start, tuck_end]]
+    routes += [[staging] for staging in LMP_STAGING_DOFS]
+
+    # Every valid route is collision free, but they differ enormously in how much of the cabinet
+    # they sweep through on the way -- swinging an extended arm across the opening can sweep wider
+    # than the insertion itself. Since that sweep is exactly what decides how many objects OR-MCTS
+    # must relocate, score the routes and keep the one that intrudes least.
+    best, best_score = None, None
+    for route in routes:
+        nodes = [list(dof_start)] + [list(x) for x in route] + [list(dof_end)]
+        if not all(validate_joint_segment(rac, a, b, plane_obj, static_env_models)
+                   for a, b in zip(nodes, nodes[1:])):
+            continue
+        out = []
+        for a, b in zip(nodes, nodes[1:]):
+            out += densify_joint_segment(a, b)
+        # the final waypoint is dof_end itself, which the caller owns, so don't charge it here
+        score = in_cabinet_lateral_span(rac, out[:-1])
+        if best_score is None or score < best_score:
+            best, best_score = out, score
+            if score <= 0.0:
+                break
+
+    return best
+
+
+def get_linear_path2grasp(rac, target_pos, target_quat, scene_info, pcd_mesh=None, target_mesh=None,
+                          step=LMP_STEP, given_static_model=None):
+    """Linear-motion counterpart of get_path2grasp.
+
+    Takes the Cartesian grasp pose (the line has to be sampled, so a DOF goal is not enough) and
+    returns a path_list of 6-vectors from UR5E_START_DOF to the grasp, or None.
+    """
+    plane_normal = np.array([0, 0, 1.0])
+    col_plane = fcl.Plane(plane_normal, 0)
+    plane_obj = fcl.CollisionObject(col_plane, fcl.Transform())
+
+    if given_static_model is not None:
+        static_env_models = given_static_model
+    elif scene_info is not None:
+        static_env_models = create_static_collision_model(scene_info, pcd_mesh, target_mesh)
+    else:
+        static_env_models = []
+
+    base = MCTS_ROBOT_BASE_XY
+    offset2d = np.asarray(target_pos[:2], dtype=float) - base
+    theta = math.atan2(offset2d[1], offset2d[0])
+    r_grasp = float(np.linalg.norm(offset2d))
+
+    r_start, _ = find_lmp_start(rac, theta, target_pos[2], target_quat, r_grasp,
+                                plane_obj, static_env_models, step=step)
+    if r_start is None:
+        print("LMP: no feasible pre-grasp pose on the tunnel axis")
+        return None
+
+    insertion = sample_radial_line(rac, theta, target_pos[2], target_quat,
+                                   r_start, r_grasp, plane_obj, static_env_models, step=step)
+    if insertion is None:
+        print("LMP: insertion line is blocked or unreachable")
+        return None
+
+    transit = plan_transit(rac, UR5E_START_DOF, insertion[0], plane_obj, static_env_models)
+    if transit is None:
+        print("LMP: no collision free transit to the pre-grasp pose")
+        return None
+
+    return [list(UR5E_START_DOF)] + transit[:-1] + insertion
+
+
+def get_linear_path2start(rac, target_pos, target_quat, mod_grip, scene_info, step=LMP_STEP,
+                          given_static_model=None):
+    """Linear-motion counterpart of get_path2start.
+
+    Plans the retrieval with the grasped object attached to the gripper: radial retract from the
+    grasp out to the cabinet opening, then transit back to UR5E_START_DOF.
+    """
+    # add modified grasp to fcl
+    vertices, faces = mod_grip
+    mod_fcl_gripper = fcl.BVHModel()
+    mod_fcl_gripper.beginModel(len(vertices), len(faces))
+    mod_fcl_gripper.addSubModel(vertices, faces)
+    mod_fcl_gripper.endModel()
+    rac.fcl_models_[8] = mod_fcl_gripper
+
+    try:
+        plane_normal = np.array([0, 0, 1.0])
+        col_plane = fcl.Plane(plane_normal, 0)
+        plane_obj = fcl.CollisionObject(col_plane, fcl.Transform())
+
+        if given_static_model is not None:
+            static_env_models = given_static_model
+        elif scene_info is not None:
+            static_env_models = create_static_collision_model(scene_info, None, None)
+        else:
+            static_env_models = []
+
+        base = MCTS_ROBOT_BASE_XY
+        offset2d = np.asarray(target_pos[:2], dtype=float) - base
+        theta = math.atan2(offset2d[1], offset2d[0])
+        r_grasp = float(np.linalg.norm(offset2d))
+
+        r_start, _ = find_lmp_start(rac, theta, target_pos[2], target_quat, r_grasp,
+                                    plane_obj, static_env_models, step=step)
+        if r_start is None:
+            print("LMP: no feasible retract pose on the tunnel axis")
+            return None
+
+        retract = sample_radial_line(rac, theta, target_pos[2], target_quat,
+                                     r_grasp, r_start, plane_obj, static_env_models, step=step)
+        if retract is None:
+            print("LMP: retract line is blocked or unreachable")
+            return None
+
+        transit = plan_transit(rac, retract[-1], UR5E_START_DOF, plane_obj, static_env_models)
+        if transit is None:
+            print("LMP: no collision free transit back to the start pose")
+            return None
+
+        return retract + transit
+    finally:
+        m = fcl.BVHModel()
+        vertices, faces = rac.collision_models_['gripper']
+        m.beginModel(len(vertices), len(faces))
+        m.addSubModel(vertices, faces)
+        m.endModel()
+        rac.fcl_models_[8] = m
+
 
 def get_path2grasp(rac, dof_result, scene_info, pcd_mesh=None, target_mesh=None, time_limit=10, given_static_model=None):
     plane_normal = np.array([0,0,1.0])

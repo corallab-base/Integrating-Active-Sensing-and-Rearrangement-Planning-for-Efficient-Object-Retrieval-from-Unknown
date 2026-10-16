@@ -33,6 +33,7 @@ import time
 import copy
 from grasp_util.global_scene import global_scene
 
+from rearrangement_planning_util_ICRA import Tree_Node
 import pdb
 
 def global_coord_converter(coord1, coord2, coord3, offset1, offset2, offset3):
@@ -2440,6 +2441,11 @@ def transfor2global(curr_config):
 
 # ------------------------------------------------------------------------------------------------------------------------------------------
 
+def real_exp_senario_gen():
+    rac = robot_arm_configuration('../assets/urdf/ur5e/meshes/collision/', np.array([-0.19, 0, 0]), scene_info)
+
+# ------------------------------------------------------------------------------------------------------------------------------------------
+
 def grasp_path_check(file_path, test_data_root, grasp_root, test_name, scene_info= None, grasp_check= False, obstacles_num=None):
     # get file name
     color_img_file_path = test_data_root + 'test_image/' + test_name + '.png'
@@ -2730,12 +2736,11 @@ def swept_coverage_check(scene, swept_verts, rac, scene_info, max_height, visual
     next_center, _ = rac.get_swept_center([new_verts], scene_info, max_height)
     return covered / len(swept_verts), next_center
 
-def check_MCTS(MCTS_root, MCTS_name, file_path=None):
+def check_MCTS(MCTS_root, MCTS_name, file_path=None, rearrangement_npy=None):
     MCTS_path = MCTS_root + MCTS_name
     data = np.load(MCTS_path, allow_pickle=True)
     init2grasp_path = data[0]["init2grasp_path"]
     grasp2init_path = data[0]["grasp2init_path"]
-    obj_pos_list = data[0]["obj_pos_list"]
     scene_info = data[0]["scene_info"]
     test_name = data[0]["test_name"]
     obj_mesh = data[0]["obj_mesh"]
@@ -2749,6 +2754,9 @@ def check_MCTS(MCTS_root, MCTS_name, file_path=None):
     unknown_area = data[0]["unknown_area"]
     valid_area = data[0]["valid_area"]
     potential_centers = data[0]["potential_centers"]
+
+    # if rearrangement_npy:
+    #     npy_data = np.load(rearrangement_npy)
 
 
     # global g_scene_info
@@ -2810,7 +2818,7 @@ def check_MCTS(MCTS_root, MCTS_name, file_path=None):
     #     0         1           2          3         4            5
 
     # calculate swept volume with bounding box
-    swept_volume1, swept_verts1 = rac.get_swept_volume(init2grasp_path, test_name, idx, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False, with_scene=True)
+    swept_volume1, swept_verts1 = rac.get_swept_volume(init2grasp_path, test_name, idx, frame_rate=60, scene_info=scene_info, animation=False, static_vi=True, with_scene=True)
     swept_volume2, swept_verts2 = rac.get_swept_volume(grasp2init_path, test_name, idx, w_target=w_target, frame_rate=60, scene_info=scene_info, animation=False, static_vi=False, with_scene=True)
     swept_center, swept_verts = rac.get_swept_center(swept_verts1+swept_verts2, scene_info, max_height=21)
 
@@ -2821,8 +2829,18 @@ def check_MCTS(MCTS_root, MCTS_name, file_path=None):
 
     ML_MCTS_ins = mct.multi_level_MCTS_algo(copy.deepcopy(curr_config), copy.deepcopy(curr_config), scene_info=scene_info,
                                             swept_volume1=swept_volume1, swept_volume2=swept_volume2, obj_mesh=rac.obj_mesh,
-                                            target_pos=copy.deepcopy(target_pos_MCT), unknown_area=unknown_area, valid_area=[],
-                                            potential_centers=[])
+                                            target_pos=copy.deepcopy(target_pos_MCT), unknown_area=unknown_area, valid_area=valid_area,
+                                            potential_centers=potential_centers)
+    ML_MCTS_ins.init_MCTS()
+    is_plan_success, child_node_list = ML_MCTS_ins.run_mcts(60)
+    if is_plan_success:
+        breakpoint()
+        ML_MCTS_ins.animate_whole_sequence()
+        ML_MCTS_ins.track_level_steps_[0][0].scene_saver(MCTS_root + 'start_layout_2.png')
+        ML_MCTS_ins.track_level_steps_[-1][-1].scene_saver(MCTS_root + 'final_layout_2.png')
+        return
+    else:
+        return
 
     # ML_MCTS_ins = mct.multi_level_MCTS_algo(copy.deepcopy(curr_config), copy.deepcopy(curr_config), scene_info=scene_info,
     #                                         swept_volume1=swept_volume1, swept_volume2=swept_volume2, obj_mesh=rac.obj_mesh,
@@ -3325,13 +3343,16 @@ if __name__ == '__main__':
     # scene_name = "203/complete_sensing/BASE2/test_results/"
     # mcts_name = "temp_scene4_failed.npy"
 
-    data_root = "test_data/test_real_time/test1/9.18.10.49/"
+    # data_root = "test_data/test_real_time/test1/video1/"
+    # data_root = "test_data/test_real_time/test2/video2/"
+    data_root = "test_data/test_real_time/test3/"
     scene_name = "MCTS*/test_results/"
-    mcts_name = "temp_scene3_failed.npy"
+    mcts_name = "temp_scene3_success.npy"
 
     mcts_root = data_root + scene_name
     # mcts_name = "groud_truth_scene.npy"
-    check_MCTS(mcts_root, mcts_name, file_path) 
+    rearrangement = data_root + scene_name + "temp_scene3_success.npy"
+    check_MCTS(mcts_root, mcts_name, file_path, rearrangement)
     sys.exit(1)
 
     scene_name = "8.7.18.40_!!/"

@@ -8,7 +8,7 @@ import numpy as np
 import rtde_control
 import rtde_receive
 from rearrangement_planning_util_ICRA_backup import smart_LMP_motion_real
-import align_depth2color as a_d2c
+# import align_depth2color as a_d2c
 
 
 sys.path.append('/home/j0k/Project/Imsa/main_code/real_experiment_code')

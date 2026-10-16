@@ -66,7 +66,7 @@ num_of_envs = 1
 row_num_of_envs = int(math.sqrt(num_of_envs))
 
 #env settings
-choose = np.random.randint(2)
+choose = 1
 if choose == 0:
     max_drawer_height = 0.40
     min_drawer_height = 0.40
@@ -76,19 +76,26 @@ if choose == 0:
     table_dims = gymapi.Vec3(np.random.uniform(0.5, 0.7), np.random.uniform(0.8, 1.0), 0.10)
 
 else:
-    max_drawer_height = 0.55
-    min_drawer_height = 0.55
-    MIN_NUM_OBSTACLES = 7
-    MAX_NUM_OBSTACLES = 11
-    # table_dims = gymapi.Vec3(0.76, 1.16, 0.10) # L
-    table_dims = gymapi.Vec3(np.random.uniform(0.7, 0.9), np.random.uniform(1.0, 1.2), 0.10)
+    # max_drawer_height = 0.55
+    # min_drawer_height = 0.55
+    # MIN_NUM_OBSTACLES = 7
+    # MAX_NUM_OBSTACLES = 11
+    # # table_dims = gymapi.Vec3(0.76, 1.16, 0.10) # L
+    # table_dims = gymapi.Vec3(np.random.uniform(0.7, 0.9), np.random.uniform(1.0, 1.2), 0.10)
+
+    max_drawer_height = 0.34
+    min_drawer_height = 0.34
+    MIN_NUM_OBSTACLES = 3
+    MAX_NUM_OBSTACLES = 4
+    table_dims = gymapi.Vec3(0.40, 0.60, 0.10)
+    # table_dims = gymapi.Vec3(np.random.uniform(0.7, 0.9), np.random.uniform(1.0, 1.2), 0.10)
 
 piece_width = 0.03
 max_scaling_factor = 0
 fall_height = table_dims.z
 ADD_COVER = True
 
-TARGET_OBJ_INDEX = [3, 5]
+TARGET_OBJ_INDEX = [3]
 OBSTACLE_OBJ_INDEX = [0, 2]
 MIN_RADIUS = 0.03471716871486391
 
@@ -1557,14 +1564,22 @@ if __name__ == '__main__':
                             break
                         
                         print("\n----- covering grasp tunnel -----")
+                        cluster_angles = None
                         for cluster in valid_area_cluster:
                             exist = np.any(np.isin(cluster, collision_points).all(1))
                             if exist:
                                 check_cluster = cluster
-                                break
+                                cluster_angles = RC.cal_cam_angle_for_area(check_cluster, curr_config + [target_pos_MCT], scene_info, visualize=False)
+                                if cluster_angles is not None:
+                                    break
+
+                        if cluster_angles is None:
+                            print("\n----- No viewpoint for grasp tunnel -----")
+                            is_tunnel_covered = True
+                            run_mcts = True
+                            break
 
                         cluster_to_view = check_cluster
-                        cluster_angles = RC.cal_cam_angle_for_area(check_cluster, curr_config + [target_pos_MCT], scene_info, visualize=False)
 
                     elif not is_cluster_covered:
                         run_mcts = True

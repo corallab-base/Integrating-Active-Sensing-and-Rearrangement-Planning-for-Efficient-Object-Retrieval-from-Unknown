@@ -1295,483 +1295,483 @@ def run_sim_and_real(swept_verts, swept_center):
 #*************************************************************************************************#
 
 if __name__ == '__main__':
-    #initialize gym
-    #*************************************************************************************************#
-    gym = gymapi.acquire_gym()
-    #*************************************************************************************************#
+    # #initialize gym
+    # #*************************************************************************************************#
+    # gym = gymapi.acquire_gym()
+    # #*************************************************************************************************#
 
-    # parse arguments
-    #*************************************************************************************************#
-    args = gymutil.parse_arguments(description="ur5e example", custom_parameters = [{'name':'--env_id', 'type':int, 'help':'env_id', 'default':0}])
-    env_id = int(args.env_id)
-    #*************************************************************************************************#
+    # # parse arguments
+    # #*************************************************************************************************#
+    # args = gymutil.parse_arguments(description="ur5e example", custom_parameters = [{'name':'--env_id', 'type':int, 'help':'env_id', 'default':0}])
+    # env_id = int(args.env_id)
+    # #*************************************************************************************************#
 
-    #create a simulator
-    #*************************************************************************************************#
-    sim_params = gymapi.SimParams()
-    sim_params.substeps = 2
-    sim_params.dt = 1.0 / 60.0
-    #*************************************************************************************************#
+    # #create a simulator
+    # #*************************************************************************************************#
+    # sim_params = gymapi.SimParams()
+    # sim_params.substeps = 2
+    # sim_params.dt = 1.0 / 60.0
+    # #*************************************************************************************************#
 
-    sim_params.up_axis = gymapi.UP_AXIS_Z
-    sim_params.gravity = gymapi.Vec3(0, 0, -9.8)
+    # sim_params.up_axis = gymapi.UP_AXIS_Z
+    # sim_params.gravity = gymapi.Vec3(0, 0, -9.8)
 
-    sim_params.physx.solver_type = 1
-    sim_params.physx.num_position_iterations = 4
-    sim_params.physx.num_velocity_iterations = 1
-    sim_params.physx.num_threads = args.num_threads
-    sim_params.physx.use_gpu = args.use_gpu
+    # sim_params.physx.solver_type = 1
+    # sim_params.physx.num_position_iterations = 4
+    # sim_params.physx.num_velocity_iterations = 1
+    # sim_params.physx.num_threads = args.num_threads
+    # sim_params.physx.use_gpu = args.use_gpu
 
-    sim_params.use_gpu_pipeline = False
-    if args.use_gpu_pipeline:
-        print("WARNING: Forcing CPU pipeline.")
+    # sim_params.use_gpu_pipeline = False
+    # if args.use_gpu_pipeline:
+    #     print("WARNING: Forcing CPU pipeline.")
 
-    sim = gym.create_sim(args.compute_device_id, args.graphics_device_id, 
-                        args.physics_engine, sim_params)
+    # sim = gym.create_sim(args.compute_device_id, args.graphics_device_id, 
+    #                     args.physics_engine, sim_params)
 
-    if sim is None:
-        print("*** Failed to create sim")
-        quit()
-    #*************************************************************************************************#
+    # if sim is None:
+    #     print("*** Failed to create sim")
+    #     quit()
+    # #*************************************************************************************************#
 
-    #configure a ground plane
-    #*************************************************************************************************#
-    plane_params = gymapi.PlaneParams()
-    plane_params.normal = gymapi.Vec3(0, 0, 1)
-    gym.add_ground(sim, plane_params)
-    #*************************************************************************************************#
+    # #configure a ground plane
+    # #*************************************************************************************************#
+    # plane_params = gymapi.PlaneParams()
+    # plane_params.normal = gymapi.Vec3(0, 0, 1)
+    # gym.add_ground(sim, plane_params)
+    # #*************************************************************************************************#
 
-    #all assets
-    #*************************************************************************************************#
-    asset_root = "/home/j0k/Project/Imsa/assets/"
-    ur5e_asset_file = "urdf/ur5e/ur5e_mimic_real_gripper_test.urdf"
-    ur5e_collision_parts = ["urdf/ur5e/meshes/collision/base.stl",
-                            "urdf/ur5e/meshes/collision/shoulder.stl",
-                            "urdf/ur5e/meshes/collision/upperarm.stl",
-                            "urdf/ur5e/meshes/collision/forearm.stl",
-                            "urdf/ur5e/meshes/collision/wrist1.stl",
-                            "urdf/ur5e/meshes/collision/wrist2.stl",
-                            "urdf/ur5e/meshes/collision/wrist3.stl"]
+    # #all assets
+    # #*************************************************************************************************#
+    # asset_root = "/home/j0k/Project/Imsa/assets/"
+    # ur5e_asset_file = "urdf/ur5e/ur5e_mimic_real_gripper_test.urdf"
+    # ur5e_collision_parts = ["urdf/ur5e/meshes/collision/base.stl",
+    #                         "urdf/ur5e/meshes/collision/shoulder.stl",
+    #                         "urdf/ur5e/meshes/collision/upperarm.stl",
+    #                         "urdf/ur5e/meshes/collision/forearm.stl",
+    #                         "urdf/ur5e/meshes/collision/wrist1.stl",
+    #                         "urdf/ur5e/meshes/collision/wrist2.stl",
+    #                         "urdf/ur5e/meshes/collision/wrist3.stl"]
 
-    object_asset_files = []
-    object_collision_files = []
-    object_offset = []
-    object_centroid_m = []
-    object_common_prefix = "urdf/ycb/"
-    with open(asset_root + "urdf/ycb/object_urdf_grasp.txt") as f:
-        for line in f:
-            object_asset_files.append(object_common_prefix + line[:-1])
-    with open(asset_root + "urdf/ycb/object_collision_grasp.txt") as f:
-        for line in f:
-            object_collision_files.append(object_common_prefix + line[:-1])
-    with open(asset_root + "urdf/ycb/object_offset_grasp.txt") as f:
-        for line in f:
-            div = line[:-1].split(" ")
-            object_offset.append([float(x) for x in div])
+    # object_asset_files = []
+    # object_collision_files = []
+    # object_offset = []
+    # object_centroid_m = []
+    # object_common_prefix = "urdf/ycb/"
+    # with open(asset_root + "urdf/ycb/object_urdf_grasp.txt") as f:
+    #     for line in f:
+    #         object_asset_files.append(object_common_prefix + line[:-1])
+    # with open(asset_root + "urdf/ycb/object_collision_grasp.txt") as f:
+    #     for line in f:
+    #         object_collision_files.append(object_common_prefix + line[:-1])
+    # with open(asset_root + "urdf/ycb/object_offset_grasp.txt") as f:
+    #     for line in f:
+    #         div = line[:-1].split(" ")
+    #         object_offset.append([float(x) for x in div])
 
-    #setup all collision meshes
-    #setup is done outside the env loop since all robots are the same
-    ur5e_collision_models = []
-    ur5e_rotations = [R.from_euler('x',  [90], degrees = True),
-                    R.from_euler('xy', [90, 180], degrees = True),
-                    R.from_euler('xy', [180, 180], degrees = True),
-                    R.from_euler('z',  [-180], degrees = True),
-                    R.from_euler('x',  [-180], degrees = True),
-                    R.from_euler('x',  [90], degrees = True),
-                    R.from_euler('z',  [-90], degrees = True)]
-    ur5e_translations = [[0, 0, 0], 
-                        [0, 0, 0],
-                        [0, -0.138, 0],
-                        [0, -0.007, 0],
-                        [0, 0.127, 0],
-                        [0, 0, 0],
-                        [0, 0, 0]]
-    for i in range(len(ur5e_collision_parts)):
-        parts_path = ur5e_collision_parts[i]
-        collision_mesh = stl_reader(asset_root + parts_path)
-        m = fcl.BVHModel()
-        collision_mesh.transform(ur5e_rotations[i], ur5e_translations[i])
-        verts, tris = collision_mesh.get_vertices(), collision_mesh.get_faces()
-        m.beginModel(len(verts), len(tris))
-        m.addSubModel(verts, tris)
-        m.endModel()
-        ur5e_collision_models.append(m)
+    # #setup all collision meshes
+    # #setup is done outside the env loop since all robots are the same
+    # ur5e_collision_models = []
+    # ur5e_rotations = [R.from_euler('x',  [90], degrees = True),
+    #                 R.from_euler('xy', [90, 180], degrees = True),
+    #                 R.from_euler('xy', [180, 180], degrees = True),
+    #                 R.from_euler('z',  [-180], degrees = True),
+    #                 R.from_euler('x',  [-180], degrees = True),
+    #                 R.from_euler('x',  [90], degrees = True),
+    #                 R.from_euler('z',  [-90], degrees = True)]
+    # ur5e_translations = [[0, 0, 0], 
+    #                     [0, 0, 0],
+    #                     [0, -0.138, 0],
+    #                     [0, -0.007, 0],
+    #                     [0, 0.127, 0],
+    #                     [0, 0, 0],
+    #                     [0, 0, 0]]
+    # for i in range(len(ur5e_collision_parts)):
+    #     parts_path = ur5e_collision_parts[i]
+    #     collision_mesh = stl_reader(asset_root + parts_path)
+    #     m = fcl.BVHModel()
+    #     collision_mesh.transform(ur5e_rotations[i], ur5e_translations[i])
+    #     verts, tris = collision_mesh.get_vertices(), collision_mesh.get_faces()
+    #     m.beginModel(len(verts), len(tris))
+    #     m.addSubModel(verts, tris)
+    #     m.endModel()
+    #     ur5e_collision_models.append(m)
 
-    object_collision_lib = []
-    #*************************************************************************************************#
+    # object_collision_lib = []
+    # #*************************************************************************************************#
 
 
-    #calculate Inverse Kinematics
-    #*************************************************************************************************#
-    urdf_str = ''
-    with open("../assets/urdf/ur5e/ur5e_mimic_real_gripper_test.urdf") as f:
-        urdf_str = f.read()
+    # #calculate Inverse Kinematics
+    # #*************************************************************************************************#
+    # urdf_str = ''
+    # with open("../assets/urdf/ur5e/ur5e_mimic_real_gripper_test.urdf") as f:
+    #     urdf_str = f.read()
 
-    #*************************************************************************************************#
+    # #*************************************************************************************************#
 
-    # create viewer using the default camera properties
-    #*************************************************************************************************#
-    viewer = gym.create_viewer(sim, gymapi.CameraProperties())
-    if viewer is None:
-        raise ValueError('*** Failed to create viewer')
-    #*************************************************************************************************#
+    # # create viewer using the default camera properties
+    # #*************************************************************************************************#
+    # viewer = gym.create_viewer(sim, gymapi.CameraProperties())
+    # if viewer is None:
+    #     raise ValueError('*** Failed to create viewer')
+    # #*************************************************************************************************#
 
-    #set up the environment grid
-    #*************************************************************************************************#
-    spacing = 2
-    env_lower = gymapi.Vec3(-spacing, -spacing, 0)
-    env_upper = gymapi.Vec3(spacing, spacing, 0)
-    #*************************************************************************************************#
+    # #set up the environment grid
+    # #*************************************************************************************************#
+    # spacing = 2
+    # env_lower = gymapi.Vec3(-spacing, -spacing, 0)
+    # env_upper = gymapi.Vec3(spacing, spacing, 0)
+    # #*************************************************************************************************#
 
-    #load asset
-    #*************************************************************************************************#
-    asset_options = gymapi.AssetOptions()
-    asset_options.fix_base_link = True
-    asset_options.default_dof_drive_mode = gymapi.DOF_MODE_POS
-    asset_options.mesh_normal_mode = gymapi.COMPUTE_PER_VERTEX
-    asset_options.use_mesh_materials = True
+    # #load asset
+    # #*************************************************************************************************#
+    # asset_options = gymapi.AssetOptions()
+    # asset_options.fix_base_link = True
+    # asset_options.default_dof_drive_mode = gymapi.DOF_MODE_POS
+    # asset_options.mesh_normal_mode = gymapi.COMPUTE_PER_VERTEX
+    # asset_options.use_mesh_materials = True
 
-    ur5e_asset = gym.load_asset(sim, asset_root, ur5e_asset_file, asset_options)
-    table_asset = gym.create_box(sim, table_dims.x,
-                                    table_dims.y,
-                                    table_dims.z,
-                                    asset_options)
+    # ur5e_asset = gym.load_asset(sim, asset_root, ur5e_asset_file, asset_options)
+    # table_asset = gym.create_box(sim, table_dims.x,
+    #                                 table_dims.y,
+    #                                 table_dims.z,
+    #                                 asset_options)
 
-    #size of left/right cover will be decided by table size
-    drawer_height = np.random.random()*(max_drawer_height - min_drawer_height) + min_drawer_height
-    side_cover_dims = gymapi.Vec3(table_dims.x, piece_width, drawer_height)
-    left_cover_asset = gym.create_box(sim, side_cover_dims.x,
-                                        side_cover_dims.y,
-                                        side_cover_dims.z,
-                                        asset_options)
-    right_cover_asset = gym.create_box(sim, side_cover_dims.x,
-                                            side_cover_dims.y,
-                                            side_cover_dims.z,
-                                            asset_options)
+    # #size of left/right cover will be decided by table size
+    # drawer_height = np.random.random()*(max_drawer_height - min_drawer_height) + min_drawer_height
+    # side_cover_dims = gymapi.Vec3(table_dims.x, piece_width, drawer_height)
+    # left_cover_asset = gym.create_box(sim, side_cover_dims.x,
+    #                                     side_cover_dims.y,
+    #                                     side_cover_dims.z,
+    #                                     asset_options)
+    # right_cover_asset = gym.create_box(sim, side_cover_dims.x,
+    #                                         side_cover_dims.y,
+    #                                         side_cover_dims.z,
+    #                                         asset_options)
 
-    #upper cover
-    upper_cover_dims = gymapi.Vec3(table_dims.x, table_dims.y, 0.03)
-    upper_cover_asset = gym.create_box(sim, upper_cover_dims.x,
-                                            upper_cover_dims.y,
-                                            upper_cover_dims.z,
-                                            asset_options)
+    # #upper cover
+    # upper_cover_dims = gymapi.Vec3(table_dims.x, table_dims.y, 0.03)
+    # upper_cover_asset = gym.create_box(sim, upper_cover_dims.x,
+    #                                         upper_cover_dims.y,
+    #                                         upper_cover_dims.z,
+    #                                         asset_options)
     
-    left_door_dims = gymapi.Vec3(0.16, 1.0, drawer_height)
-    left_door_asset = gym.create_box(sim, left_door_dims.x,
-                                            left_door_dims.y,
-                                            left_door_dims.z,
-                                            asset_options)
+    # left_door_dims = gymapi.Vec3(0.16, 1.0, drawer_height)
+    # left_door_asset = gym.create_box(sim, left_door_dims.x,
+    #                                         left_door_dims.y,
+    #                                         left_door_dims.z,
+    #                                         asset_options)
     
-    right_door_dims = gymapi.Vec3(0.16, 1.0, drawer_height)
-    right_door_asset = gym.create_box(sim, left_door_dims.x,
-                                            left_door_dims.y,
-                                            left_door_dims.z,
-                                            asset_options)
+    # right_door_dims = gymapi.Vec3(0.16, 1.0, drawer_height)
+    # right_door_asset = gym.create_box(sim, left_door_dims.x,
+    #                                         left_door_dims.y,
+    #                                         left_door_dims.z,
+    #                                         asset_options)
     
     
 
-    saved_env_name = './saved_as_result/env_' + str(env_id) + '_scene_info.npy'
-    np.save(saved_env_name, np.array([table_dims.x, table_dims.y, table_dims.z, drawer_height]))
+    # saved_env_name = './saved_as_result/env_' + str(env_id) + '_scene_info.npy'
+    # np.save(saved_env_name, np.array([table_dims.x, table_dims.y, table_dims.z, drawer_height]))
 
-    asset_options.fix_base_link = False
-    object_assets = []
-    test_assets = []
-    for ob in object_asset_files:
-        object_assets.append(gym.load_asset(sim, asset_root, ob, asset_options))
-    asset_options.fix_base_link = True
-    test_assets.append(gym.load_asset(sim, asset_root, object_asset_files[0], asset_options))
-    asset_options.fix_base_link = False
+    # asset_options.fix_base_link = False
+    # object_assets = []
+    # test_assets = []
+    # for ob in object_asset_files:
+    #     object_assets.append(gym.load_asset(sim, asset_root, ob, asset_options))
+    # asset_options.fix_base_link = True
+    # test_assets.append(gym.load_asset(sim, asset_root, object_asset_files[0], asset_options))
+    # asset_options.fix_base_link = False
 
-    #*************************************************************************************************#
+    # #*************************************************************************************************#
 
-    #initial pose
-    #*************************************************************************************************#
-    ur5e_pose = gymapi.Transform()
-    # ur5e_pose.p = gymapi.Vec3(np.random.rand()*0.3 - 0.2, np.random.rand()*0.4 - 0.2, 0.0)
-    ur5e_pose.p = gymapi.Vec3(-0.19, 0, 0)
-    ur5e_pose.r = gymapi.Quat.from_axis_angle(gymapi.Vec3(1, 0, 0), 0.5*math.pi)
+    # #initial pose
+    # #*************************************************************************************************#
+    # ur5e_pose = gymapi.Transform()
+    # # ur5e_pose.p = gymapi.Vec3(np.random.rand()*0.3 - 0.2, np.random.rand()*0.4 - 0.2, 0.0)
+    # ur5e_pose.p = gymapi.Vec3(-0.19, 0, 0)
+    # ur5e_pose.r = gymapi.Quat.from_axis_angle(gymapi.Vec3(1, 0, 0), 0.5*math.pi)
 
-    table_pose = gymapi.Transform()
-    table_pose.p = gymapi.Vec3(table_dims.x*0.5 + GAP_TO_BOX, 0.0, table_dims.z*0.5)
+    # table_pose = gymapi.Transform()
+    # table_pose.p = gymapi.Vec3(table_dims.x*0.5 + GAP_TO_BOX, 0.0, table_dims.z*0.5)
 
-    left_cover_pose = gymapi.Transform()
-    left_cover_pose.p = gymapi.Vec3(table_pose.p.x, table_dims.y*0.5 - 0.015, 
-                                    table_dims.z + side_cover_dims.z/2.0)
+    # left_cover_pose = gymapi.Transform()
+    # left_cover_pose.p = gymapi.Vec3(table_pose.p.x, table_dims.y*0.5 - 0.015, 
+    #                                 table_dims.z + side_cover_dims.z/2.0)
 
-    right_cover_pose = gymapi.Transform()
-    right_cover_pose.p = gymapi.Vec3(table_pose.p.x, -table_dims.y*0.5 + 0.015, 
-                                    table_dims.z + side_cover_dims.z/2.0)
+    # right_cover_pose = gymapi.Transform()
+    # right_cover_pose.p = gymapi.Vec3(table_pose.p.x, -table_dims.y*0.5 + 0.015, 
+    #                                 table_dims.z + side_cover_dims.z/2.0)
 
-    upper_cover_pose = gymapi.Transform()
-    upper_cover_pose.p = gymapi.Vec3(table_pose.p.x, 0.0, table_dims.z + side_cover_dims.z + 0.015)
+    # upper_cover_pose = gymapi.Transform()
+    # upper_cover_pose.p = gymapi.Vec3(table_pose.p.x, 0.0, table_dims.z + side_cover_dims.z + 0.015)
 
-    left_door_pose = gymapi.Transform()
-    left_door_pose.p = gymapi.Vec3(0.3, -(table_dims.y/2 + left_door_dims.y/2), table_dims.z + drawer_height/2)
+    # left_door_pose = gymapi.Transform()
+    # left_door_pose.p = gymapi.Vec3(0.3, -(table_dims.y/2 + left_door_dims.y/2), table_dims.z + drawer_height/2)
 
-    right_door_pose = gymapi.Transform()
-    right_door_pose.p = gymapi.Vec3(0.3, table_dims.y/2 + right_door_dims.y/2, table_dims.z + drawer_height/2)
+    # right_door_pose = gymapi.Transform()
+    # right_door_pose.p = gymapi.Vec3(0.3, table_dims.y/2 + right_door_dims.y/2, table_dims.z + drawer_height/2)
 
-    camera_focus = gymapi.Vec3(0, 0, 0)
-    camera_props = gymapi.CameraProperties()
-    camera_props.horizontal_fov = 70.25
-    camera_props.width = 1280
-    camera_props.height = 720
+    # camera_focus = gymapi.Vec3(0, 0, 0)
+    # camera_props = gymapi.CameraProperties()
+    # camera_props.horizontal_fov = 70.25
+    # camera_props.width = 1280
+    # camera_props.height = 720
 
-    #set all environment collision models
+    # #set all environment collision models
 
-    plane_normal = np.array([0.0, 0.0, 1.0])
-    col_plane = fcl.Plane(plane_normal, 0)
-    plane_obj = fcl.CollisionObject(col_plane, fcl.Transform())
+    # plane_normal = np.array([0.0, 0.0, 1.0])
+    # col_plane = fcl.Plane(plane_normal, 0)
+    # plane_obj = fcl.CollisionObject(col_plane, fcl.Transform())
 
-    col_table = fcl.Box(table_dims.x, table_dims.y, table_dims.z)
-    trans_table = fcl.Transform(np.array([table_dims.x*0.5 + 0.3, 0.0, table_dims.z*0.5]))
-    table_obj = fcl.CollisionObject(col_table, trans_table)
+    # col_table = fcl.Box(table_dims.x, table_dims.y, table_dims.z)
+    # trans_table = fcl.Transform(np.array([table_dims.x*0.5 + 0.3, 0.0, table_dims.z*0.5]))
+    # table_obj = fcl.CollisionObject(col_table, trans_table)
 
-    col_left_cover = fcl.Box(side_cover_dims.x,
-                            side_cover_dims.y,
-                            side_cover_dims.z)
-    trans_left_cover = fcl.Transform(np.array([table_pose.p.x, table_dims.y*0.5 - 0.015, 
-                                            table_dims.z + side_cover_dims.z/2.0]))
-    left_cover_obj = fcl.CollisionObject(col_left_cover, trans_left_cover)
+    # col_left_cover = fcl.Box(side_cover_dims.x,
+    #                         side_cover_dims.y,
+    #                         side_cover_dims.z)
+    # trans_left_cover = fcl.Transform(np.array([table_pose.p.x, table_dims.y*0.5 - 0.015, 
+    #                                         table_dims.z + side_cover_dims.z/2.0]))
+    # left_cover_obj = fcl.CollisionObject(col_left_cover, trans_left_cover)
 
-    col_right_cover = fcl.Box(side_cover_dims.x,
-                            side_cover_dims.y,
-                            side_cover_dims.z)
-    trans_right_cover = fcl.Transform(np.array([table_pose.p.x, -table_dims.y*0.5 + 0.015, 
-                                                table_dims.z + side_cover_dims.z/2.0]))
-    right_cover_obj = fcl.CollisionObject(col_right_cover, trans_right_cover)
+    # col_right_cover = fcl.Box(side_cover_dims.x,
+    #                         side_cover_dims.y,
+    #                         side_cover_dims.z)
+    # trans_right_cover = fcl.Transform(np.array([table_pose.p.x, -table_dims.y*0.5 + 0.015, 
+    #                                             table_dims.z + side_cover_dims.z/2.0]))
+    # right_cover_obj = fcl.CollisionObject(col_right_cover, trans_right_cover)
 
-    left_door_fcl_box = fcl.Box(left_door_dims.x,
-                   left_door_dims.y,
-                   left_door_dims.z)
-    trans_left_door = fcl.Transform(np.array([0.3 - left_door_dims.x/2.0, -(table_dims.y/2 + left_door_dims.y/2), table_dims.x + drawer_height/2]))
-    left_door_fcl = fcl.CollisionObject(left_door_fcl_box, trans_left_door)
-
-
-    right_door_fcl_box = fcl.Box(right_door_dims.x,
-                   right_door_dims.y,
-                   right_door_dims.z)
-    trans_right_door = fcl.Transform(np.array([0.3 - right_door_dims.x/2.0, -(table_dims.y/2 + right_door_dims.y/2), table_dims.x + drawer_height/2]))
-    right_door_fcl = fcl.CollisionObject(right_door_fcl_box, trans_right_door)
+    # left_door_fcl_box = fcl.Box(left_door_dims.x,
+    #                left_door_dims.y,
+    #                left_door_dims.z)
+    # trans_left_door = fcl.Transform(np.array([0.3 - left_door_dims.x/2.0, -(table_dims.y/2 + left_door_dims.y/2), table_dims.x + drawer_height/2]))
+    # left_door_fcl = fcl.CollisionObject(left_door_fcl_box, trans_left_door)
 
 
-    object_collision_models = [table_obj, left_cover_obj, right_cover_obj, left_door_fcl, right_door_fcl]
+    # right_door_fcl_box = fcl.Box(right_door_dims.x,
+    #                right_door_dims.y,
+    #                right_door_dims.z)
+    # trans_right_door = fcl.Transform(np.array([0.3 - right_door_dims.x/2.0, -(table_dims.y/2 + right_door_dims.y/2), table_dims.x + drawer_height/2]))
+    # right_door_fcl = fcl.CollisionObject(right_door_fcl_box, trans_right_door)
 
-    if ADD_COVER:
-        col_upper_cover = fcl.Box(upper_cover_dims.x,
-                                upper_cover_dims.y,
-                                upper_cover_dims.z)
-        trans_upper_cover = fcl.Transform(np.array([table_pose.p.x, 0.0, 
-                                        table_dims.z + side_cover_dims.z + 0.015]))
-        upper_cover_obj = fcl.CollisionObject(col_upper_cover, trans_upper_cover)
-        object_collision_models.append(upper_cover_obj)
 
-    #*************************************************************************************************#
+    # object_collision_models = [table_obj, left_cover_obj, right_cover_obj, left_door_fcl, right_door_fcl]
 
-    #create environment
-    #*************************************************************************************************#
-    #create location candidates
-    location_candidates = []
-    start_i = 0.4
-    while start_i <= table_dims.x - 0.1 + 0.3:
-        start_j = - table_dims.y * 0.5 + 0.1
-        temp_candidates = []
-        while start_j <= table_dims.y*0.5 - 0.1:
-            temp_candidates.append([start_i, start_j, table_dims.z + 0.1])
-            start_j += 0.2
-        location_candidates.append(temp_candidates)
-        start_i += 0.3
+    # if ADD_COVER:
+    #     col_upper_cover = fcl.Box(upper_cover_dims.x,
+    #                             upper_cover_dims.y,
+    #                             upper_cover_dims.z)
+    #     trans_upper_cover = fcl.Transform(np.array([table_pose.p.x, 0.0, 
+    #                                     table_dims.z + side_cover_dims.z + 0.015]))
+    #     upper_cover_obj = fcl.CollisionObject(col_upper_cover, trans_upper_cover)
+    #     object_collision_models.append(upper_cover_obj)
 
-    region_candidates = []
-    start_i = 0.4
-    while start_i <= table_dims.x - 0.1 + 0.3:
-        start_j = - table_dims.y * 0.5 + 0.1
-        temp_candidates = []
-        while start_j <= table_dims.y*0.5 - 0.1:
-            temp_candidates.append([start_i, start_j, table_dims.z + 0.1])
-            start_j += 0.1
-        region_candidates.append(temp_candidates)
-        start_i += 0.1
+    # #*************************************************************************************************#
 
-    print(len(region_candidates), len(region_candidates[0]))
+    # #create environment
+    # #*************************************************************************************************#
+    # #create location candidates
+    # location_candidates = []
+    # start_i = 0.4
+    # while start_i <= table_dims.x - 0.1 + 0.3:
+    #     start_j = - table_dims.y * 0.5 + 0.1
+    #     temp_candidates = []
+    #     while start_j <= table_dims.y*0.5 - 0.1:
+    #         temp_candidates.append([start_i, start_j, table_dims.z + 0.1])
+    #         start_j += 0.2
+    #     location_candidates.append(temp_candidates)
+    #     start_i += 0.3
 
-    envs = []
-    ur5e_handles = []
-    body_cam_handles = []
-    camera_candidates = []
-    # chosen_object = []
-    chosen_scale = []
-    object_normalize = []
+    # region_candidates = []
+    # start_i = 0.4
+    # while start_i <= table_dims.x - 0.1 + 0.3:
+    #     start_j = - table_dims.y * 0.5 + 0.1
+    #     temp_candidates = []
+    #     while start_j <= table_dims.y*0.5 - 0.1:
+    #         temp_candidates.append([start_i, start_j, table_dims.z + 0.1])
+    #         start_j += 0.1
+    #     region_candidates.append(temp_candidates)
+    #     start_i += 0.1
 
-    observed_objects = []
-    gripper_location = None
-    object_status_list = []
-    object_reader_tracker = []
-    for i in range(num_of_envs):
-        envs.append(gym.create_env(sim, env_lower, env_upper, row_num_of_envs))
-        ur5e_handles.append(gym.create_actor(envs[-1], ur5e_asset, ur5e_pose, "ur5e" + str(i), 0, 32767))
+    # print(len(region_candidates), len(region_candidates[0]))
 
-        #get joint handler
-        spj = gym.find_actor_dof_handle(envs[-1], ur5e_handles[-1], "shoulder_pan_joint")
-        slj = gym.find_actor_dof_handle(envs[-1], ur5e_handles[-1], "shoulder_lift_joint")
-        ej = gym.find_actor_dof_handle(envs[-1], ur5e_handles[-1], "elbow_joint")
-        wj1 = gym.find_actor_dof_handle(envs[-1], ur5e_handles[-1], "wrist_1_joint")
-        wj2 = gym.find_actor_dof_handle(envs[-1], ur5e_handles[-1], "wrist_2_joint")
-        wj3 = gym.find_actor_dof_handle(envs[-1], ur5e_handles[-1], "wrist_3_joint")
-        likj = gym.find_actor_dof_handle(envs[-1], ur5e_handles[-1], "left_inner_knuckle_joint")
-        lifj = gym.find_actor_dof_handle(envs[-1], ur5e_handles[-1], "left_inner_finger_joint")
-        lokj = gym.find_actor_dof_handle(envs[-1], ur5e_handles[-1], "left_outer_knuckle_joint")
-        rikj = gym.find_actor_dof_handle(envs[-1], ur5e_handles[-1], "right_inner_knuckle_joint")
-        rifj = gym.find_actor_dof_handle(envs[-1], ur5e_handles[-1], "right_inner_finger_joint")
-        rokj = gym.find_actor_dof_handle(envs[-1], ur5e_handles[-1], "right_outer_knuckle_joint")
+    # envs = []
+    # ur5e_handles = []
+    # body_cam_handles = []
+    # camera_candidates = []
+    # # chosen_object = []
+    # chosen_scale = []
+    # object_normalize = []
 
-        #attach body camera sensor
-        cam_link = gym.find_actor_rigid_body_handle(envs[-1], ur5e_handles[-1], "wrist_3_link")
+    # observed_objects = []
+    # gripper_location = None
+    # object_status_list = []
+    # object_reader_tracker = []
+    # for i in range(num_of_envs):
+    #     envs.append(gym.create_env(sim, env_lower, env_upper, row_num_of_envs))
+    #     ur5e_handles.append(gym.create_actor(envs[-1], ur5e_asset, ur5e_pose, "ur5e" + str(i), 0, 32767))
 
-        #right in front of D435i model
-        cam_offset_x = 0.16
-        cam_offset_z = 0.08
-        body_cam_handles.append(gym.create_camera_sensor(envs[-1], camera_props))
-        body_cam_transform = gymapi.Transform()
-        body_cam_transform.p = gymapi.Vec3(cam_offset_x, 0.03, cam_offset_z)
-        gym.attach_camera_to_body(body_cam_handles[-1], envs[-1], cam_link, body_cam_transform, 
-                                gymapi.CameraFollowMode.FOLLOW_TRANSFORM)
+    #     #get joint handler
+    #     spj = gym.find_actor_dof_handle(envs[-1], ur5e_handles[-1], "shoulder_pan_joint")
+    #     slj = gym.find_actor_dof_handle(envs[-1], ur5e_handles[-1], "shoulder_lift_joint")
+    #     ej = gym.find_actor_dof_handle(envs[-1], ur5e_handles[-1], "elbow_joint")
+    #     wj1 = gym.find_actor_dof_handle(envs[-1], ur5e_handles[-1], "wrist_1_joint")
+    #     wj2 = gym.find_actor_dof_handle(envs[-1], ur5e_handles[-1], "wrist_2_joint")
+    #     wj3 = gym.find_actor_dof_handle(envs[-1], ur5e_handles[-1], "wrist_3_joint")
+    #     likj = gym.find_actor_dof_handle(envs[-1], ur5e_handles[-1], "left_inner_knuckle_joint")
+    #     lifj = gym.find_actor_dof_handle(envs[-1], ur5e_handles[-1], "left_inner_finger_joint")
+    #     lokj = gym.find_actor_dof_handle(envs[-1], ur5e_handles[-1], "left_outer_knuckle_joint")
+    #     rikj = gym.find_actor_dof_handle(envs[-1], ur5e_handles[-1], "right_inner_knuckle_joint")
+    #     rifj = gym.find_actor_dof_handle(envs[-1], ur5e_handles[-1], "right_inner_finger_joint")
+    #     rokj = gym.find_actor_dof_handle(envs[-1], ur5e_handles[-1], "right_outer_knuckle_joint")
 
-        gym.create_actor(envs[-1], table_asset, table_pose, "table" + str(i), 0, 1)
-        gym.create_actor(envs[-1], left_cover_asset, left_cover_pose, "left_cover" + str(i), 0, 1)
-        gym.create_actor(envs[-1], right_cover_asset, right_cover_pose, "right_cover" + str(i), 0, 1)
-        if ADD_COVER:
-            gym.create_actor(envs[-1], upper_cover_asset, upper_cover_pose, "upper_cover" + str(i), 0, 1)
-            gym.create_actor(envs[-1], left_door_asset, left_door_pose, "left_door" + str(i), 0, 1)
-            gym.create_actor(envs[-1], right_door_asset, right_door_pose, "right_door" + str(i), 0, 1)
+    #     #attach body camera sensor
+    #     cam_link = gym.find_actor_rigid_body_handle(envs[-1], ur5e_handles[-1], "wrist_3_link")
 
-        # Choose target & obstacle objects-------------------------------------------------------------------------------
-        target_file_idx = np.random.choice(TARGET_OBJ_INDEX, 1)
-        object_file_idx = np.random.choice(OBSTACLE_OBJ_INDEX, NUM_OF_OBJECTS - 1)
-        OBJ_FILE_IDX_LIST = np.concatenate((object_file_idx, target_file_idx), axis=0)
+    #     #right in front of D435i model
+    #     cam_offset_x = 0.16
+    #     cam_offset_z = 0.08
+    #     body_cam_handles.append(gym.create_camera_sensor(envs[-1], camera_props))
+    #     body_cam_transform = gymapi.Transform()
+    #     body_cam_transform.p = gymapi.Vec3(cam_offset_x, 0.03, cam_offset_z)
+    #     gym.attach_camera_to_body(body_cam_handles[-1], envs[-1], cam_link, body_cam_transform, 
+    #                             gymapi.CameraFollowMode.FOLLOW_TRANSFORM)
 
-        # chosen_object.append(OBJ_FILE_IDX_LIST)
-        object_handles = []
+    #     gym.create_actor(envs[-1], table_asset, table_pose, "table" + str(i), 0, 1)
+    #     gym.create_actor(envs[-1], left_cover_asset, left_cover_pose, "left_cover" + str(i), 0, 1)
+    #     gym.create_actor(envs[-1], right_cover_asset, right_cover_pose, "right_cover" + str(i), 0, 1)
+    #     if ADD_COVER:
+    #         gym.create_actor(envs[-1], upper_cover_asset, upper_cover_pose, "upper_cover" + str(i), 0, 1)
+    #         gym.create_actor(envs[-1], left_door_asset, left_door_pose, "left_door" + str(i), 0, 1)
+    #         gym.create_actor(envs[-1], right_door_asset, right_door_pose, "right_door" + str(i), 0, 1)
 
-        with open("object_name.txt", 'a') as f:
-            for k in range(NUM_OF_OBJECTS):
-                f.write(object_asset_files[OBJ_FILE_IDX_LIST[k]])
+    #     # Choose target & obstacle objects-------------------------------------------------------------------------------
+    #     target_file_idx = np.random.choice(TARGET_OBJ_INDEX, 1)
+    #     object_file_idx = np.random.choice(OBSTACLE_OBJ_INDEX, NUM_OF_OBJECTS - 1)
+    #     OBJ_FILE_IDX_LIST = np.concatenate((object_file_idx, target_file_idx), axis=0)
 
-        object_scaling_factor = np.random.randint(0, max_scaling_factor+1, size = NUM_OF_OBJECTS)/10.0 + 1.0
+    #     # chosen_object.append(OBJ_FILE_IDX_LIST)
+    #     object_handles = []
 
-        # set up objects--------------------------------------------------------------------------------------------------------------------
-        # creating manager
-        objs_manager = fcl.DynamicAABBTreeCollisionManager()
-        objs_manager.setup()
-        GT_TARGET_POS = [table_dims.x/2 + 0.3, 0, table_dims.z + 0.08]
+    #     with open("object_name.txt", 'a') as f:
+    #         for k in range(NUM_OF_OBJECTS):
+    #             f.write(object_asset_files[OBJ_FILE_IDX_LIST[k]])
 
-        # init setup
-        ik_solver2 = IK("base_link", "wrist_3_link", urdf_string = urdf_str)
-        target_quat = gymapi.Quat(0.446, 0.560, -0.433, 0.549)
-        converted_quat = quaternion_multiply(gymapi.Quat(-math.sqrt(2)/2, 0, 0, math.sqrt(2)/2), target_quat)
-        file_path = '../assets/urdf/ur5e/meshes/collision/'
-        scene_info = [table_dims.x, table_dims.y, table_dims.z, drawer_height]
-        # MAX_HEIGHT = get_max_height(asset_root, object_asset_files, OBJ_FILE_IDX_LIST)
-        MAX_HEIGHT = 21
+    #     object_scaling_factor = np.random.randint(0, max_scaling_factor+1, size = NUM_OF_OBJECTS)/10.0 + 1.0
 
-        rac = RC.robot_arm_configuration(file_path, np.array([ur5e_pose.p.x, ur5e_pose.p.y, ur5e_pose.p.z]), scene_info)
-        target_obj_pos = copy.deepcopy(GT_TARGET_POS)
-        with open(asset_root + "urdf/ycb/object_urdf_grasp.txt") as f:
-            for idx, line in enumerate(f):
-                if idx != target_file_idx[0]:
-                    continue
-                i = line.find('/')
-                print(idx)
-                obj_name = asset_root + object_common_prefix + line[:i] + '/textured_vhacd.obj'
+    #     # set up objects--------------------------------------------------------------------------------------------------------------------
+    #     # creating manager
+    #     objs_manager = fcl.DynamicAABBTreeCollisionManager()
+    #     objs_manager.setup()
+    #     GT_TARGET_POS = [table_dims.x/2 + 0.3, 0, table_dims.z + 0.08]
 
-        target_obj_mesh = obj_reader(obj_name)
-        target_obj_mesh.add_offset(object_offset[OBJ_FILE_IDX_LIST[-1]][:2] + [0])
-        target_obj_mesh.add_offset([target_obj_pos[0], target_obj_pos[1], 0.1])
-        target_obj_mesh = [target_obj_mesh.get_vertices(), target_obj_mesh.get_faces()]
+    #     # init setup
+    #     ik_solver2 = IK("base_link", "wrist_3_link", urdf_string = urdf_str)
+    #     target_quat = gymapi.Quat(0.446, 0.560, -0.433, 0.549)
+    #     converted_quat = quaternion_multiply(gymapi.Quat(-math.sqrt(2)/2, 0, 0, math.sqrt(2)/2), target_quat)
+    #     file_path = '../assets/urdf/ur5e/meshes/collision/'
+    #     scene_info = [table_dims.x, table_dims.y, table_dims.z, drawer_height]
+    #     # MAX_HEIGHT = get_max_height(asset_root, object_asset_files, OBJ_FILE_IDX_LIST)
+    #     MAX_HEIGHT = 21
 
-        # read grasp data
-        grasp_file = "/".join(obj_name.split('/')[:-1]) + "/grasp_dict.npy"
-        grasp_data = np.load(grasp_file, allow_pickle=True)
-        # generate swept volume
-        num_grasp = 0
-        swept_size = sys.maxsize
-        grasp_list = np.arange(len(grasp_data))
-        np.random.shuffle(np.arange(len(grasp_list)))
-        rac.target_mesh = target_obj_mesh
-        get_out = False
+    #     rac = RC.robot_arm_configuration(file_path, np.array([ur5e_pose.p.x, ur5e_pose.p.y, ur5e_pose.p.z]), scene_info)
+    #     target_obj_pos = copy.deepcopy(GT_TARGET_POS)
+    #     with open(asset_root + "urdf/ycb/object_urdf_grasp.txt") as f:
+    #         for idx, line in enumerate(f):
+    #             if idx != target_file_idx[0]:
+    #                 continue
+    #             i = line.find('/')
+    #             print(idx)
+    #             obj_name = asset_root + object_common_prefix + line[:i] + '/textured_vhacd.obj'
 
-        #set up global camera to record configuration
-        body_cam_handles.append(gym.create_camera_sensor(envs[-1], camera_props))
-        viewpoint_candidate = gymapi.Vec3(3, 0, 0.3)
-        gym.set_camera_location(body_cam_handles[-1], envs[-1], 
-                                viewpoint_candidate, 
-                                camera_focus)
+    #     target_obj_mesh = obj_reader(obj_name)
+    #     target_obj_mesh.add_offset(object_offset[OBJ_FILE_IDX_LIST[-1]][:2] + [0])
+    #     target_obj_mesh.add_offset([target_obj_pos[0], target_obj_pos[1], 0.1])
+    #     target_obj_mesh = [target_obj_mesh.get_vertices(), target_obj_mesh.get_faces()]
+
+    #     # read grasp data
+    #     grasp_file = "/".join(obj_name.split('/')[:-1]) + "/grasp_dict.npy"
+    #     grasp_data = np.load(grasp_file, allow_pickle=True)
+    #     # generate swept volume
+    #     num_grasp = 0
+    #     swept_size = sys.maxsize
+    #     grasp_list = np.arange(len(grasp_data))
+    #     np.random.shuffle(np.arange(len(grasp_list)))
+    #     rac.target_mesh = target_obj_mesh
+    #     get_out = False
+
+    #     #set up global camera to record configuration
+    #     body_cam_handles.append(gym.create_camera_sensor(envs[-1], camera_props))
+    #     viewpoint_candidate = gymapi.Vec3(3, 0, 0.3)
+    #     gym.set_camera_location(body_cam_handles[-1], envs[-1], 
+    #                             viewpoint_candidate, 
+    #                             camera_focus)
     
-    #*************************************************************************************************#
+    # #*************************************************************************************************#
 
-    #*************************************************************************************************#
-    cam_pos = gymapi.Vec3(2.2, 0, 0.5)
-    cam_target = gymapi.Vec3(0, 0, 0.5)
-    gym.viewer_camera_look_at(viewer, None, cam_pos, cam_target)
-    gym.set_light_parameters(sim, 0, gymapi.Vec3(0.3, 0.3, 0.3), gymapi.Vec3(1.0, 1.0, 1.0),
-                                    gymapi.Vec3(-1.0, 0.0, 0.0))
-    gym.set_light_parameters(sim, 1, gymapi.Vec3(0.3, 0.3, 0.3), gymapi.Vec3(1.0, 1.0, 1.0),
-                                    gymapi.Vec3(1.0, 0.0, 0.0))
-    #*************************************************************************************************#
+    # #*************************************************************************************************#
+    # cam_pos = gymapi.Vec3(2.2, 0, 0.5)
+    # cam_target = gymapi.Vec3(0, 0, 0.5)
+    # gym.viewer_camera_look_at(viewer, None, cam_pos, cam_target)
+    # gym.set_light_parameters(sim, 0, gymapi.Vec3(0.3, 0.3, 0.3), gymapi.Vec3(1.0, 1.0, 1.0),
+    #                                 gymapi.Vec3(-1.0, 0.0, 0.0))
+    # gym.set_light_parameters(sim, 1, gymapi.Vec3(0.3, 0.3, 0.3), gymapi.Vec3(1.0, 1.0, 1.0),
+    #                                 gymapi.Vec3(1.0, 0.0, 0.0))
+    # #*************************************************************************************************#
 
-    # empty loop here to test functionalities
-    #*************************************************************************************************#
-    real_position = False
-    flex_collision_models = []
-    object_mesh = []
-    t = 0
-    #while not gym.query_viewer_has_closed(viewer):
-    for t in range(2000):
-        if not real_position:
-            gym.set_dof_target_position(envs[-1], spj, 0.7)
-            gym.set_dof_target_position(envs[-1], slj, -2)
-            gym.set_dof_target_position(envs[-1], ej,  2.5)
-            gym.set_dof_target_position(envs[-1], wj1, -0.3)
-            gym.set_dof_target_position(envs[-1], wj2, 0.7)
-            gym.set_dof_target_position(envs[-1], wj3, 0)
-            real_position = True
+    # # empty loop here to test functionalities
+    # #*************************************************************************************************#
+    # real_position = False
+    # flex_collision_models = []
+    # object_mesh = []
+    # t = 0
+    # #while not gym.query_viewer_has_closed(viewer):
+    # for t in range(2000):
+    #     if not real_position:
+    #         gym.set_dof_target_position(envs[-1], spj, 0.7)
+    #         gym.set_dof_target_position(envs[-1], slj, -2)
+    #         gym.set_dof_target_position(envs[-1], ej,  2.5)
+    #         gym.set_dof_target_position(envs[-1], wj1, -0.3)
+    #         gym.set_dof_target_position(envs[-1], wj2, 0.7)
+    #         gym.set_dof_target_position(envs[-1], wj3, 0)
+    #         real_position = True
 
-        if t == 999:
-            for i in range(len(object_handles)):
-                element = object_handles[i]
-                states = gym.get_actor_rigid_body_states(envs[-1], element, 1)
-                rotation = np.array(states[0][0][1])
-                translation = np.array(states[0][0][0])
-                rotation = np.array(rotation.item())
-                translation = np.array(translation.item())
-                object_status_list[i][0] += translation
-                r1 = R.from_quat(rotation)
-                tf = fcl.Transform(r1.as_matrix(), translation)
-                flex_collision_models.append([fcl.CollisionObject(object_collision_lib[i], tf), 0])
+    #     if t == 999:
+    #         for i in range(len(object_handles)):
+    #             element = object_handles[i]
+    #             states = gym.get_actor_rigid_body_states(envs[-1], element, 1)
+    #             rotation = np.array(states[0][0][1])
+    #             translation = np.array(states[0][0][0])
+    #             rotation = np.array(rotation.item())
+    #             translation = np.array(translation.item())
+    #             object_status_list[i][0] += translation
+    #             r1 = R.from_quat(rotation)
+    #             tf = fcl.Transform(r1.as_matrix(), translation)
+    #             flex_collision_models.append([fcl.CollisionObject(object_collision_lib[i], tf), 0])
 
-                temp_obj = object_reader_tracker[i]
-                temp_obj.set_offset(translation)
-                all_lines = [] 
-                vertices, faces = temp_obj.get_bounding_box_mesh()
-                object_mesh.append([vertices, faces])
-                for v1, v2, v3 in faces:
-                    all_lines += list(vertices[v1])
-                    all_lines += list(vertices[v2])
-                    all_lines += list(vertices[v1])
-                    all_lines += list(vertices[v3])
-                    all_lines += list(vertices[v2])
-                    all_lines += list(vertices[v3])
+    #             temp_obj = object_reader_tracker[i]
+    #             temp_obj.set_offset(translation)
+    #             all_lines = [] 
+    #             vertices, faces = temp_obj.get_bounding_box_mesh()
+    #             object_mesh.append([vertices, faces])
+    #             for v1, v2, v3 in faces:
+    #                 all_lines += list(vertices[v1])
+    #                 all_lines += list(vertices[v2])
+    #                 all_lines += list(vertices[v1])
+    #                 all_lines += list(vertices[v3])
+    #                 all_lines += list(vertices[v2])
+    #                 all_lines += list(vertices[v3])
 
-        # step the physics
-        gym.simulate(sim)
-        gym.fetch_results(sim, True)
+    #     # step the physics
+    #     gym.simulate(sim)
+    #     gym.fetch_results(sim, True)
 
-        # update the viewer
-        gym.step_graphics(sim)
-        gym.draw_viewer(viewer, sim, True)
+    #     # update the viewer
+    #     gym.step_graphics(sim)
+    #     gym.draw_viewer(viewer, sim, True)
 
-        gym.sync_frame_time(sim)
-    #*************************************************************************************************#
+    #     gym.sync_frame_time(sim)
+    # #*************************************************************************************************#
 
     # Change file names-------------------------------------------------------------------------------------------------------------
     test_folder = 'test1/video1'
@@ -1790,6 +1790,7 @@ if __name__ == '__main__':
     mcts_file = 'test_data/test_real_time/' + test_folder +'/MCTS*/test_results/temp_scene3_success.npy'
     saved_data = np.load(mcts_file, allow_pickle=True)[0]
     scene_info = saved_data['scene_info']
+    breakpoint()
     
     init2grasp_path = saved_data['init2grasp_path']
     grasp2init_path = saved_data['grasp2init_path']

@@ -6,7 +6,7 @@
 #####################################################
 
 # First import the library
-import pyrealsense2 as rs
+# import pyrealsense2 as rs
 # Import Numpy for easy array manipulation
 import numpy as np
 # Import OpenCV for easy image rendering
