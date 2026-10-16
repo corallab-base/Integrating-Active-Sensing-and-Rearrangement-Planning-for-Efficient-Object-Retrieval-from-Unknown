@@ -2466,7 +2466,7 @@ GRASP_FLOOR_Z = 0.1
 
 # Tree_Node.robot_ = [0, -19] is hardcoded in grid cells, so the MCTS grid scale must
 # be 1 cm; this is the robot base that matches it.
-DEMO_ROBOT_OFFSET = np.array([-0.19, 0, 0])
+DEMO_ROBOT_OFFSET = np.array([-0.19, 0, -0.02])
 
 
 def _load_ycb_tables():
