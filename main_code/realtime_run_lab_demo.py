@@ -1787,7 +1787,7 @@ if __name__ == '__main__':
     # ==================================================================================
 
     SCENARIO      = 'lab_demo_senarios/good1?'
-    PLACE_OBJECTS = False               # True: ONLY set the scene up, then exit
+    PLACE_OBJECTS = True               # True: ONLY set the scene up, then exit
     DRY_RUN       = True               # True: no robot, just print what would happen
     IP_ADDRESS    = '192.168.1.126'
     HOME          = [0.7, -2, 2.5, -0.3, 0.7, 0]
@@ -1959,18 +1959,38 @@ if __name__ == '__main__':
         # targets in separate fields, so merge them into one file for it.  Sorted with
         # the same key place_objects uses (sorted(..., reverse=True)) so the table
         # printed here matches the order the robot actually asks for them in.
-        placement.sort(key=lambda it: it[1], reverse=True)
+        obj_placement = [(n, list(p)) for n, p in zip(scene['obj_names'], scene['obj_pos_list'])]
+        obj_placement.sort(key=lambda it: it[1], reverse=True)
         place_path = SCENARIO + '/scene/place_list.npy'
-        np.save(place_path, np.array([{'obj_pos_list': [p for _, p in placement]}]))
+        np.save(place_path, np.array([{'obj_pos_list': [p for _, p in obj_placement]}]))
 
         print('\n--- scene setup: hand each object to the gripper when it opens ---')
         print('  %-5s %-24s %-18s %s' % ('order', 'object', 'world (x, y)', 'map idx'))
-        for i, (n, p) in enumerate(placement):
+        for i, (n, p) in enumerate(obj_placement):
             print('  %-5d %-24s (%6.3f, %6.3f)   %3d'
                   % (i + 1, n, p[0], p[1], map_index(p[0], p[1])))
         print('\n  the gripper opens for 2 s at each object -- put it in during that window')
 
         if not DRY_RUN:
+            for choice in target_names:
+                # 2. grasp, 3. retrieval
+                tgt = np.load(SCENARIO + '/scene/targets/' + choice + '.npy', allow_pickle=True)[0]
+                init2grasp_path = tgt['init2grasp_path']
+                grasp2init_path = tgt['grasp2init_path']
+
+                # object retrival
+                for angle in init2grasp_path:
+                    rtde_c.moveJ(angle, speed=0.5, acceleration=0.4)
+                rtde_c.moveJ(grasp2init_path[0], speed=0.5, acceleration=0.4)
+
+
+                # breakpoint()
+                time.sleep(10)
+                # gripper.move(230, 100, 0)
+                # time.sleep(5)
+            
+                for angle in grasp2init_path:
+                    rtde_c.moveJ(angle, speed=0.5, acceleration=0.4)
             re.place_objects(rtde_c, gripper, move_map, drop_map, place_path, True)
             rtde_c.moveJ(HOME)
         print('\n=== scene placed. set PLACE_OBJECTS = False to run the replay. ===')
